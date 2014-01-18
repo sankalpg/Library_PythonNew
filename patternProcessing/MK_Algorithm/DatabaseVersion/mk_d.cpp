@@ -29,20 +29,25 @@
 #include <math.h>
 #include <time.h>
 #include <signal.h>
+#include <stdint.h>
 
 #define INF 999999999999.0
 
 FILE *fp, *fp_out; 
 int ref;
 
-double **data;
-double **dref;
-double **indices;
-long long *ind;
-long long loc1 , loc2;
+#define DATATYPE uint32_t
+#define DISTTYPE double
+#define INDTYPE long long 
+
+DATATYPE **data;
+DATATYPE **dref;
+DISTTYPE **indices;
+INDTYPE *ind;
+INDTYPE loc1 , loc2;
 
 double *stdRef;
-long long TIMESERIES;
+INDTYPE TIMESERIES;
 int LENGTH;
 int MAXREF;
 double bsf,bsf_old;
@@ -51,14 +56,14 @@ double bsf,bsf_old;
 larger than the best so far (bsf) it stops computing and returns the approximate
 distance. To get exact distance the bsf argument should be omitted.*/
 
-double distance(double *x, double *y, int length , double best_so_far = INF )
+double distance(DATATYPE *x, DATATYPE *y, int length , double best_so_far = INF )
 {
     int i;
-    double sum = 0;
+    DATATYPE sum = 0;
     double bsf2 = best_so_far*best_so_far;
     for ( i = 0 ; i < length && sum < bsf2 ; i++ )
         sum += (x[i]-y[i])*(x[i]-y[i]);
-    return sqrt(sum);
+    return sqrt((double)sum);
     }
 
 /*Comparison function for qsort function. Compares two time series by using their
@@ -66,8 +71,8 @@ distances from the reference time series. */
 
 int comp1(const void *a,const void *b)
 {
-    long long *x=(long long *)a;
-    long long *y=(long long *)b;
+    INDTYPE *x=(INDTYPE *)a;
+    INDTYPE *y=(INDTYPE *)b;
 
     if (indices[ref][*x]>indices[ref][*y])
         return 1;
@@ -123,13 +128,14 @@ void stop_exec(int sig)
 int main(  int argc , char *argv[] )
 {
 
-    double d;
-    long long i , j ;
-    long long offset = 0;
+    DISTTYPE d;
+    DATATYPE dd;
+    INDTYPE i , j ;
+    INDTYPE offset = 0;
     int abandon = 0 ,  r = 0;
-    double ex , ex2 , mean, std;
+    DISTTYPE ex , ex2 , mean, std;
     int *rInd;
-    long long length;
+    INDTYPE length;
     int clear = 0;
     double *cntr;
     double t1,t2;
@@ -169,14 +175,14 @@ int main(  int argc , char *argv[] )
     if( verbos == 1 )
         printf("\nNumber of Time Series : %lld\nLength of Each Time Series : %d\n\n",TIMESERIES,LENGTH);
 
-    data = (double **)malloc(sizeof(double *)*TIMESERIES);
-    ind = (long long *)malloc(sizeof(long long)*TIMESERIES);
+    data = (DATATYPE **)malloc(sizeof(DATATYPE *)*TIMESERIES);
+    ind = (INDTYPE *)malloc(sizeof(INDTYPE)*TIMESERIES);
     //printf("Hello1\n");
     if( data == NULL || ind == NULL )
     {
         error(1);
     }
-    data[0] = (double *)malloc(sizeof(double)*LENGTH);
+    data[0] = (DATATYPE *)malloc(sizeof(DATATYPE)*LENGTH);
     
    // printf("%ld %ld\n\n",data,data[0]);
     if( data[0] == NULL )
@@ -184,27 +190,27 @@ int main(  int argc , char *argv[] )
         error(1);
     }
     //printf("Hello2\n");
-    while(fscanf(fp,"%lf",&d) != EOF && i < TIMESERIES)
+    while(fscanf(fp,"%d",&dd) != EOF && i < TIMESERIES)
     {
-        data[i][j] = d;
-        ex += d;
-        ex2 += d*d;
+        data[i][j] = dd;
+        //ex += d;
+        //ex2 += d*d;
         if( j == LENGTH - 1 )
         {
-            mean = ex = ex/LENGTH;
-            ex2 = ex2/LENGTH;
-            std = sqrt(ex2-ex*ex);
+            //mean = ex = ex/LENGTH;
+            //ex2 = ex2/LENGTH;
+            //std = sqrt(ex2-ex*ex);
             /*for( int k = 0 ; k < LENGTH ; k++ )
             {
                 data[i][k] = (data[i][k]-mean)/std;
                 
             }*/
-            ex = ex2 = 0;
+            //ex = ex2 = 0;
             ind[i] = i;
             i++;
             if( i <= TIMESERIES )
             {
-                data[i] = (double *)malloc(sizeof(double)*LENGTH);
+                data[i] = (DATATYPE *)malloc(sizeof(DATATYPE)*LENGTH);
                 
             }
             //printf("Hello2.5\n");
@@ -228,7 +234,7 @@ int main(  int argc , char *argv[] )
         printf("Data Have been Read and Normalized\n\n");
     }
 
-    dref = (double **)malloc(MAXREF*sizeof(double *));
+    dref = (DATATYPE **)malloc(MAXREF*sizeof(DATATYPE *));
     indices = (double **)malloc(MAXREF*sizeof(double *));
     stdRef = (double *)malloc(MAXREF*sizeof(double));
     cntr = (double *)malloc(MAXREF*sizeof(double));
@@ -248,14 +254,14 @@ int main(  int argc , char *argv[] )
     for( r = 0 ; r < MAXREF ; r++ )
     {
 
-        dref[r] = (double *)malloc(sizeof(double)*LENGTH);
+        dref[r] = (DATATYPE *)malloc(sizeof(DATATYPE)*LENGTH);
         indices[r] = (double *)malloc(sizeof(double)*TIMESERIES);
         if( dref[r] == NULL || indices[r] == NULL )
         {
             error(1);
         }
 
-        long long random_pick = rand() % TIMESERIES;
+        INDTYPE random_pick = rand() % TIMESERIES;
         for( i = 0 ; i < LENGTH ; i++ )
         {
             dref[r][i] = data[random_pick][i];
@@ -314,10 +320,10 @@ int main(  int argc , char *argv[] )
 
         ref = rInd[0];
 
-        long long remaining = TIMESERIES;
+        INDTYPE remaining = TIMESERIES;
 
         /*Sort indices using the distances*/
-        qsort(ind,TIMESERIES,sizeof(long long),comp1);
+        qsort(ind,TIMESERIES,sizeof(INDTYPE),comp1);
         ///////////////////////////////////
 
 
@@ -339,8 +345,8 @@ int main(  int argc , char *argv[] )
 
             for(i = 0 ; i < remaining - offset ; i++ )
             {
-                long long left = ind[i];
-                long long right = ind[i + offset];
+                INDTYPE left = ind[i];
+                INDTYPE right = ind[i + offset];
                 if( abs(left-right) <= clear )
                 {
                     continue;
