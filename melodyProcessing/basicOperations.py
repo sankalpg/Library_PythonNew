@@ -24,10 +24,22 @@ def PitchHz2Cents(pitch, tonic):
     Function to convert the pitch values from Hz to cent scale using provided tonic value
     """
     print "tonic used for normalization is "+ str(tonic) + " cents"
-    ind_zero_pitch = np.where(pitch<=0)[0]  ###TODO remove this line
+    #ind_zero_pitch = np.where(pitch<=0)[0]  ###TODO remove this line
     pCents=1200*np.log2((eps+pitch)/tonic)
-    pCents[ind_zero_pitch]= -5000   ###TODO remove this line, this is just to make it same as original version, but its not needed
+    #pCents[ind_zero_pitch]= -5000   ###TODO remove this line, this is just to make it same as original version, but its not needed
     return pCents
     
+    
+def downsamplesPitchData(pCents,pHop,timeData, factor):
+    
+    if not np.round(factor)==factor:
+        print 'Please provide a integral factor for downsampling, later we might support fractional'
+        return 0,0,0
+    
+    pHop = pHop*factor
+    timeData = timeData[np.arange(0,timeData.size,factor)]
+    pCents = pCents[np.arange(0,pCents.size,factor)]
+    
+    return pCents, pHop, timeData
 
 

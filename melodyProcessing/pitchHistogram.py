@@ -146,10 +146,10 @@ class PitchHistogram():
      
         ### Copying in local buffer to process pitch in this function and octave folding if specified
         
-        #sil_loc_inds = np.where(self.pCents>-1200)[0] ###TODO remove this comment this is to reproduce the same error in original version
-        #pCents_local = copy.deepcopy(self.pCents[sil_loc_inds])
+        sil_loc_inds = np.where(self.pCents>=-1200)[0] ###TODO Uncomment this, if commented it is to reproduce the same error in original version
+        pCents_local = copy.deepcopy(self.pCents[sil_loc_inds])
         
-        pCents_local = copy.deepcopy(self.pCents)   ###TODO after uncommenting above two lines comment this line
+        #pCents_local = copy.deepcopy(self.pCents)   ###TODO after uncommenting above two lines comment this line
         
         if (Oct_fold==1):
             pCents_local = np.mod(pCents_local,1200)

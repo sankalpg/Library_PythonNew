@@ -3,6 +3,8 @@ import numpy as np
 import os,sys, copy
 import matplotlib.pyplot as plt
 import math
+import scipy.ndimage.filters as filters
+
 
 import pitchHistogram as PH
 
@@ -138,10 +140,10 @@ class nyasSegmentation():
         for i in range(0+var_samples,self.pCents.shape[0]-var_samples):
             self.pVar[i] = min(np.var(self.pCents[i:i+var_samples]),np.var(self.pCents[i-var_samples:i]))
             
-    def FilterNyasCandidates(self):
+    def FilterNyasCandidates(self, min_nyas_duration=150):
         
         ### Thresholds for filtering out weak nyas candidates
-        min_nyas_dur = 150.0/1000 # in ms
+        min_nyas_dur = min_nyas_duration/1000 # in ms
         small_allowed_gap = 50.0/1000    #in ms
 
         
@@ -489,8 +491,50 @@ class nyasSegmentation():
         segments = np.delete(segments,remove_ind,0)
         return segments
 
-"""
+
 class melodySegmentation():
+    def __init__(self):
+        print 'Initializing melodySegmentation class'
+        
+    def ExtractBreathPhrases(self, pCents, phop, valid_pause_dur):
+        """This function output breath phrases
+        """
+
+        # extracting indexes where there is silence in the pitch
+        ind_silence = np.where(pCents<=-4000)[0]
+        
+        #create a array with 0 where there is no silence and 1 where there is silence
+        local_pitch = 0*pCents
+        local_pitch[ind_silence] = 1
+
+        #Median filter local_pitch arary to remove short silence sections
+        ###NOTE: This operation takes care that breathphrases are not broken at short pauses
+        #valid_pause_dur = 0.05 #seconds
+        samples_pause = int(valid_pause_dur/phop)
+        median_length = 2*samples_pause # to remove a block with samples_pause length we need to have length of the filter as 2*samples_pause
+        local_pitch = filters.median_filter(local_pitch,size= median_length)
+
+        #extracting change points        
+        changepoints = (np.where(local_pitch[1:]-local_pitch[:-1]!=0)[0]) + 1
+        changepoints = np.append(0,changepoints)
+        changepoints = np.append(changepoints, local_pitch.shape[0]-1)
+        
+        BreathPhrases = []
+        pointer =0
+        phrase_cnt=1
+        #print len(changepoints)
+        while pointer<len(changepoints)-1:
+            #print pointer
+            if local_pitch[changepoints[pointer]] == 1:
+                BreathPhrases.append([changepoints[pointer+1], changepoints[pointer+2]-1, phrase_cnt])
+                pointer +=3
+                phrase_cnt+=1
+            elif local_pitch[changepoints[pointer]] == 0:
+                BreathPhrases.append([changepoints[pointer], changepoints[pointer+1]-1,phrase_cnt])
+                pointer +=2
+                phrase_cnt+=1
+        return BreathPhrases
     
+"""    
 class piecewiseLinearSegmentation():
 """    
