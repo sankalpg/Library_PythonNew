@@ -8,7 +8,10 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../batchProcessing'))
 import segmentation as MS
 import basicOperations as BPO
 import batchProcessing as BP
-       
+
+
+eps = np.finfo(np.float).eps
+
 
 class motifDiscovertIO():
     
@@ -93,7 +96,7 @@ class motifDiscovertIO():
         
         flatRegion = np.zeros(pCents.shape[0])
         
-        ind_Nonflat = np.where(running_var>150)[0]
+        ind_Nonflat = np.where(running_var>15)[0]
         
         return ind_Nonflat
         
@@ -110,8 +113,9 @@ class motifDiscovertIO():
             fname, ext = os.path.splitext(filename)
             #reading pitch and tonic data
             pitchData,timeStamps,pHop = BPO.readPitchFile(fname+pitchExt)
-            tonic = np.loadtxt(open(fname+tonicExt,"r"))
-            pCents = BPO.PitchHz2Cents(pitchData, tonic)
+            tonic = np.loadtxt(open(fname+tonicExt,"r"))            
+            pCents=np.round(120*np.log2((eps+pitchData)/tonic)).astype(np.int) + 120 
+            
             
             #downsampling
             factor=downsampleFactor
@@ -119,7 +123,7 @@ class motifDiscovertIO():
             
             
             #removing silence regions
-            ind_silence = np.where(pCents<-4000)[0] ###Please correct this silence condition once log eps is used
+            ind_silence = np.where(pCents<0)[0] ###Please correct this silence condition once log eps is used
             pCents = np.delete(pCents,ind_silence)
             timeStamps = np.delete(timeStamps,ind_silence)
             
@@ -178,7 +182,7 @@ class motifDiscovertIO():
 
             pitch = np.append(pitch, mtx,axis=0)
             
-        np.savetxt(output_dir+'/'+'AggPitch.txt', pitch , fmt='%0.2f')
+        np.savetxt(output_dir+'/'+'AggPitch.txt', pitch , fmt='%d')
             
 
         

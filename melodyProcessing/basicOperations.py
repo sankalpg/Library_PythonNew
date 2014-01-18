@@ -19,13 +19,13 @@ def readPitchFile(pitchfile):
     return pitchData,timeData,phop
     
     
-def PitchHz2Cents(pitch, tonic):
+def PitchHz2Cents(pitch, tonic, binPOctave=1200):
     """
     Function to convert the pitch values from Hz to cent scale using provided tonic value
     """
     print "tonic used for normalization is "+ str(tonic) + " cents"
     #ind_zero_pitch = np.where(pitch<=0)[0]  ###TODO remove this line
-    pCents=1200*np.log2((eps+pitch)/tonic)
+    pCents=binPOctave*np.log2((eps+pitch)/tonic)
     #pCents[ind_zero_pitch]= -5000   ###TODO remove this line, this is just to make it same as original version, but its not needed
     return pCents
     
