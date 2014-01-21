@@ -30,11 +30,11 @@
 #include <time.h>
 #include <signal.h>
 #include <stdint.h>
+#include <string.h>
 
 
 
-
-FILE *fp, *fp_out, *fp_black; 
+FILE *fp, *fp_out, *fp_black, *fp_timeStamps; 
 int ref;
 
 #define FIXPOINT
@@ -61,9 +61,10 @@ int ref;
 
 DATATYPE **data;
 DATATYPE **dref;
-DISTTYPE **indices;
-INDTYPE *ind, *blacklist;
+DISTTYPE **indices, *topKDist;
+INDTYPE *ind, *blacklist, *topKInd;
 INDTYPE loc1 , loc2;
+double *timeStamps;
 
 double *stdRef;
 INDTYPE TIMESERIES;
@@ -152,14 +153,65 @@ void stop_exec(int sig)
     exit(1);
     }
 
+DISTTYPE maintainTopKMotifs(DISTTYPE*motifBuffer, int K, DISTTYPE dist, INDTYPE *topKInd, INDTYPE ind1, INDTYPE ind2)
+{
+    int ii=0;
     
+    for (ii=0;ii<K;ii++)
+    {
+        if (motifBuffer[ii]>dist)
+        {
+            memcpy(&motifBuffer[ii+1], &motifBuffer[ii], sizeof(DISTTYPE)*(K-ii));
+            motifBuffer[ii] = dist;
+            break;
+        }
+    }
+    memcpy(&topKInd[2*(ii+1)], &topKInd[2*ii], 2*sizeof(DISTTYPE)*(K-ii));
+    topKInd[2*ii] = ind1;
+    topKInd[2*ii+1] = ind2;
+    return motifBuffer[K];
+}
+
+void updateBlackList(INDTYPE*blacklist, double*timeStamps, double blackDur, INDTYPE loc)
+{
+    INDTYPE ii=1, loc_curr;
+    while (1)
+    {
+        loc_curr = loc + ii;
+        if ((loc_curr>=TIMESERIES) || (fabs(timeStamps[loc]-timeStamps[loc_curr])>blackDur))
+        {
+            ii=ii;
+            break;
+        }
+        else
+        {
+            blacklist[loc_curr]=1;
+            ii++;
+        }
+    }
+    ii=-1;
+    while (1)
+    {
+        loc_curr = loc + ii;
+        if ((loc_curr<=0) || (fabs(timeStamps[loc]-timeStamps[loc_curr])>blackDur))
+        {
+            ii=ii;
+            break;
+        }
+        else
+        {
+            blacklist[loc_curr]=1;
+            ii--;
+        }
+    }
     
+}
 int main(  int argc , char *argv[] )
 {
 
     DISTTYPE d;
     DATATYPE dd;
-    INDTYPE i , j , blackInd, black;
+    INDTYPE i , j , blackInd, black, ii,tsInd=0;
     INDTYPE offset = 0;
     int abandon = 0 ,  r = 0;
     DISTTYPE ex , ex2 , mean, std;
@@ -170,7 +222,9 @@ int main(  int argc , char *argv[] )
     double t1,t2;
     int verbos = 0;
     double count = 0;
-
+    int topK = 1;
+    double ts, blackDur;
+    
     /* taking inpput time series from the file in the data array and Normalizing
     them as well. */
 
@@ -184,7 +238,7 @@ int main(  int argc , char *argv[] )
     signal(SIGINT,stop_exec);
 
 
-    if(argc < 8 || argc > 9)
+    if(argc < 11 || argc > 12)
     {
         printf("Invalid number of arguments!!!");
         exit(1);
@@ -199,9 +253,12 @@ int main(  int argc , char *argv[] )
     bsf_old = atof(argv[5])+0.000001;
     fp_out = fopen(argv[6],"w");
     fp_black = fopen(argv[7],"r");
+    topK = atoi(argv[8]);
+    fp_timeStamps = fopen(argv[9],"r");
+    blackDur = atof(argv[10]);
     
-    if( argc == 9 )
-        verbos = atoi(argv[8]);
+    if( argc == 12 )
+        verbos = atoi(argv[11]);
 
     if( verbos == 1 )
         printf("\nNumber of Time Series : %lld\nLength of Each Time Series : %d\n\n",TIMESERIES,LENGTH);
@@ -209,6 +266,14 @@ int main(  int argc , char *argv[] )
     data = (DATATYPE **)malloc(sizeof(DATATYPE *)*TIMESERIES);
     ind = (INDTYPE *)malloc(sizeof(INDTYPE)*TIMESERIES);
     blacklist = (INDTYPE *)calloc(TIMESERIES, sizeof(INDTYPE));
+    topKDist = (DISTTYPE *)malloc(sizeof(DISTTYPE)*topK);
+    topKInd =  (INDTYPE *)malloc(sizeof(INDTYPE)*topK*2);
+    timeStamps = (double*)malloc(sizeof(double)*TIMESERIES);
+    
+    for (ii=0;ii<topK;ii++)
+    {
+        topKDist[ii]=INF;
+    }
     
     //filling blacklist array
     while(fscanf(fp_black,"%lld",&black) != EOF && blackInd < TIMESERIES)
@@ -217,6 +282,12 @@ int main(  int argc , char *argv[] )
         blackInd++;
     }
     
+    //filling timeStamps array
+    while(fscanf(fp_timeStamps,"%lf",&ts) != EOF && tsInd < TIMESERIES)
+    {
+        timeStamps[tsInd]=ts;
+        tsInd++;
+    }
     
     
     if( data == NULL || ind == NULL )
@@ -336,7 +407,11 @@ int main(  int argc , char *argv[] )
                 if ( abs(i - random_pick ) <= clear )  continue;
                 if (( d < bsf )&&(d > bsf_old))
                 {
-                    bsf = d; loc1 = i; loc2 = random_pick;
+                    loc1 = i; loc2 = random_pick;
+                    bsf = maintainTopKMotifs(topKDist, topK, d, topKInd, loc1, loc2);
+                    //updateBlackList(blacklist, timeStamps, blackDur, loc1);
+                    //updateBlackList(blacklist, timeStamps, blackDur, loc2);
+                    
                     if(verbos == 1)
                         printf("New best-so-far is %f and (%lld , %lld) are the new motif pair\n",bsf,loc1,loc2);
                 }
@@ -422,9 +497,11 @@ int main(  int argc , char *argv[] )
                     if (( d < bsf )&&(d > bsf_old))
                     {
                         t2 = clock();
-                        bsf = d;
                         loc1 = left;
                         loc2 = right;
+                        bsf = maintainTopKMotifs(topKDist, topK, d, topKInd, loc1, loc2);
+                        //updateBlackList(blacklist, timeStamps, blackDur, loc1);
+                        //updateBlackList(blacklist, timeStamps, blackDur, loc2);
                         if(verbos == 1)
                         {
                             printf("New best-so-far is %lf and (%lld , %lld) are the new motif pair\n",bsf,loc1,loc2);
@@ -443,6 +520,9 @@ int main(  int argc , char *argv[] )
             printf("\nExecution Time was : %lf seconds\n",(t2-t1)/CLOCKS_PER_SEC);
         printf("\n\nFinal Motif is the pair ( %lld",loc1);
         printf(", %lld ) and the Motif distance is %lf\n",loc2,bsf);
-        fprintf(fp_out, "%lld\t%lld\t%f\n",loc1,loc2,bsf);
+        for (ii=0;ii<topK;ii++)
+        {
+            fprintf(fp_out, "%lld\t%lld\t%f\n",topKInd[2*ii],topKInd[2*ii+1],topKDist[ii]);
+        }
         fclose(fp_out);
         }
