@@ -31,39 +31,70 @@
 #include <signal.h>
 #include <stdint.h>
 
-#define INF 999999999999.0
 
-FILE *fp, *fp_out; 
+
+
+FILE *fp, *fp_out, *fp_black; 
 int ref;
+
+#define FIXPOINT
+
+
+#ifdef FIXPOINT
 
 #define DATATYPE uint32_t
 #define DISTTYPE double
 #define INDTYPE long long 
 
+#define MAX_UINT32 4294967296 -1 
+#define INF MAX_UINT32
+
+
+#else   //floatingpoint
+
+#define DATATYPE double
+#define DISTTYPE double
+#define INDTYPE long long 
+
+#define INF 999999999999.0
+#endif //FIXPOINT
+
 DATATYPE **data;
 DATATYPE **dref;
 DISTTYPE **indices;
-INDTYPE *ind;
+INDTYPE *ind, *blacklist;
 INDTYPE loc1 , loc2;
 
 double *stdRef;
 INDTYPE TIMESERIES;
 int LENGTH;
 int MAXREF;
-double bsf,bsf_old;
+DISTTYPE bsf,bsf_old;
     
 /* Calculates the distance between two time series x and y. If the distance is
 larger than the best so far (bsf) it stops computing and returns the approximate
 distance. To get exact distance the bsf argument should be omitted.*/
 
-double distance(DATATYPE *x, DATATYPE *y, int length , double best_so_far = INF )
+DISTTYPE distance(DATATYPE *x, DATATYPE *y, int length , DISTTYPE best_so_far = INF )
 {
     int i;
     DATATYPE sum = 0;
-    double bsf2 = best_so_far*best_so_far;
+    DISTTYPE bsf2 = best_so_far*best_so_far;
     for ( i = 0 ; i < length && sum < bsf2 ; i++ )
         sum += (x[i]-y[i])*(x[i]-y[i]);
-    return sqrt((double)sum);
+    
+#ifdef FIXPOINT 
+    if (sum>MAX_UINT32)
+    {
+        return sqrt(MAX_UINT32);
+    }
+    else
+    {
+        return sqrt(sum);
+    }
+#else
+    return sqrt(sum);
+#endif  //FIXPOINT
     }
 
 /*Comparison function for qsort function. Compares two time series by using their
@@ -112,8 +143,6 @@ void error(int id)
 
     }
 
-
-
 void stop_exec(int sig)
 {
 
@@ -130,7 +159,7 @@ int main(  int argc , char *argv[] )
 
     DISTTYPE d;
     DATATYPE dd;
-    INDTYPE i , j ;
+    INDTYPE i , j , blackInd, black;
     INDTYPE offset = 0;
     int abandon = 0 ,  r = 0;
     DISTTYPE ex , ex2 , mean, std;
@@ -148,13 +177,14 @@ int main(  int argc , char *argv[] )
     bsf = INF;
     i = 0;
     j = 0;
+    blackInd=0;
     ex = ex2 = 0;
 
     t1 = clock();
     signal(SIGINT,stop_exec);
 
 
-    if(argc < 7 || argc > 8)
+    if(argc < 8 || argc > 9)
     {
         printf("Invalid number of arguments!!!");
         exit(1);
@@ -168,16 +198,27 @@ int main(  int argc , char *argv[] )
     clear = LENGTH;
     bsf_old = atof(argv[5])+0.000001;
     fp_out = fopen(argv[6],"w");
+    fp_black = fopen(argv[7],"r");
     
-    if( argc == 8 )
-        verbos = atoi(argv[7]);
+    if( argc == 9 )
+        verbos = atoi(argv[8]);
 
     if( verbos == 1 )
         printf("\nNumber of Time Series : %lld\nLength of Each Time Series : %d\n\n",TIMESERIES,LENGTH);
 
     data = (DATATYPE **)malloc(sizeof(DATATYPE *)*TIMESERIES);
     ind = (INDTYPE *)malloc(sizeof(INDTYPE)*TIMESERIES);
-    //printf("Hello1\n");
+    blacklist = (INDTYPE *)calloc(TIMESERIES, sizeof(INDTYPE));
+    
+    //filling blacklist array
+    while(fscanf(fp_black,"%lld",&black) != EOF && blackInd < TIMESERIES)
+    {
+        blacklist[black]=1;
+        blackInd++;
+    }
+    
+    
+    
     if( data == NULL || ind == NULL )
     {
         error(1);
@@ -190,7 +231,11 @@ int main(  int argc , char *argv[] )
         error(1);
     }
     //printf("Hello2\n");
+#ifdef FIXPOINT    
     while(fscanf(fp,"%d",&dd) != EOF && i < TIMESERIES)
+#else
+    while(fscanf(fp,"%lf",&dd) != EOF && i < TIMESERIES)
+#endif         
     {
         data[i][j] = dd;
         //ex += d;
@@ -235,7 +280,7 @@ int main(  int argc , char *argv[] )
     }
 
     dref = (DATATYPE **)malloc(MAXREF*sizeof(DATATYPE *));
-    indices = (double **)malloc(MAXREF*sizeof(double *));
+    indices = (DISTTYPE **)malloc(MAXREF*sizeof(DISTTYPE *));
     stdRef = (double *)malloc(MAXREF*sizeof(double));
     cntr = (double *)malloc(MAXREF*sizeof(double));
     rInd = (int *)malloc(MAXREF*sizeof(int));
@@ -255,7 +300,7 @@ int main(  int argc , char *argv[] )
     {
 
         dref[r] = (DATATYPE *)malloc(sizeof(DATATYPE)*LENGTH);
-        indices[r] = (double *)malloc(sizeof(double)*TIMESERIES);
+        indices[r] = (DISTTYPE *)malloc(sizeof(DISTTYPE)*TIMESERIES);
         if( dref[r] == NULL || indices[r] == NULL )
         {
             error(1);
@@ -282,7 +327,7 @@ int main(  int argc , char *argv[] )
             
             for( i = 0 ; i < TIMESERIES ; i++ )
             {
-                if (i == random_pick)
+                if ((i == random_pick) || (blacklist[i]==1))
                 { indices[r][i] = INF; continue; }
                 d = indices[r][i] = distance(data[i],dref[r],LENGTH);
                 count = count + 1;
@@ -293,7 +338,7 @@ int main(  int argc , char *argv[] )
                 {
                     bsf = d; loc1 = i; loc2 = random_pick;
                     if(verbos == 1)
-                        printf("New best-so-far is %lf and (%lld , %lld) are the new motif pair\n",bsf,loc1,loc2);
+                        printf("New best-so-far is %f and (%lld , %lld) are the new motif pair\n",bsf,loc1,loc2);
                 }
 
             }
@@ -347,6 +392,10 @@ int main(  int argc , char *argv[] )
             {
                 INDTYPE left = ind[i];
                 INDTYPE right = ind[i + offset];
+                if (blacklist[left] + blacklist[right] >=1)
+                {
+                    continue;
+                }
                 if( abs(left-right) <= clear )
                 {
                     continue;
@@ -379,6 +428,7 @@ int main(  int argc , char *argv[] )
                         if(verbos == 1)
                         {
                             printf("New best-so-far is %lf and (%lld , %lld) are the new motif pair\n",bsf,loc1,loc2);
+                    
                         }
 
                         }
@@ -387,12 +437,12 @@ int main(  int argc , char *argv[] )
                 }
             }
             
-        printf("\n\nFinal Motif is the pair ( %lld",loc1);
-        printf(", %lld ) and the Motif distance is %lf\n",loc2,bsf);
+
         t2 = clock();
         if(verbos == 1)
             printf("\nExecution Time was : %lf seconds\n",(t2-t1)/CLOCKS_PER_SEC);
+        printf("\n\nFinal Motif is the pair ( %lld",loc1);
+        printf(", %lld ) and the Motif distance is %lf\n",loc2,bsf);
         fprintf(fp_out, "%lld\t%lld\t%f\n",loc1,loc2,bsf);
         fclose(fp_out);
-
-}
+        }
