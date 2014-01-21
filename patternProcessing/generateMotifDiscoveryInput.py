@@ -126,22 +126,6 @@ class motifDiscovertIO():
             ind_silence = np.where(pCents<0)[0] ###Please correct this silence condition once log eps is used
             pCents = np.delete(pCents,ind_silence)
             timeStamps = np.delete(timeStamps,ind_silence)
-            
-            """variance = self.ComputeLocalVariance(pCents, pHop)
-            ind_valid = np.where(variance>500)[0]
-            variance = variance*0
-            variance[ind_valid]=1
-            
-            windowSamples = int(np.round(windowLength/pHop))
-            pitch=np.array([10000*np.random.rand(windowSamples)])
-                
-            for ii in range(0, pCents.size-windowSamples):
-                
-                if np.mean(variance[ii:ii+windowSamples])>0.4:
-                    pitch = np.append(pitch, np.array([pCents[ii:ii+windowSamples]]),axis=0)
-                
-        np.savetxt(output_dir+'/'+'AggPitch.txt', pitch , fmt='%0.2f')"""
-        
         
             nonFlatIndexes = self.nonFlatIndexes(pCents, pHop)
             
@@ -153,6 +137,7 @@ class motifDiscovertIO():
             
             if kk==0:
                 pitch=np.array([10000*np.random.rand(windowSamples)])
+                timeInfo = np.array([0])
             
             row = np.array([np.arange(windowSamples)])
             col = np.array([np.arange(pCents.size-windowSamples)])
@@ -168,7 +153,12 @@ class motifDiscovertIO():
             
             ind = np.delete(ind,[ind_Invalid],axis=0)
             
+            #timeStamps = np.delete(timeStamps,ind_Invalid)
             mtx = pCents[ind]
+            timeStamps = timeStamps[ind[:,0]]
+            
+            if timeStamps.shape[0] != mtx.shape[0]:
+                print filename
             
             
             #min_vals = np.min(pitch_mtx,axis=1)
@@ -181,8 +171,16 @@ class motifDiscovertIO():
             #pitch_mtx= np.delete(pitch_mtx,[ind_Invalid],axis=0)
 
             pitch = np.append(pitch, mtx,axis=0)
+            timeInfo = np.append(timeInfo, timeStamps)
+            fileInfo[filename]= [timeInfo.size-timeStamps.size, timeInfo.size]
+            
+            if pitch.shape[0] != timeInfo.shape[0]:
+                print filename
             
         np.savetxt(output_dir+'/'+'AggPitch.txt', pitch , fmt='%d')
+        np.savetxt(output_dir+'/'+'AggTime.txt', timeInfo, fmt='%.3f')
+        stream = file(output_dir+'/'+'fileInfo.yaml','w')
+        yaml.dump(fileInfo, stream)
             
 
         
