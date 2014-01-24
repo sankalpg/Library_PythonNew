@@ -74,9 +74,10 @@ class motifDiscovertIO():
             
         return pVar
     
-    def nonFlatIndexes(self, pCents, pHop):
+    def nonFlatIndexes(self, pCents, pHop, binsPOctave):
         var_len = 100.0/1000.0    #in ms
         var_samples = int(round(var_len/pHop))
+        threhsold = 1.5*1200.0/binsPOctave
         
         running_mean = np.zeros(pCents.shape[0])
         running_var = np.zeros(pCents.shape[0])
@@ -96,91 +97,137 @@ class motifDiscovertIO():
         
         flatRegion = np.zeros(pCents.shape[0])
         
-        ind_Nonflat = np.where(running_var>15)[0]
+        ind_Nonflat = np.where(running_var>threhsold)[0]
         
         return ind_Nonflat
         
     
-    def generateSubsequenceDataset(self, root_dir, output_dir, pitchExt, tonicExt, downsampleFactor, windowLength):
+    def generateSubsequenceDataset(self, root_dir, output_dir, pitchExt, tonicExt, downsampleFactor, windowLength, combineData = 0, writeBinary = 1, meanNormalize = 0, flatnessThreshold=0.8, binsPOctave=120, fixPointData=1):
         
         
-        timeInfo=np.array([])
-        fileInfo={}
+        if combineData:
+            timeInfo=np.array([])
+            fileInfo={}
         
+        #obtaining all the files in the directory
         filenames = BP.GetFileNamesInDir(root_dir,pitchExt)
         
+        # iterating over each file
         for kk, filename in enumerate(filenames):
+            
+            #separate file name from extension
             fname, ext = os.path.splitext(filename)
+            
+            audiofile = fname.split('/')[-1]
+            
+            #if data is not to be combined, then output goes into individual directories (dirname = filename)
+            if not combineData:
+                out_dir = output_dir + '/' + audiofile
+                #creating directory if doesn't exist
+                if not os.path.isdir(out_dir):
+                    os.makedirs(out_dir)
+            
             #reading pitch and tonic data
             pitchData,timeStamps,pHop = BPO.readPitchFile(fname+pitchExt)
             tonic = np.loadtxt(open(fname+tonicExt,"r"))            
-            pCents=np.round(120*np.log2((eps+pitchData)/tonic)).astype(np.int) + 120 
+            
+            #Convert the pitch values into cents, Note that we add a offset of 1 octave to make everything positive, assuming that pitch wont go below one octave to tonic
+            pCents=np.round(binsPOctave*np.log2((eps+pitchData)/tonic)).astype(np.int) + binsPOctave 
             
             
-            #downsampling
+            #downsampling pitch data
             factor=downsampleFactor
             pCents, pHop, timeStamps = BPO.downsamplesPitchData(pCents,pHop,timeStamps, factor)
             
             
-            #removing silence regions
+            #removing silence regions from the pitch sequence
             ind_silence = np.where(pCents<0)[0] ###Please correct this silence condition once log eps is used
             pCents = np.delete(pCents,ind_silence)
             timeStamps = np.delete(timeStamps,ind_silence)
-        
-            nonFlatIndexes = self.nonFlatIndexes(pCents, pHop)
             
+            #computing all the indices which have non flat region of pitch (binsPOctave is an input to decide threshold, thats it!!)
+            nonFlatIndexes = self.nonFlatIndexes(pCents, pHop,binsPOctave)
+            
+            #making an array which will be 1 for nonflat and 0 for flat regions
             flatNonflat = np.zeros(pCents.shape[0])
             flatNonflat[nonFlatIndexes]=1
             
-            
+            #given the windowLength or motigLength compute how many samples do they correspond to
             windowSamples = int(np.round(windowLength/pHop))
             
-            if kk==0:
-                pitch=np.array([10000*np.random.rand(windowSamples)])
-                timeInfo = np.array([0])
-            
+            #to create a matlab buffer like thing, we do the following
             row = np.array([np.arange(windowSamples)])
             col = np.array([np.arange(pCents.size-windowSamples)])
             col = np.transpose(col)
             col2 = copy.deepcopy(col)
             col2[:]=1
-            
             ind = row*col2 + col
-            #pitch_mtx = pCents[ind]
+            
+            
+            #so after creating matrix where each row is a subsequence, look which subsequence to reject based on flatness threshold
             mtx = flatNonflat[ind]            
             mean_array = np.mean(mtx,axis=1)            
-            ind_Invalid = np.where(mean_array<0.8)[0]
+            ind_Invalid = np.where(mean_array<flatnessThreshold)[0]
             
             ind = np.delete(ind,[ind_Invalid],axis=0)
             
-            #timeStamps = np.delete(timeStamps,ind_Invalid)
+            #finally obtain pitch matrix and timestamp array
             mtx = pCents[ind]
             timeStamps = timeStamps[ind[:,0]]
             
+            ###TODO impement mean normalizatoin
+            
+            ### Adding a crucial check!!
             if timeStamps.shape[0] != mtx.shape[0]:
                 print filename
             
+            if combineData:#keep on appending the data to combine it
+                
+                if kk==0:
+                    pitch = copy.deepcopy(mtx)
+                    timeInfo = copy.deepcopy(timeStamps)
+                else:
+                    pitch = np.append(pitch, mtx,axis=0)
+                    timeInfo = np.append(timeInfo, timeStamps)
+                fileInfo[filename]= [timeInfo.size-timeStamps.size, timeInfo.size]
             
-            #min_vals = np.min(pitch_mtx,axis=1)
-            #max_vals = np.max(pitch_mtx, axis=1)
             
-            #diff = abs(min_vals-max_vals)
+            else:#just dump for each file
+                
+                if writeBinary:
+                    if fixPointData:
+                        mtx.astype(np.uint32).tofile(out_dir+'/'+ audiofile +'.pitchSubDBbin')
+                    else:
+                        mtx.astype(np.float).tofile(out_dir+'/'+ audiofile +'.pitchSubDBbin')
+                        
+                    timeStamps.astype(np.float).tofile(out_dir+'/'+ audiofile +'.timeSubDBbin')
+                else:
+                    np.savetxt(out_dir+'/'+ audiofile +'.pitchSubDBtxt', mtx , fmt='%d')
+                    np.savetxt(out_dir+'/'+ audiofile +'.timeSubDBtxt', timeStamps, fmt='%.3f')
+                
+            if combineData:
+                #another crucial check at each step
+                if pitch.shape[0] != timeInfo.shape[0]:
+                    print filename
             
-            #ind_remove = np.where(diff<600)[0]
+        if combineData:
             
-            #pitch_mtx= np.delete(pitch_mtx,[ind_Invalid],axis=0)
-
-            pitch = np.append(pitch, mtx,axis=0)
-            timeInfo = np.append(timeInfo, timeStamps)
-            fileInfo[filename]= [timeInfo.size-timeStamps.size, timeInfo.size]
+            if writeBinary:
+                if fixPointData:
+                        pitch.astype(np.uint32).tofile(output_dir+'/'+'AggPitch.bin')
+                else:
+                        pitch.astype(np.float).tofile(output_dir+'/'+'AggPitch.bin')
+                timeInfo.astype(np.float).tofile(output_dir+'/'+'AggTime.bin')
+            else:
+                np.savetxt(output_dir+'/'+'AggPitch.txt', pitch , fmt='%d')
+                np.savetxt(output_dir+'/'+'AggTime.txt', timeInfo, fmt='%.3f')
             
-            if pitch.shape[0] != timeInfo.shape[0]:
-                print filename
+            stream = file(output_dir+'/'+'fileInfo.yaml','w')
+            yaml.dump(fileInfo, stream)
             
-        np.savetxt(output_dir+'/'+'AggPitch.txt', pitch , fmt='%d')
-        np.savetxt(output_dir+'/'+'AggTime.txt', timeInfo, fmt='%.3f')
-        stream = file(output_dir+'/'+'fileInfo.yaml','w')
-        yaml.dump(fileInfo, stream)
+            print "Total number of time series : " + str(pitch.shape[0])
+            print "Length of single Sub sequence : " + str(pitch.shape[1])
+        
             
 
         

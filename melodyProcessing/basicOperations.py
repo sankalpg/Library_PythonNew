@@ -37,8 +37,9 @@ def downsamplesPitchData(pCents,pHop,timeData, factor):
         return 0,0,0
     
     pHop = pHop*factor
-    timeData = timeData[np.arange(0,timeData.size,factor)]
-    pCents = pCents[np.arange(0,pCents.size,factor)]
+    ind_new = np.arange(0,timeData.size,factor)
+    timeData = timeData[ind_new]
+    pCents = pCents[ind_new]
     
     return pCents, pHop, timeData
 
