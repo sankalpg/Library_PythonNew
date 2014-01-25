@@ -1,6 +1,7 @@
 /*
  * This implementation of running min and max is proposed by "Daniel Lemire" in 
- * STREAMING MAXIMUM-MINIMUM FILTER USING NOMORE THAN THREE COMPARISONS PER ELEMENT
+ * STREAMING MAXIMUM-MINIMUM FILTER USING NO
+MORE THAN THREE COMPARISONS PER ELEMENT
  * This is supposed to be quite a fast implementation of running min and max
  *
  * Author: Sankalp Gulati
@@ -11,6 +12,8 @@
  * Note that min and max is returned for a range of 2*winLen+1 indices
  */
 
+#include <stdio.h>
+#include <stdlib.h>
 
 int computeRunningMinMax(double *data, double *U, double *L, int lenData, int winLen)
 {
@@ -34,10 +37,10 @@ int computeRunningMinMax(double *data, double *U, double *L, int lenData, int wi
     
     for(ii=1;ii<lenData;ii++)
     {
-        if (ii>=winLen)
+        if (ii>winLen)
         {
-            U[ii-winLen] = data[utemp[UstartInd]];
-            L[ii-winLen] = data[ltemp[LstartInd]];
+            U[ii-winLen-1] = data[utemp[UstartInd]];
+            L[ii-winLen-1] = data[ltemp[LstartInd]];
         }
         
         if(data[ii]>data[ii-1])
@@ -81,8 +84,8 @@ int computeRunningMinMax(double *data, double *U, double *L, int lenData, int wi
     for (ii = lenData; ii < lenData+winLen+1; ii++) 
     {
 
-        U[ii-winLen] = data[utemp[UstartInd]];
-        L[ii-winLen] = data[ltemp[LstartInd]];
+        U[ii-winLen-1] = data[utemp[UstartInd]];
+        L[ii-winLen-1] = data[ltemp[LstartInd]];
 
         if (ii-utemp[UstartInd] >= 2*winLen+1)           
         {
@@ -96,6 +99,9 @@ int computeRunningMinMax(double *data, double *U, double *L, int lenData, int wi
             LnumPoints-=1;
         }
     }
+    
+    free(utemp);
+    free(ltemp);
     
     return 1;
     
