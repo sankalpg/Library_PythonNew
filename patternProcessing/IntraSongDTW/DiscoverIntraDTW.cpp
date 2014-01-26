@@ -6,6 +6,7 @@
 *******************************************************************************
 ******************************************************************************/
 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -124,7 +125,7 @@ int main( int argc , char *argv[])
     DISTTYPE bsf=INF;
     DISTTYPE *topKDist;
     INDTYPE *topKInd;
-    DISTTYPE *cost;
+    DISTTYPE *cost, **cost2;
     DATATYPE *U,*L,*U2,*L2, *accLB, LB_kim_FL;
     int band;
     
@@ -156,6 +157,7 @@ int main( int argc , char *argv[])
     topKDist = (DISTTYPE *)malloc(sizeof(DISTTYPE)*K);
     topKInd = (INDTYPE *)malloc(sizeof(INDTYPE)*K*2);
     cost = (DISTTYPE *)malloc(sizeof(DISTTYPE)*lenMotif*lenMotif);
+    cost2 = (DISTTYPE **)malloc(sizeof(DISTTYPE *)*lenMotif);
     U = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotif);
     L = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotif);
     U2 = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotif);
@@ -167,6 +169,11 @@ int main( int argc , char *argv[])
         topKInd[2*ii]=0;
         topKInd[2*ii+1]=0;
         topKDist[ii]=(DISTTYPE)INF;
+    }
+    
+    for(ii=0;ii<lenMotif;ii++)
+    {
+        cost2[ii] = (DISTTYPE *)malloc(sizeof(DISTTYPE)*lenMotif);
     }
     
     //timing
@@ -219,6 +226,7 @@ int main( int argc , char *argv[])
           for (jj=1;jj<lenMotif;jj++)
           {
               cost[(ii*lenMotif)+ jj] = FLT_MAX;
+              cost2[ii][jj]=FLT_MAX;
           }
           
         }
@@ -234,6 +242,7 @@ int main( int argc , char *argv[])
         
         for(jj=ii;jj<lenTS;jj++)
         {
+
             if (fabs(tStamps[ii]-tStamps[jj])<blackDur)
             {
                 continue;
@@ -241,14 +250,14 @@ int main( int argc , char *argv[])
             
             LB_kim_FL = computeLBkimFL(data[ii][0], data[jj][0], data[ii][lenMotif], data[jj][lenMotif]);
             
-            if (LB_kim_FL< bsf)
+            if (LB_kim_FL< bsf) 
             {
                 
                 LB_Keogh_EQ = computeKeoghsLB(U,L,accLB, data[jj],lenMotif, bsf);
                 
                 if(LB_Keogh_EQ < bsf)
                 {
-                    realDist = dtw1dBandConst_EA(data[ii], data[jj], lenMotif, lenMotif, cost, 0, band, bsf, accLB, LB_Keogh_EQ);
+                    realDist = dtw1dBandConst(data[ii], data[jj], lenMotif, lenMotif, cost2, 0, band, bsf, accLB);
                     count_DTW+=1;
                     if(realDist<bsf)
                     {

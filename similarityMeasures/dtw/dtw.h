@@ -59,8 +59,8 @@ double dist4Path(double *x, double*y, MatrixSize*size_x, MatrixSize*size_y, int 
 
 double dtw1d_BandConstraint45(double *x, double*y, int x_len, int y_len, double*cost, int dist_type, int bandwidth);
 
-double dtw1dBandConst(double *x, double*y, int x_len, int y_len, double*cost, int dist_type, int bandwidth, double bsf, double *accLB, double lowerB);
-
-double dtw1dBandConst_EA(double *x, double*y, int x_len, int y_len, double*cost, int dist_type, int bandwidth, double bsf, double *accLB, double lowerB);
-
 double computeKeoghsLB(double *U, double *L, double * accLB, double *data,int lenMotif, double bsf);
+
+double dtw1dBandConst(double *x, double*y, int x_len, int y_len, double**cost, int dist_type, int bandwidth, double bsf, double *accLB);
+
+double dtw1dBandConst_old(double *x, double*y, int x_len, int y_len, double*cost, int dist_type, int bandwidth, double bsf, double *accLB);
