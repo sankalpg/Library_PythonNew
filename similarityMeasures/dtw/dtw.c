@@ -13,7 +13,7 @@ License: to be decided !!!
 #include "dtw.h"
 #include <float.h>
 
-//#define ENABLE_EA
+#define ENABLE_EA
 
 // euclidean distance
 double EucDist(double a, double b)
@@ -380,9 +380,8 @@ double dtw1dBandConst(double *x, double*y, int x_len, int y_len, double**cost, i
             leftLB = temp + accLB[i] ;
             overflow=1;
 #endif                
-            ind = i*y_len;
-            
-            for (j=max(1, i-bandwidth);j<min(y_len, i+bandwidth);j++)
+           
+            for (j=max(1, i-bandwidth);j<=min(y_len-1, i+bandwidth);j++)
             {
                 min_vals = min3(cost[i-1][j], cost[i-1][j-1], cost[i][j-1]);
                 
@@ -415,6 +414,26 @@ double dtw1dBandConst(double *x, double*y, int x_len, int y_len, double**cost, i
 #endif        
         
         }
+               /*FILE *fp;
+        fp=fopen("similarityMatrix", "w");
+        for (i=0;i<x_len;i++)
+        {
+              for (j=0;j<x_len;j++)
+                {
+                    if (cost[i][j]>50000)
+                    {
+                        fprintf(fp, "%f\n", 50000.0);
+                    }
+                    else
+                    {
+                        fprintf(fp, "%f\n", cost[i][j]);
+                    }
+                    
+                    
+                }
+                //fprintf(fp, "\n");
+        }
+        fclose(fp);*/
         
         return cost[x_len-1][y_len-1];
 }

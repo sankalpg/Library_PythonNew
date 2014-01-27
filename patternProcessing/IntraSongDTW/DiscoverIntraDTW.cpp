@@ -6,66 +6,39 @@
 *******************************************************************************
 ******************************************************************************/
 
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <time.h>
-#include <signal.h>
-#include <stdint.h>
-#include <string.h>
-#include "../../similarityMeasures/dtw/dtw.h"
-#include "../../basicDSPFuncs/basicDSPCFuncs.h"
-#include <float.h>
-
-//preprocessor defines!!
-//#define FIXPDATA
-#define FLOATDATA
+//#define DEBUG
 
 
-#ifdef FIXPDATA
-#define DATATYPE       uint32_t
-#else
-#define DATATYPE       double
+
+#include "DiscoverIntraDTW.h"
+static long long dbcnt=0;
+#ifdef DEBUG
+FILE *fpdb;
+fpdb = fopen("dump.txt","w");
 #endif
 
-#define DISTTYPE        double
-#define INDTYPE        long long
-
-#define INF 999999999999.0
-# define computeLBkimFL(a,b,c,d) ((a-b)*(a-b)) + ((c-d)*(c-d))
 
 
-DATATYPE computedist(DATATYPE * data1, DATATYPE * data2, int len)
-{
-    DISTTYPE sum=0;
-    DATATYPE diff;
-    int ii=0;
-    
-    for(ii=0;ii<len;ii++)
-    {
-        diff = data1[ii] - data2[ii];
-        sum+=(DISTTYPE)(diff*diff);
-    }
-    
-    return sum;
-    
-}
-
-DISTTYPE manageTopKMotifs(DISTTYPE *topKDist, INDTYPE *topKInd, double *tStamps, int K, INDTYPE ind1 , INDTYPE ind2, DISTTYPE dist, double blackDur)
+DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, double *tStamps, int K, INDTYPE ind1 , INDTYPE ind2, DISTTYPE dist, double blackDur)
 {
     int ii=0;
     int sortInd = -1;
     int matchInd = -1;
     
+    dbcnt+=1;
+    if (dbcnt==3782717)
+    {
+        dbcnt=3782717;
+    }
+
     for(ii=0;ii<K;ii++)
     {
-        if ((topKDist[ii] > dist)&&(sortInd==-1))
+        if ((topKmotifs[ii].dist > dist)&&(sortInd==-1))
         {
             sortInd=ii;
         }
         // searching if we already have a motif in out top K list which is near to the currently good match
-        if ((fabs(tStamps[topKInd[2*ii]]-tStamps[ind1]) < blackDur) || (fabs(tStamps[topKInd[2*ii+1]]-tStamps[ind1]) < blackDur) || (fabs(tStamps[topKInd[2*ii]]-tStamps[ind2]) < blackDur) || (fabs(tStamps[topKInd[2*ii+1]]-tStamps[ind2]) < blackDur))
+        if ((fabs(tStamps[topKmotifs[ii].ind1]-tStamps[ind1]) < blackDur) || (fabs(tStamps[topKmotifs[ii].ind2]-tStamps[ind1]) < blackDur) || (fabs(tStamps[topKmotifs[ii].ind1]-tStamps[ind2]) < blackDur) || (fabs(tStamps[topKmotifs[ii].ind2]-tStamps[ind2]) < blackDur))
         {
             matchInd=ii;
             break;
@@ -74,34 +47,32 @@ DISTTYPE manageTopKMotifs(DISTTYPE *topKDist, INDTYPE *topKInd, double *tStamps,
     }
     if (sortInd==-1)//we couldn't get any satisfactory replacement before we get a close neighbour
     {
-        return topKDist[K-1];
+        return topKmotifs[K-1].dist;
     }
     //There are three possibilities
     //1) There is no match found in the existing top motifs, simplest
     if (matchInd==-1)
     {
-        memcpy(&topKDist[sortInd+1], &topKDist[sortInd], sizeof(DISTTYPE)*(K-(sortInd+1)));
-        memcpy(&topKInd[2*(sortInd+1)], &topKInd[2*sortInd], sizeof(INDTYPE)*2*(K-(sortInd+1)));
-        topKDist[sortInd]=dist;
-        topKInd[2*sortInd]=ind1;
-        topKInd[2*sortInd+1]=ind2;
+        memmove(&topKmotifs[sortInd+1], &topKmotifs[sortInd], sizeof(motifInfo)*(K-(sortInd+1)));
+        topKmotifs[sortInd].dist = dist;
+        topKmotifs[sortInd].ind1 = ind1;
+        topKmotifs[sortInd].ind2 = ind2;
     }
     else if (sortInd == matchInd)
     {
-        topKDist[sortInd]=dist;
-        topKInd[2*sortInd]=ind1;
-        topKInd[2*sortInd+1]=ind2;
+        topKmotifs[sortInd].dist = dist;
+        topKmotifs[sortInd].ind1 = ind1;
+        topKmotifs[sortInd].ind2 = ind2;
     }
     else if (sortInd < matchInd)
     {
-        memcpy(&topKDist[sortInd+1], &topKDist[sortInd], sizeof(DISTTYPE)*(matchInd-sortInd));
-        memcpy(&topKInd[2*(sortInd+1)], &topKInd[2*sortInd], sizeof(INDTYPE)*2*(matchInd-sortInd));
-        topKDist[sortInd]=dist;
-        topKInd[2*sortInd]=ind1;
-        topKInd[2*sortInd+1]=ind2;
+        memmove(&topKmotifs[sortInd+1], &topKmotifs[sortInd], sizeof(motifInfo)*(matchInd-sortInd));
+        topKmotifs[sortInd].dist = dist;
+        topKmotifs[sortInd].ind1 = ind1;
+        topKmotifs[sortInd].ind2 = ind2;
     }
     
-    return topKDist[K-1];
+    return topKmotifs[K-1].dist;
     
 }
 
@@ -119,11 +90,10 @@ int main( int argc , char *argv[])
     DATATYPE **data;
     DISTTYPE LB_Keogh_EQ, realDist,LB_Keogh_EC;
     DISTTYPE bsf=INF;
-    DISTTYPE *topKDist;
-    INDTYPE *topKInd;
-    DISTTYPE *cost, **cost2;
+    DISTTYPE **cost2;
     DATATYPE *U,*L,*U2,*L2, *accLB, LB_kim_FL;
     int band;
+    motifInfo *topKmotifs;
     
     
     
@@ -150,9 +120,7 @@ int main( int argc , char *argv[])
     //Memory allocation
     data = (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS);
     tStamps = (double *)malloc(sizeof(double)*lenTS);
-    topKDist = (DISTTYPE *)malloc(sizeof(DISTTYPE)*K);
-    topKInd = (INDTYPE *)malloc(sizeof(INDTYPE)*K*2);
-    cost = (DISTTYPE *)malloc(sizeof(DISTTYPE)*lenMotif*lenMotif);
+    topKmotifs = (motifInfo *)malloc(sizeof(motifInfo)*K);
     cost2 = (DISTTYPE **)malloc(sizeof(DISTTYPE *)*lenMotif);
     U = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotif);
     L = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotif);
@@ -162,9 +130,9 @@ int main( int argc , char *argv[])
     //initialization
     for(ii=0;ii<K;ii++)
     {
-        topKInd[2*ii]=0;
-        topKInd[2*ii+1]=0;
-        topKDist[ii]=(DISTTYPE)INF;
+        topKmotifs[ii].dist = INF;
+        topKmotifs[ii].ind1 = 0;
+        topKmotifs[ii].ind2 = 0;
     }
     
     for(ii=0;ii<lenMotif;ii++)
@@ -217,11 +185,10 @@ int main( int argc , char *argv[])
         printf("Time taken to load time stamps :%f\n",(t2-t1)/CLOCKS_PER_SEC);
     }
     
-    for (ii=1;ii<lenMotif;ii++)
+    for (ii=0;ii<lenMotif;ii++)
         {
-          for (jj=1;jj<lenMotif;jj++)
+          for (jj=0;jj<lenMotif;jj++)
           {
-              cost[(ii*lenMotif)+ jj] = FLT_MAX;
               cost2[ii][jj]=FLT_MAX;
           }
           
@@ -231,12 +198,13 @@ int main( int argc , char *argv[])
     t1 = clock();
     //Computing all combinations to obtain top K best matches
     band = int(lenMotif*0.1);
+    
     for(ii=0;ii<lenTS;ii++)
     {
         //computing lower and uper envelope for Keogh's lower bound
         computeRunningMinMax(data[ii], U, L, lenMotif, band);
         
-        for(jj=ii;jj<lenTS;jj++)
+        for(jj=ii+1;jj<lenTS;jj++)
         {
 
             if (fabs(tStamps[ii]-tStamps[jj])<blackDur)
@@ -245,23 +213,27 @@ int main( int argc , char *argv[])
             }
             
             LB_kim_FL = computeLBkimFL(data[ii][0], data[jj][0], data[ii][lenMotif-1], data[jj][lenMotif-1]);
-            
             if (LB_kim_FL< bsf) 
             {
-                
                 LB_Keogh_EQ = computeKeoghsLB(U,L,accLB, data[jj],lenMotif, bsf);
-                
                 if(LB_Keogh_EQ < bsf)
                 {
                     realDist = dtw1dBandConst(data[ii], data[jj], lenMotif, lenMotif, cost2, 0, band, bsf, accLB);
                     count_DTW+=1;
                     if(realDist<bsf)
                     {
-                        if (realDist ==1482.0)
+                        bsf = manageTopKMotifs(topKmotifs, tStamps, K, ii, jj, realDist, blackDur);
+
+#ifdef DEBUG                        
+                        for(dd=0;dd<K;dd++)
                         {
-                            realDist = 1482.0;
+                            fprintf(fpdb,"%lld\t%lld\t",ii,jj);
+                            fprintf(fpdb,"%f\t",topKmotifs[dd].dist);
+                            fprintf(fpdb,"\n",);
                         }
-                        bsf = manageTopKMotifs(topKDist, topKInd, tStamps, K, ii, jj, realDist, blackDur);
+#endif
+
+                        
                     } 
                         
                         
@@ -293,9 +265,13 @@ int main( int argc , char *argv[])
     }
     for(ii=0;ii<K;ii++)
     {
-        printf("motif pair is %f\t%f\t%f\n", tStamps[topKInd[2*ii]],tStamps[topKInd[2*ii+1]], topKDist[ii]);
+        printf("motif pair is %f\t%f\t%f\n", tStamps[topKmotifs[ii].ind1],tStamps[topKmotifs[ii].ind2], topKmotifs[ii].dist);
     }
     printf("Total dtw computations %lld\n", count_DTW);    
+
+#ifdef DEBUG                        
+                  fclose(fpdb);
+#endif
     
     return 1;
     
