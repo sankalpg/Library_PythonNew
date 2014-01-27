@@ -81,17 +81,13 @@ DISTTYPE manageTopKMotifs(DISTTYPE *topKDist, INDTYPE *topKInd, double *tStamps,
     if (matchInd==-1)
     {
         memcpy(&topKDist[sortInd+1], &topKDist[sortInd], sizeof(DISTTYPE)*(K-(sortInd+1)));
-        memcpy(&topKInd[2*(sortInd+1)], &topKInd[2*sortInd], sizeof(DISTTYPE)*2*(K-(sortInd+1)));
+        memcpy(&topKInd[2*(sortInd+1)], &topKInd[2*sortInd], sizeof(INDTYPE)*2*(K-(sortInd+1)));
         topKDist[sortInd]=dist;
         topKInd[2*sortInd]=ind1;
         topKInd[2*sortInd+1]=ind2;
     }
     else if (sortInd == matchInd)
     {
-        if(sortInd==1)
-        {
-            sortInd=1;
-        }
         topKDist[sortInd]=dist;
         topKInd[2*sortInd]=ind1;
         topKInd[2*sortInd+1]=ind2;
@@ -99,7 +95,7 @@ DISTTYPE manageTopKMotifs(DISTTYPE *topKDist, INDTYPE *topKInd, double *tStamps,
     else if (sortInd < matchInd)
     {
         memcpy(&topKDist[sortInd+1], &topKDist[sortInd], sizeof(DISTTYPE)*(matchInd-sortInd));
-        memcpy(&topKInd[2*(sortInd+1)], &topKInd[2*sortInd], sizeof(DISTTYPE)*2*(matchInd-sortInd));
+        memcpy(&topKInd[2*(sortInd+1)], &topKInd[2*sortInd], sizeof(INDTYPE)*2*(matchInd-sortInd));
         topKDist[sortInd]=dist;
         topKInd[2*sortInd]=ind1;
         topKInd[2*sortInd+1]=ind2;
@@ -113,7 +109,7 @@ FILE *fp_DB, *fp_TS, *fp_out;
 
 int main( int argc , char *argv[])
 {
-    INDTYPE    lenTS, count_DTW=0;
+    INDTYPE    lenTS, count_DTW=0,offset;
     int         lenMotif;
     double      blackDur;
     int         K,ii,jj,ll, numReads;
@@ -248,7 +244,7 @@ int main( int argc , char *argv[])
                 continue;
             }
             
-            LB_kim_FL = computeLBkimFL(data[ii][0], data[jj][0], data[ii][lenMotif], data[jj][lenMotif]);
+            LB_kim_FL = computeLBkimFL(data[ii][0], data[jj][0], data[ii][lenMotif-1], data[jj][lenMotif-1]);
             
             if (LB_kim_FL< bsf) 
             {
@@ -261,6 +257,10 @@ int main( int argc , char *argv[])
                     count_DTW+=1;
                     if(realDist<bsf)
                     {
+                        if (realDist ==1482.0)
+                        {
+                            realDist = 1482.0;
+                        }
                         bsf = manageTopKMotifs(topKDist, topKInd, tStamps, K, ii, jj, realDist, blackDur);
                     } 
                         
@@ -270,7 +270,7 @@ int main( int argc , char *argv[])
                     
                     if(LB_Keogh_EC < bsf)
                     {
-                        realDist = dtw1dBandConst(data[ii], data[jj], lenMotif, lenMotif, cost, 0, band, bsf, accLB, LB_Keogh_EC);
+                        realDist = dtw1dBandConst(data[ii], data[jj], lenMotif, lenMotif, cost2, 0, band, bsf, accLB);
                         count_DTW+=1;
                         if(realDist<bsf)
                         {
