@@ -25,12 +25,6 @@ DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, double *tStamps, int K, INDTYPE
     int sortInd = -1;
     int matchInd = -1;
     
-    dbcnt+=1;
-    if (dbcnt==3782717)
-    {
-        dbcnt=3782717;
-    }
-
     for(ii=0;ii<K;ii++)
     {
         if ((topKmotifs[ii].dist > dist)&&(sortInd==-1))
