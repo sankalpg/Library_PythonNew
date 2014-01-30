@@ -169,7 +169,7 @@ int main( int argc , char *argv[])
     {
         if (pitchTemp>minPossiblePitch)
         {
-            pitchSamples[ind]= (DATATYPE)(temp1*log((pitchTemp+EPS)/tonic));
+            pitchSamples[ind]= (DATATYPE)round(temp1*log((pitchTemp+EPS)/tonic));
             timeSamples[ind] = timeTemp;
             ind++;
         }
@@ -209,10 +209,10 @@ int main( int argc , char *argv[])
         temp[1] = (pitchSamples[ii+varSam] -mean[ii+varSam]/N);
         stdVec[ii] += temp[1]*temp[1] ;
     }
-    for(ii=0;ii<varSam;ii++)
+    /*for(ii=0;ii<varSam;ii++)
     {
         stdVec[ii] = 1;
-    }
+    }*/
     for(ii=varSam;ii<ind-varSam;ii++)
     {
         if (stdVec[ii]>threshold)
@@ -225,10 +225,10 @@ int main( int argc , char *argv[])
         }            
             
     }
-    for(ii=ind-varSam;ii<ind;ii++)
+    /*for(ii=ind-varSam;ii<ind;ii++)
     {
         stdVec[ii] = 1;
-    }
+    }*/
     
     lenTS  = ind;
     ind=0;
@@ -250,16 +250,16 @@ int main( int argc , char *argv[])
         
         if (ind >= lenMotifM1)
         {
-            if(ex>0.8*lenMotif)
+            if(ex>=0.8*(float)lenMotif)
             {
-                blacklist[ind-lenMotif]=0;
+                blacklist[ind-lenMotifM1]=0;
             }
             else
             {
-                blacklist[ind-lenMotif]=1;
+                blacklist[ind-lenMotifM1]=1;
                 blackCnt++;
             }
-            ex -= stdVec[ind-lenMotif];
+            ex -= stdVec[ind-lenMotifM1];
             
         }
         ind++;        
@@ -272,13 +272,15 @@ int main( int argc , char *argv[])
     /*fp = fopen("std.txt","w");
     for(ii=0;ii<lenTS;ii++)
     {
-        fprintf(fp,"%f\t%f\n",tStamps[ii],stdVec[ii]);
+        if (blacklist[ii]==1)
+            continue;
+        for(jj=0;jj<lenMotif;jj++)
+        {
+            fprintf(fp,"%d\t",120+(int)round(data[ii][jj]));
+        }
+        fprintf(fp,"\n");
     }
     fclose(fp);*/
-    
-
-    
-
     
     
     
@@ -326,15 +328,24 @@ int main( int argc , char *argv[])
     
     for(ii=0;ii<lenTS;ii++)
     {
+        if(blacklist[ii]==1)
+            continue;
         //computing lower and uper envelope for Keogh's lower bound
         computeRunningMinMax(data[ii], U, L, lenMotif, band);
         
         for(jj=ii+1;jj<lenTS;jj++)
         {
+            if(blacklist[jj]==1)
+            continue;
 
             if (fabs(tStamps[ii]-tStamps[jj])<blackDur)
             {
                 continue;
+            }
+                    
+            if((tStamps[ii]>=35.33) && (tStamps[jj]>=48.2))
+            {
+                tStamps[0]=0;
             }
             
             LB_kim_FL = computeLBkimFL(data[ii][0], data[jj][0], data[ii][lenMotif-1], data[jj][lenMotif-1]);
