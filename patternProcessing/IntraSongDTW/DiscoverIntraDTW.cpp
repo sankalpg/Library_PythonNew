@@ -6,114 +6,289 @@
 *******************************************************************************
 ******************************************************************************/
 
-//#define DEBUG
-
-
 
 #include "DiscoverIntraDTW.h"
-static long long dbcnt=0;
+
+
+
+
 #ifdef DEBUG
 FILE *fpdb;
 fpdb = fopen("dump.txt","w");
 #endif
 
 
-
-DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, double *tStamps, int K, INDTYPE ind1 , INDTYPE ind2, DISTTYPE dist, double blackDur)
+long long getNumLines(const char *file)
 {
-    int ii=0;
-    int sortInd = -1;
-    int matchInd = -1;
+    int fp;
+    struct stat fs;
+    char *buf;
+    long long line=0, ii;
+
+    fp = open(file,O_RDONLY);
+    if (fp == -1) 
+    {
+                printf("Error opening file %s\n",file);
+                return 0;
+    }
+    if (fstat(fp, &fs) == -1)
+    {
+                printf("Error opening file %s\n",file);
+                return 0;
+    }
+    buf = (char*)mmap(0, fs.st_size, PROT_READ, MAP_SHARED, fp, 0);
     
-    for(ii=0;ii<K;ii++)
+    for (ii=0;ii<fs.st_size;ii++)
     {
-        if ((topKmotifs[ii].dist > dist)&&(sortInd==-1))
-        {
-            sortInd=ii;
-        }
-        // searching if we already have a motif in out top K list which is near to the currently good match
-        if ((fabs(tStamps[topKmotifs[ii].ind1]-tStamps[ind1]) < blackDur) || (fabs(tStamps[topKmotifs[ii].ind2]-tStamps[ind1]) < blackDur) || (fabs(tStamps[topKmotifs[ii].ind1]-tStamps[ind2]) < blackDur) || (fabs(tStamps[topKmotifs[ii].ind2]-tStamps[ind2]) < blackDur))
-        {
-            matchInd=ii;
-            break;
-        }
-        
-    }
-    if (sortInd==-1)//we couldn't get any satisfactory replacement before we get a close neighbour
-    {
-        return topKmotifs[K-1].dist;
-    }
-    //There are three possibilities
-    //1) There is no match found in the existing top motifs, simplest
-    if (matchInd==-1)
-    {
-        memmove(&topKmotifs[sortInd+1], &topKmotifs[sortInd], sizeof(motifInfo)*(K-(sortInd+1)));
-        topKmotifs[sortInd].dist = dist;
-        topKmotifs[sortInd].ind1 = ind1;
-        topKmotifs[sortInd].ind2 = ind2;
-    }
-    else if (sortInd == matchInd)
-    {
-        topKmotifs[sortInd].dist = dist;
-        topKmotifs[sortInd].ind1 = ind1;
-        topKmotifs[sortInd].ind2 = ind2;
-    }
-    else if (sortInd < matchInd)
-    {
-        memmove(&topKmotifs[sortInd+1], &topKmotifs[sortInd], sizeof(motifInfo)*(matchInd-sortInd));
-        topKmotifs[sortInd].dist = dist;
-        topKmotifs[sortInd].ind1 = ind1;
-        topKmotifs[sortInd].ind2 = ind2;
+        if (buf[ii]=='\n')
+            line++;
     }
     
-    return topKmotifs[K-1].dist;
+    munmap(buf, fs.st_size);
+    close(fp);
+    
+    return line;
     
 }
 
-FILE *fp_DB, *fp_TS, *fp_out;
+long long getNumLines2(const char *file)
+{
+    FILE *fp;
+    char ch;
+    long long line=0, ii;
+
+    fp = fopen(file,"r");
+    
+    ch = getc(fp);
+    while(ch!=EOF)
+    {
+        line+=1;
+        ch = getc(fp);
+    }
+    
+    return line;
+    fclose(fp);
+    
+}
+
+
 
 int main( int argc , char *argv[])
 {
-    INDTYPE    lenTS, count_DTW=0,offset;
-    int         lenMotif;
-    double      blackDur;
-    int         K,ii,jj,ll, numReads;
-    int verbos = 0;
-    double t1,t2;
-    double *tStamps;
-    DATATYPE **data;
-    DISTTYPE LB_Keogh_EQ, realDist,LB_Keogh_EC;
-    DISTTYPE bsf=INF;
-    DISTTYPE **cost2;
-    DATATYPE *U,*L,*U2,*L2, *accLB, LB_kim_FL;
-    int band;
+    char *baseName, *pitchExt, *tonicExt, pitchFile[200]={'\0'}, tonicFile[200]={'\0'};
+    float tonic,blackDur, durMotif, t1,t2,*tStamps, pHop, *timeSamples, minPossiblePitch, allowedSilDur, temp1, pitchTemp, timeTemp, *stdVec, *mean, std, varDur, threshold,ex;
+    int lenMotif,lenMotifM1,  verbos=0, band, numReads,dsFactor, *blacklist,allowedSilSam, binsPOct; 
+    INDTYPE    lenTS, count_DTW=0, ind, blackCnt=0;
+    FILE *fp, *fp_out;
+    long long numPitchSam, pp=0;
+    int         K,ii,jj,ll, mm, varSam, N;
+    DATATYPE **data, *U, *L, *U2, *L2, *accLB, pitch , ex2, *pitchSamples;
+    DISTTYPE LB_Keogh_EQ, realDist,LB_Keogh_EC,bsf=INF,**cost2, LB_kim_FL;
     motifInfo *topKmotifs;
+    float temp[4]={0};
     
-    
-    
-    if(argc < 8 || argc > 9)
+    if(argc < 9 || argc > 10)
     {
-        printf("Invalid number of arguments!!!");
+        printf("\nInvalid number of arguments!!!\n");
         exit(1);
     }
     
-    fp_DB = fopen(argv[1],"rb");
-    fp_TS = fopen(argv[2],"r");
-    lenTS  = atol(argv[3]);
-    lenMotif = atoi(argv[4]);
+    baseName = argv[1];
+    pitchExt = argv[2];
+    tonicExt = argv[3];
+    durMotif = atof(argv[4]);
     K = atoi(argv[5]);
     blackDur = atof(argv[6]);
-    fp_out = fopen(argv[7],"r");
+    if (atof(argv[7])>0)
+    {
+        bsf = atof(argv[7]);
+    }
+    dsFactor = atoi(argv[8]);
     
-    if( argc == 9 ){verbos = atoi(argv[8]);}
+    if( argc == 10 ){verbos = atoi(argv[9]);}
+    
+    //
+    
+    
+    
+    //############ CRUCIAL PARAMETERS ##################
+    minPossiblePitch = 60.0;
+    allowedSilDur = 0.15;
+    binsPOct = 120;
+    varDur = 0.1;
+    threshold = 225;
+    
+    
+    //DERIVED
+   
+    //########################## READING PITCH DATA ##########################
+    //pitchFile[0]="\0";
+    //tonicFile[0]="\0";
+    strcat(pitchFile,baseName);
+    strcat(pitchFile,pitchExt);
+    
+    strcat(tonicFile,baseName);
+    strcat(tonicFile,tonicExt);
+        
+    // Reading number of lines in the pitch file
+    numPitchSam = getNumLines(pitchFile);
+    // after downsampling we will be left with these many points
+    numPitchSam = floor(numPitchSam/dsFactor) +1;
+    //allocating memory for pitch and time samples
+    pitchSamples = (DATATYPE*)malloc(sizeof(DATATYPE)*numPitchSam);
+    timeSamples = (float*)malloc(sizeof(float)*numPitchSam);
+    blacklist = (int*)malloc(sizeof(int)*numPitchSam);
+    
+    data = (DATATYPE **)malloc(sizeof(DATATYPE *)*numPitchSam);
+    tStamps = (float*)malloc(sizeof(float)*numPitchSam);
+    stdVec = (float *)malloc(sizeof(float)*numPitchSam);
+    mean = (float *)malloc(sizeof(float)*numPitchSam);
+    
+    fp =fopen(pitchFile,"r");
+    fscanf(fp, "%f\t%f\n",&temp[0],&temp[1]);
+    fscanf(fp, "%f\t%f\n",&temp[2],&temp[3]);
+    fclose(fp);
+    
+    fp =fopen(strcat(baseName, tonicExt),"r");
+    fscanf(fp, "%f\n",&tonic);
+    fclose(fp);
+    
+    ind=0;
+    jj=0;
+    pHop = (temp[2]-temp[0])*dsFactor;
+    lenMotif = (int)round(durMotif/pHop);
+    varSam = (int)round(varDur/pHop);
+    temp1 = ((float)binsPOct)/LOG2;
+    lenMotifM1 = lenMotif-1;
+    
+    fp =fopen(pitchFile,"r");
+    t1 = clock();
+    ind=0;
+    
+    while ((fscanf(fp, "%f\t%f\n",&timeTemp,&pitchTemp)!=EOF)&&ind<numPitchSam)
+    {
+        if (pitchTemp>minPossiblePitch)
+        {
+            pitchSamples[ind]= (DATATYPE)(temp1*log((pitchTemp+EPS)/tonic));
+            timeSamples[ind] = timeTemp;
+            ind++;
+        }
+        
+        for(ii=0;ii<dsFactor-1;ii++)
+        {
+            fscanf(fp, "%f\t%f\n",&timeTemp,&pitchTemp);
+            jj++;
+        }
+        
+        jj++;        
+    }
+    fclose(fp);
+    
+    //computing local mean and variance
+    memset(mean,0,sizeof(float)*numPitchSam);
+    memset(stdVec,0,sizeof(float)*numPitchSam);
+    for(ii=0;ii<2*varSam+1;ii++)
+    {
+        mean[varSam] +=  pitchSamples[ii] ;
+    }    
+    for(ii=varSam+1;ii<ind-varSam;ii++)
+    {
+        mean[ii] =  mean[ii-1] - pitchSamples[ii-varSam-1] + pitchSamples[ii+varSam] ;
+    }
+    N = 2*varSam+1 ; 
+    
+    for(ii=0;ii<2*varSam+1;ii++)
+    {
+        temp[0] = (pitchSamples[ii]- mean[ii]/N);
+        stdVec[varSam] += temp[0]*temp[0];
+    } 
+    for(ii=varSam+1;ii<ind-varSam;ii++)
+    {
+        temp[0] = (pitchSamples[ii-varSam-1] -mean[ii-varSam-1]/N);
+        stdVec[ii] =  stdVec[ii-1] - temp[0]*temp[0] ; 
+        temp[1] = (pitchSamples[ii+varSam] -mean[ii+varSam]/N);
+        stdVec[ii] += temp[1]*temp[1] ;
+    }
+    for(ii=0;ii<varSam;ii++)
+    {
+        stdVec[ii] = 1;
+    }
+    for(ii=varSam;ii<ind-varSam;ii++)
+    {
+        if (stdVec[ii]>threshold)
+        {
+            stdVec[ii] = 1;
+        }
+        else
+        {
+            stdVec[ii] = 0;
+        }            
+            
+    }
+    for(ii=ind-varSam;ii<ind;ii++)
+    {
+        stdVec[ii] = 1;
+    }
+    
+    lenTS  = ind;
+    ind=0;
+    ex=0;
+    blackCnt=0;
+    while(ind<lenTS)
+    {
+        if (ind<lenTS-lenMotifM1)
+            data[ind] = (DATATYPE *)malloc(sizeof(DATATYPE*)*lenMotif);
+        
+        for(ll = min(ind,lenTS-lenMotifM1-1) ; ll >= max(0,ind-lenMotif) ; ll--)
+        {
+            data[ll][ind-ll] = pitchSamples[ind]; 
+            mm++;
+        }
+        //printf("%lld\n",ind);
+        tStamps[ind] = timeSamples[ind];
+        ex+=stdVec[ind];
+        
+        if (ind >= lenMotifM1)
+        {
+            if(ex>0.8*lenMotif)
+            {
+                blacklist[ind-lenMotif]=0;
+            }
+            else
+            {
+                blacklist[ind-lenMotif]=1;
+                blackCnt++;
+            }
+            ex -= stdVec[ind-lenMotif];
+            
+        }
+        ind++;        
+    }
+    lenTS  = ind-lenMotifM1;
+    printf("%lld\t%lld",lenTS,blackCnt);
+    t2 = clock();
+    printf("Time taken to load the data :%f\n",(t2-t1)/CLOCKS_PER_SEC);
+    
+    /*fp = fopen("std.txt","w");
+    for(ii=0;ii<lenTS;ii++)
+    {
+        fprintf(fp,"%f\t%f\n",tStamps[ii],stdVec[ii]);
+    }
+    fclose(fp);*/
+    
+
+    
+
+    
+    
     
     if( verbos == 1 )
         printf("\nNumber of Time Series : %lld\nLength of Each Time Series : %d\n\n",lenTS,lenMotif);
     
     
     //Memory allocation
-    data = (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS);
-    tStamps = (double *)malloc(sizeof(double)*lenTS);
+    //data = (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS);
+    //tStamps = (double *)malloc(sizeof(double)*lenTS);
     topKmotifs = (motifInfo *)malloc(sizeof(motifInfo)*K);
     cost2 = (DISTTYPE **)malloc(sizeof(DISTTYPE *)*lenMotif);
     U = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotif);
@@ -134,51 +309,7 @@ int main( int argc , char *argv[])
         cost2[ii] = (DISTTYPE *)malloc(sizeof(DISTTYPE)*lenMotif);
     }
     
-    //timing
-    t1 = clock();
-    
-    //reading data, loading into memory
-    for (ii=0;ii<lenTS;ii++)
-    {
-        data[ii] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenTS);
-        numReads = fread( data[ii], sizeof(DATATYPE), lenMotif, fp_DB);
-        //printf("%d\t%d\n",ii,numReads);
-        if (numReads<lenMotif)
-        {
-            printf("Binary data size was wrongly specified");
-            exit(1);
-        }
-    }
-    fclose(fp_DB);
-    
-    //timing
-    t2 = clock();
-    
-    if (verbos)
-    {
-        printf("Time taken to load the data :%f\n",(t2-t1)/CLOCKS_PER_SEC);
-    }
-    
-    //timing
-    t1 = clock();
-    
-    //reading time stamps, loading into memory
-    numReads = fread(tStamps, sizeof(double), lenTS, fp_TS);
-    if (numReads<lenTS)
-    {
-        printf("Error in reading time stamps, size doesn't match specific length of the time series");
-        exit(1);
-    }
-    fclose(fp_TS);
-    
-    //timing
-    t2 = clock();
-    
-    if (verbos)
-    {
-        printf("Time taken to load time stamps :%f\n",(t2-t1)/CLOCKS_PER_SEC);
-    }
-    
+
     for (ii=0;ii<lenMotif;ii++)
         {
           for (jj=0;jj<lenMotif;jj++)
@@ -269,4 +400,71 @@ int main( int argc , char *argv[])
     
     return 1;
     
+}
+
+
+
+DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, float *tStamps, int K, INDTYPE ind1 , INDTYPE ind2, DISTTYPE dist, float blackDur)
+{
+    int ii=0;
+    int sortInd = -1;
+    int matchInd = -1;
+    
+    for(ii=0;ii<K;ii++)
+    {
+        if ((topKmotifs[ii].dist > dist)&&(sortInd==-1))
+        {
+            sortInd=ii;
+        }
+        // searching if we already have a motif in out top K list which is near to the currently good match
+        if ((fabs(tStamps[topKmotifs[ii].ind1]-tStamps[ind1]) < blackDur) || (fabs(tStamps[topKmotifs[ii].ind2]-tStamps[ind1]) < blackDur) || (fabs(tStamps[topKmotifs[ii].ind1]-tStamps[ind2]) < blackDur) || (fabs(tStamps[topKmotifs[ii].ind2]-tStamps[ind2]) < blackDur))
+        {
+            matchInd=ii;
+            break;
+        }
+        
+    }
+    if (sortInd==-1)//we couldn't get any satisfactory replacement before we get a close neighbour
+    {
+        return topKmotifs[K-1].dist;
+    }
+    //There are three possibilities
+    //1) There is no match found in the existing top motifs, simplest
+    if (matchInd==-1)
+    {
+        memmove(&topKmotifs[sortInd+1], &topKmotifs[sortInd], sizeof(motifInfo)*(K-(sortInd+1)));
+        topKmotifs[sortInd].dist = dist;
+        topKmotifs[sortInd].ind1 = ind1;
+        topKmotifs[sortInd].ind2 = ind2;
+    }
+    else if (sortInd == matchInd)
+    {
+        topKmotifs[sortInd].dist = dist;
+        topKmotifs[sortInd].ind1 = ind1;
+        topKmotifs[sortInd].ind2 = ind2;
+    }
+    else if (sortInd < matchInd)
+    {
+        memmove(&topKmotifs[sortInd+1], &topKmotifs[sortInd], sizeof(motifInfo)*(matchInd-sortInd));
+        topKmotifs[sortInd].dist = dist;
+        topKmotifs[sortInd].ind1 = ind1;
+        topKmotifs[sortInd].ind2 = ind2;
+    }
+    
+    return topKmotifs[K-1].dist;
+    
+}
+
+void linearlyInterpolate(float *array, int size, float val1, float val2)
+{
+    int ii=0;
+    float diff;
+    
+    diff = (val2-val1)/(size+1);
+    
+    
+    for(ii=1;ii<=size;ii++)
+    {
+        array[ii] = val1 + ii*diff;
+    }
 }
