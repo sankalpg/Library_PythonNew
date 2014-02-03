@@ -11,13 +11,9 @@
 
 
 
-
-#ifdef DEBUG
-FILE *fpdb;
-fpdb = fopen("dump.txt","w");
-#endif
-
-
+/*
+ * This function quickly returns number of lines in a text file
+ */
 long long getNumLines(const char *file)
 {
     int fp;
@@ -51,38 +47,17 @@ long long getNumLines(const char *file)
     
 }
 
-long long getNumLines2(const char *file)
-{
-    FILE *fp;
-    char ch;
-    long long line=0, ii;
-
-    fp = fopen(file,"r");
-    
-    ch = getc(fp);
-    while(ch!=EOF)
-    {
-        line+=1;
-        ch = getc(fp);
-    }
-    
-    return line;
-    fclose(fp);
-    
-}
-
-
 
 int main( int argc , char *argv[])
 {
     char *baseName, *pitchExt, *tonicExt, pitchFile[200]={'\0'}, tonicFile[200]={'\0'};
     float tonic,blackDur, durMotif, t1,t2,*tStamps, pHop, *timeSamples, minPossiblePitch, allowedSilDur, temp1, pitchTemp, timeTemp, *stdVec, *mean, std, varDur, threshold,ex;
-    int lenMotif,lenMotifM1,  verbos=0, band, numReads,dsFactor, *blacklist,allowedSilSam, binsPOct; 
+    int lenMotif,lenMotifM1,  verbos=0, bandDTW, numReads,dsFactor, *blacklist,allowedSilSam, binsPOct; 
     INDTYPE    lenTS, count_DTW=0, ind, blackCnt=0;
     FILE *fp, *fp_out;
     long long numPitchSam, pp=0;
-    int         K,ii,jj,ll, mm, varSam, N;
-    DATATYPE **data, *U, *L, *U2, *L2, *accLB, pitch , ex2, *pitchSamples;
+    int         K,ii,jj,ll, varSam, N;
+    DATATYPE **data, **U, **L, *accLB, pitch , ex2, *pitchSamples;
     DISTTYPE LB_Keogh_EQ, realDist,LB_Keogh_EC,bsf=INF,**cost2, LB_kim_FL;
     motifInfo *topKmotifs;
     float temp[4]={0};
@@ -122,81 +97,113 @@ int main( int argc , char *argv[])
     //DERIVED
    
     //########################## READING PITCH DATA ##########################
-    //pitchFile[0]="\0";
-    //tonicFile[0]="\0";
+    //pitch file name
     strcat(pitchFile,baseName);
     strcat(pitchFile,pitchExt);
-    
+    //tonic file name
     strcat(tonicFile,baseName);
     strcat(tonicFile,tonicExt);
         
     // Reading number of lines in the pitch file
     numPitchSam = getNumLines(pitchFile);
+    
     // after downsampling we will be left with these many points
     numPitchSam = floor(numPitchSam/dsFactor) +1;
+    
     //allocating memory for pitch and time samples
-    pitchSamples = (DATATYPE*)malloc(sizeof(DATATYPE)*numPitchSam);
+    pitchSamples = (DATATYPE*)malloc(sizeof(DATATYPE)*numPitchSam);     // since we don't know silence regions, allocate maximum possible number of samples
     timeSamples = (float*)malloc(sizeof(float)*numPitchSam);
-    blacklist = (int*)malloc(sizeof(int)*numPitchSam);
     
-    data = (DATATYPE **)malloc(sizeof(DATATYPE *)*numPitchSam);
-    tStamps = (float*)malloc(sizeof(float)*numPitchSam);
-    stdVec = (float *)malloc(sizeof(float)*numPitchSam);
+    blacklist = (int*)malloc(sizeof(int)*numPitchSam);  //subsequences which we don't have to consider. Unfortunately we know them after we already stored them
+    
+    data = (DATATYPE **)malloc(sizeof(DATATYPE *)*numPitchSam);         //since we don't know valid subsequences, we allocate max possible subsequences and later discard them and free the memory
+    tStamps = (float*)malloc(sizeof(float)*numPitchSam);                
+    
     mean = (float *)malloc(sizeof(float)*numPitchSam);
+    memset(mean,0,sizeof(float)*numPitchSam);
+    stdVec = (float *)malloc(sizeof(float)*numPitchSam);
+    memset(stdVec,0,sizeof(float)*numPitchSam);
     
+    topKmotifs = (motifInfo *)malloc(sizeof(motifInfo)*K);
+    cost2 = (DISTTYPE **)malloc(sizeof(DISTTYPE *)*lenMotif);
+    
+    
+    //opening pitch file JUST FOR OBTAINING HOP SIZE OF THE PITCH SEQUENCE
     fp =fopen(pitchFile,"r");
+    if (fp==NULL)
+    {
+        printf("Error opening file %s\n", pitchFile);
+    }
+    //reading just first two lines, in order to obtain hopsize//
     fscanf(fp, "%f\t%f\n",&temp[0],&temp[1]);
     fscanf(fp, "%f\t%f\n",&temp[2],&temp[3]);
     fclose(fp);
-    
-    fp =fopen(strcat(baseName, tonicExt),"r");
-    fscanf(fp, "%f\n",&tonic);
-    fclose(fp);
-    
-    ind=0;
-    jj=0;
-    pHop = (temp[2]-temp[0])*dsFactor;
+    pHop = (temp[2]-temp[0])*dsFactor;  //final hop size afte downsampling
     lenMotif = (int)round(durMotif/pHop);
     varSam = (int)round(varDur/pHop);
     temp1 = ((float)binsPOct)/LOG2;
     lenMotifM1 = lenMotif-1;
+
     
+    //Opening the tonic file
+    fp =fopen(tonicFile,"r");
+    if (fp==NULL)
+    {
+        printf("Error opening file %s\n", tonicFile);
+    }
+    fscanf(fp, "%f\n",&tonic);
+    fclose(fp);
+    
+    
+    //Finally opening the pitch file to read the data
     fp =fopen(pitchFile,"r");
     t1 = clock();
     ind=0;
-    
-    while ((fscanf(fp, "%f\t%f\n",&timeTemp,&pitchTemp)!=EOF)&&ind<numPitchSam)
+    jj=0;
+    while (fscanf(fp, "%f\t%f\n",&timeTemp,&pitchTemp)!=EOF)    //read till the end of the file
     {
-        if (pitchTemp>minPossiblePitch)
+        
+        if (pitchTemp>minPossiblePitch) //only fill in meaningful pitch data, reject other pitch samples
         {
             pitchSamples[ind]= (DATATYPE)round(temp1*log((pitchTemp+EPS)/tonic));
             timeSamples[ind] = timeTemp;
             ind++;
+            jj++;
         }
         
         for(ii=0;ii<dsFactor-1;ii++)
         {
+            // just bypass other samples to downsample the pitch sequence
             fscanf(fp, "%f\t%f\n",&timeTemp,&pitchTemp);
             jj++;
         }
         
-        jj++;        
+              
     }
     fclose(fp);
     
+    //########################## Subsequence generation + selection step ##########################
+    // In subsequence selection our aim is to discard those subsequences which result into trivial matches, 
+    // which are flat regions. For removing flat regions the obvious choice is to consider variance of a 
+    // subsequence and filter using a threshold. The problem here is large amounts of octave errors because
+    // of which the variance increases but affectively large chunk of data is still flat. 
+    
+    // For solving problem mentioned above we resort to short duration variance for deciding wheather a 
+    // given sample belongs to a flat region or not. Later we accumulate total number of samples in a 
+    // subsequence which belong to a flat region and filter the subsequence based on a threshold.
+    
     //computing local mean and variance
-    memset(mean,0,sizeof(float)*numPitchSam);
-    memset(stdVec,0,sizeof(float)*numPitchSam);
     for(ii=0;ii<2*varSam+1;ii++)
     {
         mean[varSam] +=  pitchSamples[ii] ;
     }    
     for(ii=varSam+1;ii<ind-varSam;ii++)
     {
-        mean[ii] =  mean[ii-1] - pitchSamples[ii-varSam-1] + pitchSamples[ii+varSam] ;
+        mean[ii] =  mean[ii-1] - pitchSamples[ii-varSam-1] + pitchSamples[ii+varSam] ;  //running mean
     }
     N = 2*varSam+1 ; 
     
+    //computing running variance
     for(ii=0;ii<2*varSam+1;ii++)
     {
         temp[0] = (pitchSamples[ii]- mean[ii]/N);
@@ -209,10 +216,7 @@ int main( int argc , char *argv[])
         temp[1] = (pitchSamples[ii+varSam] -mean[ii+varSam]/N);
         stdVec[ii] += temp[1]*temp[1] ;
     }
-    /*for(ii=0;ii<varSam;ii++)
-    {
-        stdVec[ii] = 1;
-    }*/
+    // after computing running variance, applying a threshold and selecting the onces which are corresponsing to non flat regions
     for(ii=varSam;ii<ind-varSam;ii++)
     {
         if (stdVec[ii]>threshold)
@@ -225,15 +229,13 @@ int main( int argc , char *argv[])
         }            
             
     }
-    /*for(ii=ind-varSam;ii<ind;ii++)
-    {
-        stdVec[ii] = 1;
-    }*/
     
-    lenTS  = ind;
+    lenTS  = ind;       //number of non trivial pitch samples, they might still carry number of subsequences which have to be discarded
     ind=0;
     ex=0;
     blackCnt=0;
+    
+    //############################## generating subsequences ##########################################
     while(ind<lenTS)
     {
         if (ind<lenTS-lenMotifM1)
@@ -242,9 +244,7 @@ int main( int argc , char *argv[])
         for(ll = min(ind,lenTS-lenMotifM1-1) ; ll >= max(0,ind-lenMotif) ; ll--)
         {
             data[ll][ind-ll] = pitchSamples[ind]; 
-            mm++;
         }
-        //printf("%lld\n",ind);
         tStamps[ind] = timeSamples[ind];
         ex+=stdVec[ind];
         
@@ -262,42 +262,62 @@ int main( int argc , char *argv[])
             ex -= stdVec[ind-lenMotifM1];
             
         }
-        ind++;        
+       ind++;        
     }
-    lenTS  = ind-lenMotifM1;
-    printf("%lld\t%lld",lenTS,blackCnt);
     t2 = clock();
     printf("Time taken to load the data :%f\n",(t2-t1)/CLOCKS_PER_SEC);
     
-    /*fp = fopen("std.txt","w");
-    for(ii=0;ii<lenTS;ii++)
+    //free memory which is not needed further
+    free(pitchSamples);
+    free(timeSamples);
+    
+    
+    // Finding all the subsequences that should be blacklisted because they fall in TANI regions
+    
+    
+    
+    //%%%%%%%%%%%%%%%% Removing blacklisted subsequences %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    lenTS  = 0;    //total number of subsequences obtained
+    ii=0;
+    jj=0;
+    while (ii<(ind-lenMotifM1)-jj)
     {
         if (blacklist[ii]==1)
-            continue;
-        for(jj=0;jj<lenMotif;jj++)
         {
-            fprintf(fp,"%d\t",120+(int)round(data[ii][jj]));
+            free(data[ii]);
+            memmove(&data[ii], &data[ii+1], ((ind-lenMotifM1)-jj-ii)*sizeof(DATATYPE*));
+            memmove(&tStamps[ii], &tStamps[ii+1], ((ind-lenMotifM1)-jj-ii)*sizeof(float));
+            memmove(&blacklist[ii], &blacklist[ii+1], ((ind-lenMotifM1)-jj-ii)*sizeof(int));
+            jj+=1;
+            ii-=1;
+            
         }
-        fprintf(fp,"\n");
+        else
+        {
+            lenTS+=1;
+        }
+        
+        ii++;
     }
-    fclose(fp);*/
-    
-    
     
     if( verbos == 1 )
-        printf("\nNumber of Time Series : %lld\nLength of Each Time Series : %d\n\n",lenTS,lenMotif);
+        printf("Finally number of subsequences are: %lld\nNumber of subsequences removed are: %lld\n",lenTS,blackCnt);
+        printf("Length of Each Time Series : %d\n\n",lenMotif);
     
-    
-    //Memory allocation
-    //data = (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS);
-    //tStamps = (double *)malloc(sizeof(double)*lenTS);
-    topKmotifs = (motifInfo *)malloc(sizeof(motifInfo)*K);
-    cost2 = (DISTTYPE **)malloc(sizeof(DISTTYPE *)*lenMotif);
-    U = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotif);
-    L = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotif);
-    U2 = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotif);
-    L2 = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotif);    
+    //################# Precomputing envelope of each subsequence for the LB Keogh lower bound ###########################
+    bandDTW = int(lenMotif*0.1);
+    U = (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS);
+    L= (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS);
     accLB = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotif);
+    
+    for (ii=0;ii<lenTS;ii++)
+    {
+        U[ii] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotif);
+        L[ii] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotif);
+        computeRunningMinMax(data[ii], U[ii], L[ii], lenMotif, bandDTW);
+        
+    }
+    
     //initialization
     for(ii=0;ii<K;ii++)
     {
@@ -305,15 +325,10 @@ int main( int argc , char *argv[])
         topKmotifs[ii].ind1 = 0;
         topKmotifs[ii].ind2 = 0;
     }
-    
-    for(ii=0;ii<lenMotif;ii++)
-    {
-        cost2[ii] = (DISTTYPE *)malloc(sizeof(DISTTYPE)*lenMotif);
-    }
-    
 
     for (ii=0;ii<lenMotif;ii++)
         {
+          cost2[ii] = (DISTTYPE *)malloc(sizeof(DISTTYPE)*lenMotif);
           for (jj=0;jj<lenMotif;jj++)
           {
               cost2[ii][jj]=FLT_MAX;
@@ -323,76 +338,39 @@ int main( int argc , char *argv[])
     
     //timing
     t1 = clock();
-    //Computing all combinations to obtain top K best matches
-    band = int(lenMotif*0.1);
     
+    //Computing all combinations to obtain top K best matches
     for(ii=0;ii<lenTS;ii++)
     {
-        if(blacklist[ii]==1)
-            continue;
-        //computing lower and uper envelope for Keogh's lower bound
-        computeRunningMinMax(data[ii], U, L, lenMotif, band);
-        
         for(jj=ii+1;jj<lenTS;jj++)
         {
-            if(blacklist[jj]==1)
-            continue;
-
             if (fabs(tStamps[ii]-tStamps[jj])<blackDur)
             {
                 continue;
-            }
-                    
-            if((tStamps[ii]>=35.33) && (tStamps[jj]>=48.2))
-            {
-                tStamps[0]=0;
             }
             
             LB_kim_FL = computeLBkimFL(data[ii][0], data[jj][0], data[ii][lenMotif-1], data[jj][lenMotif-1]);
             if (LB_kim_FL< bsf) 
             {
-                LB_Keogh_EQ = computeKeoghsLB(U,L,accLB, data[jj],lenMotif, bsf);
+                LB_Keogh_EQ = computeKeoghsLB(U[ii],L[ii],accLB, data[jj],lenMotif, bsf);
                 if(LB_Keogh_EQ < bsf)
                 {
-                    realDist = dtw1dBandConst(data[ii], data[jj], lenMotif, lenMotif, cost2, 0, band, bsf, accLB);
-                    count_DTW+=1;
-                    if(realDist<bsf)
-                    {
-                        bsf = manageTopKMotifs(topKmotifs, tStamps, K, ii, jj, realDist, blackDur);
-
-#ifdef DEBUG                        
-                        for(dd=0;dd<K;dd++)
-                        {
-                            fprintf(fpdb,"%lld\t%lld\t",ii,jj);
-                            fprintf(fpdb,"%f\t",topKmotifs[dd].dist);
-                            fprintf(fpdb,"\n",);
-                        }
-#endif
-
-                        
-                    } 
-                        
-                        
-                    /*computeRunningMinMax(data[jj], U2, L2, lenMotif, band);
-                    LB_Keogh_EC = computeKeoghsLB(U2,L2,accLB, data[ii],lenMotif, bsf);
-                    
+                    LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB, data[ii],lenMotif, bsf);
                     if(LB_Keogh_EC < bsf)
                     {
-                        realDist = dtw1dBandConst(data[ii], data[jj], lenMotif, lenMotif, cost2, 0, band, bsf, accLB);
+                        realDist = dtw1dBandConst(data[ii], data[jj], lenMotif, lenMotif, cost2, 0, bandDTW, bsf, accLB);
                         count_DTW+=1;
                         if(realDist<bsf)
                         {
-                            bsf = manageTopKMotifs(topKDist, topKInd, tStamps, K, ii, jj, realDist, blackDur);
-                        } 
-                    }*/
+                            bsf = manageTopKMotifs(topKmotifs, tStamps, K, ii, jj, realDist, blackDur);
+                        }
+                    }
                 }
-                  
             }
-            
         }
-          
     }
-     //timing
+
+    //timing
     t2 = clock();
     
     if (verbos)
@@ -405,9 +383,6 @@ int main( int argc , char *argv[])
     }
     printf("Total dtw computations %lld\n", count_DTW);    
 
-#ifdef DEBUG                        
-                  fclose(fpdb);
-#endif
     
     return 1;
     
