@@ -58,7 +58,7 @@ int main( int argc , char *argv[])
     long long numPitchSam, pp=0;
     int         K,ii,jj,ll, varSam, N;
     DATATYPE **data, **U, **L, *accLB, pitch , ex2, *pitchSamples;
-    DISTTYPE LB_Keogh_EQ, realDist,LB_Keogh_EC,bsf=INF,**cost2, LB_kim_FL;
+    DISTTYPE LB_Keogh_EQ, realDist,LB_Keogh_EC,bsf=INF,**costMTX, LB_kim_FL;
     motifInfo *topKmotifs;
     float temp[4]={0};
     
@@ -125,7 +125,7 @@ int main( int argc , char *argv[])
     memset(stdVec,0,sizeof(float)*numPitchSam);
     
     topKmotifs = (motifInfo *)malloc(sizeof(motifInfo)*K);
-    cost2 = (DISTTYPE **)malloc(sizeof(DISTTYPE *)*lenMotif);
+    costMTX = (DISTTYPE **)malloc(sizeof(DISTTYPE *)*lenMotif);
     
     
     //opening pitch file JUST FOR OBTAINING HOP SIZE OF THE PITCH SEQUENCE
@@ -268,6 +268,8 @@ int main( int argc , char *argv[])
     printf("Time taken to load the data :%f\n",(t2-t1)/CLOCKS_PER_SEC);
     
     //free memory which is not needed further
+    free(mean);
+    free(stdVec);
     free(pitchSamples);
     free(timeSamples);
     
@@ -300,6 +302,8 @@ int main( int argc , char *argv[])
         ii++;
     }
     
+    free(blacklist);
+    
     if( verbos == 1 )
         printf("Finally number of subsequences are: %lld\nNumber of subsequences removed are: %lld\n",lenTS,blackCnt);
         printf("Length of Each Time Series : %d\n\n",lenMotif);
@@ -328,10 +332,10 @@ int main( int argc , char *argv[])
 
     for (ii=0;ii<lenMotif;ii++)
         {
-          cost2[ii] = (DISTTYPE *)malloc(sizeof(DISTTYPE)*lenMotif);
+          costMTX[ii] = (DISTTYPE *)malloc(sizeof(DISTTYPE)*lenMotif);
           for (jj=0;jj<lenMotif;jj++)
           {
-              cost2[ii][jj]=FLT_MAX;
+              costMTX[ii][jj]=FLT_MAX;
           }
           
         }
@@ -358,7 +362,7 @@ int main( int argc , char *argv[])
                     LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB, data[ii],lenMotif, bsf);
                     if(LB_Keogh_EC < bsf)
                     {
-                        realDist = dtw1dBandConst(data[ii], data[jj], lenMotif, lenMotif, cost2, 0, bandDTW, bsf, accLB);
+                        realDist = dtw1dBandConst(data[ii], data[jj], lenMotif, lenMotif, costMTX, 0, bandDTW, bsf, accLB);
                         count_DTW+=1;
                         if(realDist<bsf)
                         {
@@ -381,7 +385,28 @@ int main( int argc , char *argv[])
     {
         printf("motif pair is %f\t%f\t%f\n", tStamps[topKmotifs[ii].ind1],tStamps[topKmotifs[ii].ind2], topKmotifs[ii].dist);
     }
-    printf("Total dtw computations %lld\n", count_DTW);    
+    printf("Total dtw computations %lld\n", count_DTW);
+
+    //Memory clearing
+    for(ii=0;ii<lenTS;ii++)
+    {
+        free(data[ii]);
+        free(U[ii]);
+        free(L[ii]);
+        
+    }
+    free(topKmotifs);
+    free(accLB);
+    free(data);
+    free(tStamps);
+    free(U);
+    free(L);
+    for(ii=0;ii<lenMotif;ii++)
+    {
+        free(costMTX[ii]);
+    }
+    free(costMTX);
+    
 
     
     return 1;
