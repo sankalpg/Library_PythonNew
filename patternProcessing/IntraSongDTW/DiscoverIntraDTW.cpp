@@ -124,10 +124,6 @@ int main( int argc , char *argv[])
     stdVec = (float *)malloc(sizeof(float)*numPitchSam);
     memset(stdVec,0,sizeof(float)*numPitchSam);
     
-    topKmotifs = (motifInfo *)malloc(sizeof(motifInfo)*K);
-    costMTX = (DISTTYPE **)malloc(sizeof(DISTTYPE *)*lenMotif);
-    
-    
     //opening pitch file JUST FOR OBTAINING HOP SIZE OF THE PITCH SEQUENCE
     fp =fopen(pitchFile,"r");
     if (fp==NULL)
@@ -287,9 +283,12 @@ int main( int argc , char *argv[])
         if (blacklist[ii]==1)
         {
             free(data[ii]);
-            memmove(&data[ii], &data[ii+1], ((ind-lenMotifM1)-jj-ii)*sizeof(DATATYPE*));
-            memmove(&tStamps[ii], &tStamps[ii+1], ((ind-lenMotifM1)-jj-ii)*sizeof(float));
-            memmove(&blacklist[ii], &blacklist[ii+1], ((ind-lenMotifM1)-jj-ii)*sizeof(int));
+            if(ii < ind-lenMotifM1-jj-1)
+            {
+                memmove(&data[ii], &data[ii+1], ((ind-lenMotifM1)-jj-(ii+1))*sizeof(DATATYPE*));
+                memmove(&tStamps[ii], &tStamps[ii+1], ((ind-lenMotifM1)-jj-(ii+1))*sizeof(float));
+                memmove(&blacklist[ii], &blacklist[ii+1], ((ind-lenMotifM1)-jj-(ii+1))*sizeof(int));
+            }
             jj+=1;
             ii-=1;
             
@@ -313,6 +312,9 @@ int main( int argc , char *argv[])
     U = (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS);
     L= (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS);
     accLB = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotif);
+    topKmotifs = (motifInfo *)malloc(sizeof(motifInfo)*K);
+    costMTX = (DISTTYPE **)malloc(sizeof(DISTTYPE *)*lenMotif);
+
     
     for (ii=0;ii<lenTS;ii++)
     {
@@ -395,12 +397,13 @@ int main( int argc , char *argv[])
         free(L[ii]);
         
     }
-    free(topKmotifs);
-    free(accLB);
     free(data);
+    
+    free(accLB);
     free(tStamps);
     free(U);
     free(L);
+    free(topKmotifs);
     for(ii=0;ii<lenMotif;ii++)
     {
         free(costMTX[ii]);
