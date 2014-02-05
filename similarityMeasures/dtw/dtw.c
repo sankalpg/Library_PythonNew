@@ -414,29 +414,274 @@ double dtw1dBandConst(double *x, double*y, int x_len, int y_len, double**cost, i
 #endif        
         
         }
-               /*FILE *fp;
-        fp=fopen("similarityMatrix", "w");
-        for (i=0;i<x_len;i++)
-        {
-              for (j=0;j<x_len;j++)
-                {
-                    if (cost[i][j]>50000)
-                    {
-                        fprintf(fp, "%f\n", 50000.0);
-                    }
-                    else
-                    {
-                        fprintf(fp, "%f\n", cost[i][j]);
-                    }
-                    
-                    
-                }
-                //fprintf(fp, "\n");
-        }
-        fclose(fp);*/
-        
         return cost[x_len-1][y_len-1];
 }
+
+double dtw1dBandConst_localConst(double *x, double*y, int x_len, int y_len, double**cost, int dist_type, int bandwidth, double bsf, double *accLB)
+{
+        // declarations of variables
+        int i,j, ind, overflow; 
+        double min_vals, leftLB, temp;
+
+#ifdef ENABLE_EA
+        temp = bsf - accLB[y_len-1] ;
+#endif        
+        
+        //Initializing the row and columns of cost matrix
+        cost[0][0]= EucDist(x[0],y[0]);
+
+        for (i=1;i<=bandwidth;i++)
+        {
+        cost[i][0]=EucDist(x[i],y[0]) + cost[i-1][0];
+        }
+        for (j=1;j<=bandwidth;j++)
+        {
+        cost[0][j]=EucDist(x[0],y[j]) + cost[0][j-1];
+        }
+        
+        for (i=1;i<=bandwidth+1;i++)
+        {
+            j=1;
+            min_vals = min3(cost[i-1][j], cost[i-1][j-1], cost[i][j-1]);
+            cost[i][j] = EucDist(x[i],y[j]) + min_vals;
+        }
+        for (j=1;j<=bandwidth+1;j++)
+        {
+            i=1;
+            min_vals = min3(cost[i-1][j], cost[i-1][j-1], cost[i][j-1]);
+            cost[i][j] = EucDist(x[i],y[j]) + min_vals;
+        }
+        
+        //filling in all the cumulative cost matrix
+        for (i=2;i<x_len;i++)
+        {
+            
+#ifdef ENABLE_EA
+            leftLB = temp + accLB[i] ;
+            overflow=1;
+#endif                
+           
+            for (j=max(2, i-bandwidth);j<=min(y_len-1, i+bandwidth);j++)
+            {
+                min_vals = min3(cost[i-2][j-1], cost[i-1][j-1], cost[i-1][j-2]);
+                
+#ifdef ENABLE_EA  
+                if (min_vals > leftLB)
+                {
+                    cost[i][j]  =  FLT_MAX;
+                }
+                else
+                {
+                    cost[i][j] = EucDist(x[i],y[j]) + min_vals;
+                }
+                
+                if (cost[i][j] < leftLB)
+                {
+                overflow=0;
+                }
+
+#else
+                cost[i][j] = EucDist(x[i],y[j]) + min_vals;
+#endif 
+
+            }
+        
+#ifdef ENABLE_EA         
+        if(overflow==1)
+        {
+            return FLT_MAX;
+        }
+#endif        
+        
+        }
+        return cost[x_len-1][y_len-1];
+}
+
+
+double dtw1dBandConst_subsequence(double *x, double*y, int x_len, int y_len, double**cost, int dist_type, int bandwidth, double bsf, double *accLB)
+{
+        // declarations of variables
+        int i,j, ind, overflow; 
+        double min_vals, leftLB, temp;
+
+#ifdef ENABLE_EA
+        temp = bsf - accLB[y_len-1] ;
+#endif        
+        
+        //Initializing the row and columns of cost matrix
+        cost[0][0]= EucDist(x[0],y[0]);
+
+        for (i=1;i<=bandwidth;i++)
+        {
+            cost[i][0]=EucDist(x[i],y[0]);
+        }
+        for (j=1;j<=bandwidth;j++)
+        {
+            cost[0][j]=EucDist(x[0],y[j]);
+        }
+        
+        //filling in all the cumulative cost matrix
+        for (i=1;i<x_len;i++)
+        {
+            
+#ifdef ENABLE_EA
+            leftLB = temp + accLB[i] ;
+            overflow=1;
+#endif                
+           
+            for (j=max(1, i-bandwidth);j<=min(y_len-1, i+bandwidth);j++)
+            {
+                min_vals = min3(cost[i-1][j], cost[i-1][j-1], cost[i][j-1]);
+                
+#ifdef ENABLE_EA  
+                if (min_vals > leftLB)
+                {
+                    cost[i][j]  =  FLT_MAX;
+                }
+                else
+                {
+                    cost[i][j] = EucDist(x[i],y[j]) + min_vals;
+                }
+                
+                if (cost[i][j] < leftLB)
+                {
+                overflow=0;
+                }
+
+#else
+                cost[i][j] = EucDist(x[i],y[j]) + min_vals;
+#endif 
+
+            }
+        
+#ifdef ENABLE_EA         
+        if(overflow==1)
+        {
+            return FLT_MAX;
+        }
+#endif        
+        
+        }
+        min_vals = FLT_MAX;
+        for (i=x_len-1;i>=x_len-1-bandwidth;i--)
+        {
+            if(cost[i][y_len-1] < min_vals)
+            {
+                min_vals = cost[i][y_len-1];
+            }
+        }
+        for (i=y_len-1;i>=y_len-1-bandwidth;i--)
+        {
+            if(cost[x_len-1][i] < min_vals)
+            {
+                min_vals = cost[x_len-1][i];
+            }
+        }        
+
+        
+        
+        return min_vals;
+}
+
+
+double dtw1dBandConst_subsequence_localConst(double *x, double*y, int x_len, int y_len, double**cost, int dist_type, int bandwidth, double bsf, double *accLB)
+{
+        // declarations of variables
+        int i,j, ind, overflow; 
+        double min_vals, leftLB, temp;
+
+#ifdef ENABLE_EA
+        temp = bsf - accLB[y_len-1] ;
+#endif        
+        
+        //Initializing the row and columns of cost matrix
+        cost[0][0]= EucDist(x[0],y[0]);
+
+        for (i=1;i<=bandwidth;i++)
+        {
+            cost[i][0]=EucDist(x[i],y[0]);
+        }
+        for (j=1;j<=bandwidth;j++)
+        {
+            cost[0][j]=EucDist(x[0],y[j]);
+        }
+        
+        for (i=1;i<=bandwidth+1;i++)
+        {
+            j=1;
+            min_vals = min3(cost[i-1][j], cost[i-1][j-1], cost[i][j-1]);
+            cost[i][j] = EucDist(x[i],y[j]) + min_vals;
+        }
+        for (j=1;j<=bandwidth+1;j++)
+        {
+            i=1;
+            min_vals = min3(cost[i-1][j], cost[i-1][j-1], cost[i][j-1]);
+            cost[i][j] = EucDist(x[i],y[j]) + min_vals;
+        }
+        
+        //filling in all the cumulative cost matrix
+        for (i=2;i<x_len;i++)
+        {
+            
+#ifdef ENABLE_EA
+            leftLB = temp + accLB[i] ;
+            overflow=1;
+#endif                
+           
+            for (j=max(2, i-bandwidth);j<=min(y_len-1, i+bandwidth);j++)
+            {
+                min_vals = min3(cost[i-2][j-1], cost[i-1][j-1], cost[i-1][j-2]);
+                
+#ifdef ENABLE_EA  
+                if (min_vals > leftLB)
+                {
+                    cost[i][j]  =  FLT_MAX;
+                }
+                else
+                {
+                    cost[i][j] = EucDist(x[i],y[j]) + min_vals;
+                }
+                
+                if (cost[i][j] < leftLB)
+                {
+                overflow=0;
+                }
+
+#else
+                cost[i][j] = EucDist(x[i],y[j]) + min_vals;
+#endif 
+
+            }
+        
+#ifdef ENABLE_EA         
+        if(overflow==1)
+        {
+            return FLT_MAX;
+        }
+#endif        
+        
+        }
+        min_vals = FLT_MAX;
+        for (i=x_len-1;i>=x_len-1-bandwidth;i--)
+        {
+            if(cost[i][y_len-1] < min_vals)
+            {
+                min_vals = cost[i][y_len-1];
+            }
+        }
+        for (i=y_len-1;i>=y_len-1-bandwidth;i--)
+        {
+            if(cost[x_len-1][i] < min_vals)
+            {
+                min_vals = cost[x_len-1][i];
+            }
+        }        
+
+        
+        
+        return min_vals;
+}
+
 
 
 /*
@@ -474,4 +719,54 @@ double computeKeoghsLB(double *U, double *L, double * accLB, double *data,int le
     }
     return sum;
     
+}
+
+DISTTYPE computeLBkimFL_extended(DATATYPE *U1, DATATYPE *L1, DATATYPE *data1, DATATYPE *U2, DATATYPE *L2, DATATYPE *data2, int lenMotif)
+{
+    DISTTYPE sum1=0, sum2=0;
+    int ind=0;
+    
+    // data1 versus envelope of data2
+    ind = 0;
+    if (data1[ind]>U2[ind])
+    {
+        sum1+=EucDist(data1[ind],U2[ind]);
+    }
+    else if (data1[ind]<L2[ind])
+    {
+        sum1+=EucDist(data1[ind],L2[ind]);
+    }
+    
+    ind = lenMotif-1;
+    if (data1[ind]>U2[ind])
+    {
+        sum1+=EucDist(data1[ind],U2[ind]);
+    }
+    else if (data1[ind]<L2[ind])
+    {
+        sum1+=EucDist(data1[ind],L2[ind]);
+    }
+    
+    // data2 versus envelope of data1
+    ind = 0;
+    if (data2[ind]>U1[ind])
+    {
+        sum1+=EucDist(data2[ind],U1[ind]);
+    }
+    else if (data2[ind]<L1[ind])
+    {
+        sum1+=EucDist(data2[ind],L1[ind]);
+    }
+    
+    ind = lenMotif-1;
+    if (data2[ind]>U1[ind])
+    {
+        sum1+=EucDist(data2[ind],U1[ind]);
+    }
+    else if (data2[ind]<L1[ind])
+    {
+        sum1+=EucDist(data2[ind],L1[ind]);
+    }
+    
+    return max(sum1,sum2);
 }

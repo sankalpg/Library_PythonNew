@@ -482,3 +482,53 @@ void linearlyInterpolate(float *array, int size, float val1, float val2)
         array[ii] = val1 + ii*diff;
     }
 }
+
+DISTTYPE computeLBkimFL_extended(DATATYPE *U1, DATATYPE *L1, DATATYPE *data1, DATATYPE *U2, DATATYPE *L2, DATATYPE *data2, int lenMotif)
+{
+    DISTTYPE sum1=0, sum2=0;
+    int ind=0;
+    
+    // data1 versus envelope of data2
+    ind = 0;
+    if (data1[ind]>U2[ind])
+    {
+        sum1+=EucDist(data1[ind],U2[ind]);
+    }
+    else if (data1[ind]<L2[ind])
+    {
+        sum1+=EucDist(data1[ind],L2[ind]);
+    }
+    
+    ind = lenMotif-1;
+    if (data1[ind]>U2[ind])
+    {
+        sum1+=EucDist(data1[ind],U2[ind]);
+    }
+    else if (data1[ind]<L2[ind])
+    {
+        sum1+=EucDist(data1[ind],L2[ind]);
+    }
+    
+    // data2 versus envelope of data1
+    ind = 0;
+    if (data2[ind]>U1[ind])
+    {
+        sum1+=EucDist(data2[ind],U1[ind]);
+    }
+    else if (data2[ind]<L1[ind])
+    {
+        sum1+=EucDist(data2[ind],L1[ind]);
+    }
+    
+    ind = lenMotif-1;
+    if (data2[ind]>U1[ind])
+    {
+        sum1+=EucDist(data2[ind],U1[ind]);
+    }
+    else if (data2[ind]<L1[ind])
+    {
+        sum1+=EucDist(data2[ind],L1[ind]);
+    }
+    
+    return max(sum1,sum2);
+}
