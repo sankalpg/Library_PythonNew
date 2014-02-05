@@ -51,6 +51,12 @@ typedef struct motifInfo
     
 }motifInfo;
 
+typedef struct segInfo
+{
+    float str;
+    float end;
+}segInfo;
+
 //functions
 DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, float *tStamps, int K, INDTYPE ind1 , INDTYPE ind2, DISTTYPE dist, float blackDur);
 

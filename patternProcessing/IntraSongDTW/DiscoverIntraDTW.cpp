@@ -50,19 +50,20 @@ long long getNumLines(const char *file)
 
 int main( int argc , char *argv[])
 {
-    char *baseName, *pitchExt, *tonicExt, pitchFile[200]={'\0'}, tonicFile[200]={'\0'};
-    float tonic,blackDur, durMotif, t1,t2,*tStamps, pHop, *timeSamples, minPossiblePitch, allowedSilDur, temp1, pitchTemp, timeTemp, *stdVec, *mean, std, varDur, threshold,ex;
+    char *baseName, *pitchExt, *tonicExt, *segExt, pitchFile[200]={'\0'}, tonicFile[200]={'\0'}, segmentFile[200]={'\0'};
+    float tonic,blackDur, durMotif, t1,t2,*tStamps,*tStampsInterp, pHop, *timeSamples, minPossiblePitch, allowedSilDur, temp1, pitchTemp, timeTemp, *stdVec, *mean, std, varDur, threshold,ex;
     int lenMotif,lenMotifM1,  verbos=0, bandDTW, numReads,dsFactor, *blacklist,allowedSilSam, binsPOct, nRead; 
     INDTYPE    lenTS, count_DTW=0, ind, blackCnt=0;
     FILE *fp, *fp_out;
-    long long numPitchSam, pp=0;
+    long long numLinesInFile, pp=0;
     int         K,ii,jj,ll, varSam, N;
-    DATATYPE **data, **U, **L, *accLB, pitch , ex2, *pitchSamples;
+    DATATYPE **data,**dataInterp, **U, **L, *accLB, pitch , ex2, *pitchSamples;
     DISTTYPE LB_Keogh_EQ, realDist,LB_Keogh_EC,bsf=INF,**costMTX, LB_kim_FL;
     motifInfo *topKmotifs;
+    segInfo *taniSegs;
     float temp[4]={0};
     
-    if(argc < 9 || argc > 10)
+    if(argc < 10 || argc > 11)
     {
         printf("\nInvalid number of arguments!!!\n");
         exit(1);
@@ -71,16 +72,17 @@ int main( int argc , char *argv[])
     baseName = argv[1];
     pitchExt = argv[2];
     tonicExt = argv[3];
-    durMotif = atof(argv[4]);
-    K = atoi(argv[5]);
-    blackDur = atof(argv[6]);
-    if (atof(argv[7])>0)
+    segExt = argv[4];
+    durMotif = atof(argv[5]);
+    K = atoi(argv[6]);
+    blackDur = atof(argv[7]);
+    if (atof(argv[8])>0)
     {
-        bsf = atof(argv[7]);
+        bsf = atof(argv[8]);
     }
-    dsFactor = atoi(argv[8]);
+    dsFactor = atoi(argv[9]);
     
-    if( argc == 10 ){verbos = atoi(argv[9]);}
+    if( argc == 11 ){verbos = atoi(argv[10]);}
     
     //
     
@@ -103,32 +105,36 @@ int main( int argc , char *argv[])
     //tonic file name
     strcat(tonicFile,baseName);
     strcat(tonicFile,tonicExt);
+    //segment file name
+    strcat(segmentFile,baseName);
+    strcat(segmentFile,segExt);
         
     // Reading number of lines in the pitch file
-    numPitchSam = getNumLines(pitchFile);
+    numLinesInFile = getNumLines(pitchFile);
     
     // after downsampling we will be left with these many points
-    numPitchSam = floor(numPitchSam/dsFactor) +1;
+    numLinesInFile = floor(numLinesInFile/dsFactor) +1;
     
     //allocating memory for pitch and time samples
-    pitchSamples = (DATATYPE*)malloc(sizeof(DATATYPE)*numPitchSam);     // since we don't know silence regions, allocate maximum possible number of samples
-    timeSamples = (float*)malloc(sizeof(float)*numPitchSam);
+    pitchSamples = (DATATYPE*)malloc(sizeof(DATATYPE)*numLinesInFile);     // since we don't know silence regions, allocate maximum possible number of samples
+    timeSamples = (float*)malloc(sizeof(float)*numLinesInFile);
     
-    blacklist = (int*)malloc(sizeof(int)*numPitchSam);  //subsequences which we don't have to consider. Unfortunately we know them after we already stored them
+    blacklist = (int*)malloc(sizeof(int)*numLinesInFile);  //subsequences which we don't have to consider. Unfortunately we know them after we already stored them
     
-    data = (DATATYPE **)malloc(sizeof(DATATYPE *)*numPitchSam);         //since we don't know valid subsequences, we allocate max possible subsequences and later discard them and free the memory
-    tStamps = (float*)malloc(sizeof(float)*numPitchSam);                
+    data = (DATATYPE **)malloc(sizeof(DATATYPE *)*numLinesInFile);         //since we don't know valid subsequences, we allocate max possible subsequences and later discard them and free the memory
+    tStamps = (float*)malloc(sizeof(float)*numLinesInFile);                
     
-    mean = (float *)malloc(sizeof(float)*numPitchSam);
-    memset(mean,0,sizeof(float)*numPitchSam);
-    stdVec = (float *)malloc(sizeof(float)*numPitchSam);
-    memset(stdVec,0,sizeof(float)*numPitchSam);
+    mean = (float *)malloc(sizeof(float)*numLinesInFile);
+    memset(mean,0,sizeof(float)*numLinesInFile);
+    stdVec = (float *)malloc(sizeof(float)*numLinesInFile);
+    memset(stdVec,0,sizeof(float)*numLinesInFile);
     
     //opening pitch file JUST FOR OBTAINING HOP SIZE OF THE PITCH SEQUENCE
     fp =fopen(pitchFile,"r");
     if (fp==NULL)
     {
         printf("Error opening file %s\n", pitchFile);
+        return 0;
     }
     //reading just first two lines, in order to obtain hopsize//
     nRead = fscanf(fp, "%f\t%f\n",&temp[0],&temp[1]);
@@ -146,6 +152,7 @@ int main( int argc , char *argv[])
     if (fp==NULL)
     {
         printf("Error opening file %s\n", tonicFile);
+        return 0;
     }
     nRead = fscanf(fp, "%f\n",&tonic);
     fclose(fp);
@@ -261,7 +268,7 @@ int main( int argc , char *argv[])
        ind++;        
     }
     t2 = clock();
-    printf("Time taken to load the data :%f\n",(t2-t1)/CLOCKS_PER_SEC);
+    printf("Time taken to load the data and create subsequences:%f\n",(t2-t1)/CLOCKS_PER_SEC);
     
     //free memory which is not needed further
     free(mean);
@@ -271,10 +278,39 @@ int main( int argc , char *argv[])
     
     
     // Finding all the subsequences that should be blacklisted because they fall in TANI regions
-    
-    
+    t1 = clock();
+    numLinesInFile = getNumLines(segmentFile);
+    taniSegs = (segInfo *)malloc(sizeof(segInfo)*numLinesInFile);
+    fp =fopen(segmentFile,"r");
+    if (fp==NULL)
+    {
+        printf("Error opening file %s\n", segmentFile);
+        return 0;
+    }
+    //reading segments of the tani sections
+    ii=0;
+    while (fscanf(fp, "%f %f\n",&temp[0],&temp[1])!=EOF)
+    {
+        taniSegs[ii].str = temp[0];
+        taniSegs[ii].end = temp[1];
+        ii++;
+    }
+    fclose(fp);
+    //blacklisting the indexes whose time stamps lie between these segments
+    for(ii=0;ii<ind;ii++)
+    {
+        for(jj=0;jj<numLinesInFile;jj++)
+        {
+            if ((tStamps[ii]>=taniSegs[jj].str)&&(tStamps[ii]<=taniSegs[jj].end))
+                blacklist[ii]=1;
+        }
+        
+    }
+    t2 = clock();
+    printf("Time taken to blacklist tani sections :%f\n",(t2-t1)/CLOCKS_PER_SEC);
     
     //%%%%%%%%%%%%%%%% Removing blacklisted subsequences %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    t1 = clock();
     lenTS  = 0;    //total number of subsequences obtained
     ii=0;
     jj=0;
@@ -300,7 +336,8 @@ int main( int argc , char *argv[])
         
         ii++;
     }
-    
+    t2 = clock();
+    printf("Time taken to remove blacklist subsequences :%f\n",(t2-t1)/CLOCKS_PER_SEC);
     free(blacklist);
     
     if( verbos == 1 )
@@ -315,7 +352,7 @@ int main( int argc , char *argv[])
     topKmotifs = (motifInfo *)malloc(sizeof(motifInfo)*K);
     costMTX = (DISTTYPE **)malloc(sizeof(DISTTYPE *)*lenMotif);
 
-    
+    t1 = clock();
     for (ii=0;ii<lenTS;ii++)
     {
         U[ii] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotif);
@@ -323,6 +360,8 @@ int main( int argc , char *argv[])
         computeRunningMinMax(data[ii], U[ii], L[ii], lenMotif, bandDTW);
         
     }
+    t2 = clock();
+    printf("Time taken to generate envelopes for lower bound :%f\n",(t2-t1)/CLOCKS_PER_SEC);
     
     //initialization
     for(ii=0;ii<K;ii++)
