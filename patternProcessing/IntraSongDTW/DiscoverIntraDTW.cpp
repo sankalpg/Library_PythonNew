@@ -56,7 +56,7 @@ int main( int argc , char *argv[])
     INDTYPE    lenTS, count_DTW=0, ind, blackCnt=0;
     FILE *fp, *fp_out;
     long long numLinesInFile, pp=0;
-    int         K,ii,jj,ll, varSam, N;
+    long long         K,ii,jj,ll, varSam, N;
     DATATYPE **data,**dataInterp, **U, **L, *accLB, pitch , ex2, *pitchSamples;
     DISTTYPE LB_Keogh_EQ, realDist,LB_Keogh_EC,bsf=INF,**costMTX, LB_kim_FL;
     motifInfo *topKmotifs;
@@ -267,6 +267,7 @@ int main( int argc , char *argv[])
         }
        ind++;        
     }
+    lenTS = lenTS-lenMotifM1;   //we only have lenMotifM1 samples less than original number lenTS. it still counts blacklisted candidates
     t2 = clock();
     printf("Time taken to load the data and create subsequences:%f\n",(t2-t1)/CLOCKS_PER_SEC);
     
@@ -297,7 +298,7 @@ int main( int argc , char *argv[])
     }
     fclose(fp);
     //blacklisting the indexes whose time stamps lie between these segments
-    for(ii=0;ii<ind;ii++)
+    for(ii=0;ii<lenTS;ii++)
     {
         for(jj=0;jj<numLinesInFile;jj++)
         {
@@ -311,34 +312,36 @@ int main( int argc , char *argv[])
     
     //%%%%%%%%%%%%%%%% Removing blacklisted subsequences %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     t1 = clock();
-    lenTS  = 0;    //total number of subsequences obtained
-    ii=0;
-    jj=0;
-    while (ii<(ind-lenMotifM1)-jj)
+    //finding number of non blacklisted subsequences
+    N=0;
+    for (ii=0;ii<lenTS; ii++)
     {
-        if (blacklist[ii]==1)
+        if (blacklist[ii]==0)
+            N++;
+    }
+    dataInterp = (DATATYPE **)malloc(sizeof(DATATYPE *)*N*3);   //allocating memory also to have interpolated subsequences
+    tStampsInterp = (float *)malloc(sizeof(float)*N*3);         //allocating memory also to have interpolated subsequences
+    jj=0;
+    for (ii=0;ii<lenTS;ii++)
+    {
+        if (blacklist[ii]==0)
+        {
+            dataInterp[jj] = data[ii];
+            tStampsInterp[jj] = tStamps[ii];
+            jj++;
+        }
+        else if (blacklist[ii]==1)
         {
             free(data[ii]);
-            if(ii < ind-lenMotifM1-jj-1)
-            {
-                memmove(&data[ii], &data[ii+1], ((ind-lenMotifM1)-jj-(ii+1))*sizeof(DATATYPE*));
-                memmove(&tStamps[ii], &tStamps[ii+1], ((ind-lenMotifM1)-jj-(ii+1))*sizeof(float));
-                memmove(&blacklist[ii], &blacklist[ii+1], ((ind-lenMotifM1)-jj-(ii+1))*sizeof(int));
-            }
-            jj+=1;
-            ii-=1;
-            
         }
-        else
-        {
-            lenTS+=1;
-        }
-        
-        ii++;
     }
+    lenTS = N; 
+    free(data);
+    free(tStamps);
+    free(blacklist);
+    
     t2 = clock();
     printf("Time taken to remove blacklist subsequences :%f\n",(t2-t1)/CLOCKS_PER_SEC);
-    free(blacklist);
     
     if( verbos == 1 )
         printf("Finally number of subsequences are: %lld\nNumber of subsequences removed are: %lld\n",lenTS,blackCnt);
@@ -357,7 +360,7 @@ int main( int argc , char *argv[])
     {
         U[ii] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotif);
         L[ii] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotif);
-        computeRunningMinMax(data[ii], U[ii], L[ii], lenMotif, bandDTW);
+        computeRunningMinMax(dataInterp[ii], U[ii], L[ii], lenMotif, bandDTW);
         
     }
     t2 = clock();
@@ -389,25 +392,25 @@ int main( int argc , char *argv[])
     {
         for(jj=ii+1;jj<lenTS;jj++)
         {
-            if (fabs(tStamps[ii]-tStamps[jj])<blackDur)
+            if (fabs(tStampsInterp[ii]-tStampsInterp[jj])<blackDur)
             {
                 continue;
             }
             
-            LB_kim_FL = computeLBkimFL(data[ii][0], data[jj][0], data[ii][lenMotif-1], data[jj][lenMotif-1]);
+            LB_kim_FL = computeLBkimFL(dataInterp[ii][0], dataInterp[jj][0], dataInterp[ii][lenMotif-1], dataInterp[jj][lenMotif-1]);
             if (LB_kim_FL< bsf) 
             {
-                LB_Keogh_EQ = computeKeoghsLB(U[ii],L[ii],accLB, data[jj],lenMotif, bsf);
+                LB_Keogh_EQ = computeKeoghsLB(U[ii],L[ii],accLB, dataInterp[jj],lenMotif, bsf);
                 if(LB_Keogh_EQ < bsf)
                 {
-                    LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB, data[ii],lenMotif, bsf);
+                    LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB, dataInterp[ii],lenMotif, bsf);
                     if(LB_Keogh_EC < bsf)
                     {
-                        realDist = dtw1dBandConst(data[ii], data[jj], lenMotif, lenMotif, costMTX, 0, bandDTW, bsf, accLB);
+                        realDist = dtw1dBandConst(dataInterp[ii], dataInterp[jj], lenMotif, lenMotif, costMTX, 0, bandDTW, bsf, accLB);
                         count_DTW+=1;
                         if(realDist<bsf)
                         {
-                            bsf = manageTopKMotifs(topKmotifs, tStamps, K, ii, jj, realDist, blackDur);
+                            bsf = manageTopKMotifs(topKmotifs, tStampsInterp, K, ii, jj, realDist, blackDur);
                         }
                     }
                 }
@@ -424,22 +427,21 @@ int main( int argc , char *argv[])
     }
     for(ii=0;ii<K;ii++)
     {
-        printf("motif pair is %f\t%f\t%f\n", tStamps[topKmotifs[ii].ind1],tStamps[topKmotifs[ii].ind2], topKmotifs[ii].dist);
+        printf("motif pair is %f\t%f\t%f\n", tStampsInterp[topKmotifs[ii].ind1],tStampsInterp[topKmotifs[ii].ind2], topKmotifs[ii].dist);
     }
     printf("Total dtw computations %lld\n", count_DTW);
 
     //Memory clearing
     for(ii=0;ii<lenTS;ii++)
     {
-        free(data[ii]);
+        free(dataInterp[ii]);
         free(U[ii]);
         free(L[ii]);
         
     }
-    free(data);
-    
+    free(dataInterp);
     free(accLB);
-    free(tStamps);
+    free(tStampsInterp);
     free(U);
     free(L);
     free(topKmotifs);
