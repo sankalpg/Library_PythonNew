@@ -52,7 +52,7 @@ int main( int argc , char *argv[])
 {
     char *baseName, *pitchExt, *tonicExt, pitchFile[200]={'\0'}, tonicFile[200]={'\0'};
     float tonic,blackDur, durMotif, t1,t2,*tStamps, pHop, *timeSamples, minPossiblePitch, allowedSilDur, temp1, pitchTemp, timeTemp, *stdVec, *mean, std, varDur, threshold,ex;
-    int lenMotif,lenMotifM1,  verbos=0, bandDTW, numReads,dsFactor, *blacklist,allowedSilSam, binsPOct; 
+    int lenMotif,lenMotifM1,  verbos=0, bandDTW, numReads,dsFactor, *blacklist,allowedSilSam, binsPOct, nRead; 
     INDTYPE    lenTS, count_DTW=0, ind, blackCnt=0;
     FILE *fp, *fp_out;
     long long numPitchSam, pp=0;
@@ -131,8 +131,8 @@ int main( int argc , char *argv[])
         printf("Error opening file %s\n", pitchFile);
     }
     //reading just first two lines, in order to obtain hopsize//
-    fscanf(fp, "%f\t%f\n",&temp[0],&temp[1]);
-    fscanf(fp, "%f\t%f\n",&temp[2],&temp[3]);
+    nRead = fscanf(fp, "%f\t%f\n",&temp[0],&temp[1]);
+    nRead = fscanf(fp, "%f\t%f\n",&temp[2],&temp[3]);
     fclose(fp);
     pHop = (temp[2]-temp[0])*dsFactor;  //final hop size afte downsampling
     lenMotif = (int)round(durMotif/pHop);
@@ -147,7 +147,7 @@ int main( int argc , char *argv[])
     {
         printf("Error opening file %s\n", tonicFile);
     }
-    fscanf(fp, "%f\n",&tonic);
+    nRead = fscanf(fp, "%f\n",&tonic);
     fclose(fp);
     
     
@@ -170,7 +170,7 @@ int main( int argc , char *argv[])
         for(ii=0;ii<dsFactor-1;ii++)
         {
             // just bypass other samples to downsample the pitch sequence
-            fscanf(fp, "%f\t%f\n",&timeTemp,&pitchTemp);
+            nRead = fscanf(fp, "%f\t%f\n",&timeTemp,&pitchTemp);
             jj++;
         }
         
@@ -483,52 +483,3 @@ void linearlyInterpolate(float *array, int size, float val1, float val2)
     }
 }
 
-DISTTYPE computeLBkimFL_extended(DATATYPE *U1, DATATYPE *L1, DATATYPE *data1, DATATYPE *U2, DATATYPE *L2, DATATYPE *data2, int lenMotif)
-{
-    DISTTYPE sum1=0, sum2=0;
-    int ind=0;
-    
-    // data1 versus envelope of data2
-    ind = 0;
-    if (data1[ind]>U2[ind])
-    {
-        sum1+=EucDist(data1[ind],U2[ind]);
-    }
-    else if (data1[ind]<L2[ind])
-    {
-        sum1+=EucDist(data1[ind],L2[ind]);
-    }
-    
-    ind = lenMotif-1;
-    if (data1[ind]>U2[ind])
-    {
-        sum1+=EucDist(data1[ind],U2[ind]);
-    }
-    else if (data1[ind]<L2[ind])
-    {
-        sum1+=EucDist(data1[ind],L2[ind]);
-    }
-    
-    // data2 versus envelope of data1
-    ind = 0;
-    if (data2[ind]>U1[ind])
-    {
-        sum1+=EucDist(data2[ind],U1[ind]);
-    }
-    else if (data2[ind]<L1[ind])
-    {
-        sum1+=EucDist(data2[ind],L1[ind]);
-    }
-    
-    ind = lenMotif-1;
-    if (data2[ind]>U1[ind])
-    {
-        sum1+=EucDist(data2[ind],U1[ind]);
-    }
-    else if (data2[ind]<L1[ind])
-    {
-        sum1+=EucDist(data2[ind],L1[ind]);
-    }
-    
-    return max(sum1,sum2);
-}

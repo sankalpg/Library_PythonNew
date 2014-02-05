@@ -721,9 +721,9 @@ double computeKeoghsLB(double *U, double *L, double * accLB, double *data,int le
     
 }
 
-DISTTYPE computeLBkimFL_extended(DATATYPE *U1, DATATYPE *L1, DATATYPE *data1, DATATYPE *U2, DATATYPE *L2, DATATYPE *data2, int lenMotif)
+double computeLBkimFL_extended(double *U1, double *L1, double *data1, double *U2, double *L2, double *data2, int lenMotif)
 {
-    DISTTYPE sum1=0, sum2=0;
+    double sum1=0, sum2=0;
     int ind=0;
     
     // data1 versus envelope of data2
