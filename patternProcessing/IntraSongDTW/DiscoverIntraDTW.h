@@ -58,7 +58,7 @@ typedef struct segInfo
 }segInfo;
 
 //functions
-DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, float *tStamps, int K, INDTYPE ind1 , INDTYPE ind2, DISTTYPE dist, float blackDur);
+DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, segInfo *tStamps, int K, INDTYPE ind1 , INDTYPE ind2, DISTTYPE dist, float blackDur);
 
 long long getNumLines(const char *file);
 
