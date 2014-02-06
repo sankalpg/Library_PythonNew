@@ -70,3 +70,5 @@ double dtw1dBandConst_localConst(double *x, double*y, int x_len, int y_len, doub
 double dtw1dBandConst_subsequence_localConst(double *x, double*y, int x_len, int y_len, double**cost, int dist_type, int bandwidth, double bsf, double *accLB);
 
 double dtw1dBandConst_old(double *x, double*y, int x_len, int y_len, double*cost, int dist_type, int bandwidth, double bsf, double *accLB);
+
+double computeLBkimFL(double a1, double a2, double b1, double b2);

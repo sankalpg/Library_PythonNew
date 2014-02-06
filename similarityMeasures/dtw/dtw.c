@@ -720,7 +720,13 @@ double computeKeoghsLB(double *U, double *L, double * accLB, double *data,int le
     return sum;
     
 }
-
+double computeLBkimFL(double a1, double a2, double b1, double b2)
+{
+    double diff1, diff2;
+    diff1 = (a1-a2);
+    diff2 = (b1-b2);
+    return (diff1*diff1) + (diff2*diff2);
+}
 double computeLBkimFL_extended(double *U1, double *L1, double *data1, double *U2, double *L2, double *data2, int lenMotif)
 {
     double sum1=0, sum2=0;
