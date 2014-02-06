@@ -52,7 +52,7 @@ int main( int argc , char *argv[])
 {
     char *baseName, *pitchExt, *tonicExt, *segExt, *motifExt, pitchFile[200]={'\0'}, tonicFile[200]={'\0'}, segmentFile[200]={'\0'}, motifFile[200]={'\0'};
     float tonic,blackDur, durMotif, t1,t2, pHop, *timeSamples, minPossiblePitch, allowedSilDur, temp1, pitchTemp, timeTemp, *stdVec, *mean, std, varDur, threshold,ex;
-    int lenMotif,lenMotifM1,  verbos=0, bandDTW, numReads,dsFactor, *blacklist,allowedSilSam, binsPOct, nRead; 
+    int lenMotifReal,lenMotifRealM1,lenMotifInterpHM1, lenMotifInterpLM1, lenMotifInterpH, lenMotifInterpL, verbos=0, bandDTW, numReads,dsFactor, *blacklist,allowedSilSam, binsPOct, nRead; 
     INDTYPE    lenTS, count_DTW=0, ind, blackCnt=0;
     FILE *fp, *fp_out;
     long long numLinesInFile, pp=0;
@@ -60,8 +60,9 @@ int main( int argc , char *argv[])
     DATATYPE **data,**dataInterp, **U, **L, *accLB, pitch , ex2, *pitchSamples;
     DISTTYPE LB_Keogh_EQ, realDist,LB_Keogh_EC,bsf=INF,**costMTX, LB_kim_FL;
     motifInfo *topKmotifs;
-    segInfo *taniSegs, *tStamps, *tStampsInterp;
-    float temp[4]={0}, maxPauseDur, flatThreshold;
+    segInfo *taniSegs, *tStampsInterp;
+    segInfoInterp *tStamps;
+    float temp[4]={0}, maxPauseDur, flatThreshold,factorLow, factorHigh;
     
     if(argc < 11 || argc > 12)
     {
@@ -97,6 +98,9 @@ int main( int argc , char *argv[])
     threshold = 225;
     flatThreshold = 0.8;
     maxPauseDur = 0.5;
+    factorLow = 0.9;
+    factorHigh = 1.1;
+    
     
     
     //DERIVED
@@ -129,7 +133,7 @@ int main( int argc , char *argv[])
     memset(blacklist,0,sizeof(int)*numLinesInFile);
     
     data = (DATATYPE **)malloc(sizeof(DATATYPE *)*numLinesInFile);         //since we don't know valid subsequences, we allocate max possible subsequences and later discard them and free the memory
-    tStamps = (segInfo *)malloc(sizeof(segInfo)*numLinesInFile);                
+    tStamps = (segInfoInterp *)malloc(sizeof(segInfoInterp)*numLinesInFile);                
     
     mean = (float *)malloc(sizeof(float)*numLinesInFile);
     memset(mean,0,sizeof(float)*numLinesInFile);
@@ -148,11 +152,14 @@ int main( int argc , char *argv[])
     nRead = fscanf(fp, "%f\t%f\n",&temp[2],&temp[3]);
     fclose(fp);
     pHop = (temp[2]-temp[0])*dsFactor;  //final hop size afte downsampling
-    lenMotif = (int)round(durMotif/pHop);
+    lenMotifReal = (int)round(durMotif/pHop);
+    lenMotifInterpH = (int)ceil((durMotif*factorHigh)/pHop)+1;  //adding one because we need one extra sample for cubic interpolation
+    lenMotifInterpL = (int)round((durMotif*factorLow)/pHop);
     varSam = (int)round(varDur/pHop);
     temp1 = ((float)binsPOct)/LOG2;
-    lenMotifM1 = lenMotif-1;
-
+    lenMotifRealM1 = lenMotifReal-1;
+    lenMotifInterpHM1 = lenMotifInterpH-1;
+    lenMotifInterpLM1 = lenMotifInterpL-1;
     
     //Opening the tonic file
     fp =fopen(tonicFile,"r");
@@ -250,40 +257,41 @@ int main( int argc , char *argv[])
     {
         tStamps[ind].str = timeSamples[ind];
         
-        if (ind<lenTS-lenMotifM1)
+        if (ind<lenTS-lenMotifInterpHM1)
         {
-            data[ind] = (DATATYPE *)malloc(sizeof(DATATYPE*)*lenMotif);
-            tStamps[ind].end = timeSamples[ind+lenMotifM1];
-            if (fabs(tStamps[ind].str - tStamps[ind].end) > durMotif + maxPauseDur)       //allow 200 ms pauses in total not more than that
+            data[ind] = (DATATYPE *)malloc(sizeof(DATATYPE*)*lenMotifInterpH);
+            tStamps[ind].end = timeSamples[ind+lenMotifRealM1];
+            tStamps[ind].endInterpH = timeSamples[ind+lenMotifInterpHM1];
+            tStamps[ind].endInterpL = timeSamples[ind+lenMotifInterpLM1];
+            if (fabs(tStamps[ind].str - tStamps[ind].endInterpH) > durMotif*factorHigh + maxPauseDur)       //allow 200 ms pauses in total not more than that
                 {
                     blacklist[ind]=1;
                 }
         }
         
-        for(ll = min(ind,lenTS-lenMotifM1-1) ; ll >= max(0,ind-lenMotif) ; ll--)
+        for(ll = min(ind,lenTS-lenMotifInterpHM1-1) ; ll >= max(0,ind-lenMotifInterpHM1) ; ll--)
         {
             data[ll][ind-ll] = pitchSamples[ind]; 
         }
         
         ex+=stdVec[ind];
-        if (ind >= lenMotifM1)
+        if (ind >= lenMotifInterpHM1)
         {
-            if (blacklist[ind-lenMotifM1]==0)
+            if (blacklist[ind-lenMotifInterpHM1]==0)
             {
-                if(ex < flatThreshold*(float)lenMotif)
+                if(ex < flatThreshold*(float)lenMotifInterpH)
                 {
                     
-                    blacklist[ind-lenMotifM1]=1;
+                    blacklist[ind-lenMotifInterpHM1]=1;
                 }
                 
             }
             
-
-            ex -= stdVec[ind-lenMotifM1];
+            ex -= stdVec[ind-lenMotifInterpHM1];
         }
        ind++;        
     }
-    lenTS = lenTS-lenMotifM1;   //we only have lenMotifM1 samples less than original number lenTS. it still counts blacklisted candidates
+    lenTS = lenTS-lenMotifInterpHM1;   //we only have lenMotifInterpHM1 samples less than original number lenTS. it still counts blacklisted candidates
     t2 = clock();
     printf("Time taken to load the data and create subsequences:%f\n",(t2-t1)/CLOCKS_PER_SEC);
     
@@ -335,24 +343,55 @@ int main( int argc , char *argv[])
         if (blacklist[ii]==0)
             N++;
     }
+    
     dataInterp = (DATATYPE **)malloc(sizeof(DATATYPE *)*N*3);   //allocating memory also to have interpolated subsequences
     tStampsInterp = (segInfo *)malloc(sizeof(segInfo)*(N)*3);         //allocating memory also to have interpolated subsequences
     jj=0;
+    
+    //we do interpolation as well
+    double *indNormal;
+    float *indHigh, *indLow;
+    indLow = (float *)malloc(sizeof(float)*lenMotifReal);
+    indHigh = (float *)malloc(sizeof(float)*lenMotifReal);
+    for (ii=0;ii<lenMotifReal; ii++)
+    {
+        indLow[ii] = factorLow*ii;
+        indHigh[ii] = factorHigh*ii;
+    }
+    
     for (ii=0;ii<lenTS;ii++)
     {
         if (blacklist[ii]==0)
         {
+            
+            //low stretched subsequence
+            dataInterp[jj] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
+            cubicInterpolate(data[ii], dataInterp[jj], indLow, lenMotifReal);
+            tStampsInterp[jj].str = tStamps[ii].str;
+            tStampsInterp[jj].end = tStamps[ii].endInterpL;
+            jj++;
+            
+            //normal
             dataInterp[jj] = data[ii];
             tStampsInterp[jj].str = tStamps[ii].str;
             tStampsInterp[jj].end = tStamps[ii].end;
             jj++;
+            
+            //compacted subsequence
+            dataInterp[jj] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
+            cubicInterpolate(data[ii], dataInterp[jj], indHigh, lenMotifReal);
+            tStampsInterp[jj].str = tStamps[ii].str;
+            tStampsInterp[jj].end = tStamps[ii].endInterpH;
+            jj++;
+            
+            
         }
         else
         {
             free(data[ii]);
         }
     }
-    lenTS = N; 
+    lenTS = N*3; 
     free(data);
     free(tStamps);
     free(blacklist);
@@ -361,23 +400,23 @@ int main( int argc , char *argv[])
     printf("Time taken to remove blacklist subsequences :%f\n",(t2-t1)/CLOCKS_PER_SEC);
     
     if( verbos == 1 )
-        printf("Finally number of subsequences are: %lld\nNumber of subsequences removed are: %lld\n",lenTS,blackCnt-lenTS-lenMotifM1);
-        printf("Length of Each Time Series : %d\n\n",lenMotif);
+        printf("Finally number of subsequences are: %lld\nNumber of subsequences removed are: %lld\n",lenTS,blackCnt-N-lenMotifInterpHM1);
+        printf("Length of Each Time Series : %d\n\n",lenMotifReal);
     
     //################# Precomputing envelope of each subsequence for the LB Keogh lower bound ###########################
-    bandDTW = int(lenMotif*0.1);
+    bandDTW = int(lenMotifReal*0.1);
     U = (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS);
     L= (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS);
-    accLB = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotif);
+    accLB = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
     topKmotifs = (motifInfo *)malloc(sizeof(motifInfo)*K);
-    costMTX = (DISTTYPE **)malloc(sizeof(DISTTYPE *)*lenMotif);
+    costMTX = (DISTTYPE **)malloc(sizeof(DISTTYPE *)*lenMotifReal);
 
     t1 = clock();
     for (ii=0;ii<lenTS;ii++)
     {
-        U[ii] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotif);
-        L[ii] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotif);
-        computeRunningMinMax(dataInterp[ii], U[ii], L[ii], lenMotif, bandDTW);
+        U[ii] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
+        L[ii] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
+        computeRunningMinMax(dataInterp[ii], U[ii], L[ii], lenMotifReal, bandDTW);
         
     }
     t2 = clock();
@@ -391,10 +430,10 @@ int main( int argc , char *argv[])
         topKmotifs[ii].ind2 = 0;
     }
 
-    for (ii=0;ii<lenMotif;ii++)
+    for (ii=0;ii<lenMotifReal;ii++)
         {
-          costMTX[ii] = (DISTTYPE *)malloc(sizeof(DISTTYPE)*lenMotif);
-          for (jj=0;jj<lenMotif;jj++)
+          costMTX[ii] = (DISTTYPE *)malloc(sizeof(DISTTYPE)*lenMotifReal);
+          for (jj=0;jj<lenMotifReal;jj++)
           {
               costMTX[ii][jj]=FLT_MAX;
           }
@@ -409,21 +448,24 @@ int main( int argc , char *argv[])
     {
         for(jj=ii+1;jj<lenTS;jj++)
         {
+            // So we have three subs for every original sub. Its low interp, normal and high interp (if we consider 2 original subs we have now 9 combinations of 3 variants of each). Based on some intuitions we remove combinations which repeat (approximately repeat) like low1-normal2 would be really be close to normal1-high2 and so on and so forth. We removed 4 such combinations out of 9. This saves us a lot of computations
+            if (((ii%3==0)&&(jj%3==0))||((ii%3==0)&&(jj%3==1))||((ii%3==2)&&(jj%3==1))||((ii%3==2)&&(jj%3==2)))
+                continue;
             if (fabs(tStampsInterp[ii].str-tStampsInterp[jj].str)<blackDur)
             {
                 continue;
             }
             
-            LB_kim_FL = computeLBkimFL(dataInterp[ii][0], dataInterp[jj][0], dataInterp[ii][lenMotif-1], dataInterp[jj][lenMotif-1]);
+            LB_kim_FL = computeLBkimFL(dataInterp[ii][0], dataInterp[jj][0], dataInterp[ii][lenMotifReal-1], dataInterp[jj][lenMotifReal-1]);
             if (LB_kim_FL< bsf) 
             {
-                LB_Keogh_EQ = computeKeoghsLB(U[ii],L[ii],accLB, dataInterp[jj],lenMotif, bsf);
+                LB_Keogh_EQ = computeKeoghsLB(U[ii],L[ii],accLB, dataInterp[jj],lenMotifReal, bsf);
                 if(LB_Keogh_EQ < bsf)
                 {
-                    LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB, dataInterp[ii],lenMotif, bsf);
+                    LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB, dataInterp[ii],lenMotifReal, bsf);
                     if(LB_Keogh_EC < bsf)
                     {
-                        realDist = dtw1dBandConst(dataInterp[ii], dataInterp[jj], lenMotif, lenMotif, costMTX, 0, bandDTW, bsf, accLB);
+                        realDist = dtw1dBandConst(dataInterp[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, 0, bandDTW, bsf, accLB);
                         count_DTW+=1;
                         if(realDist<bsf)
                         {
@@ -446,7 +488,7 @@ int main( int argc , char *argv[])
     for(ii=0;ii<K;ii++)
     {
         fprintf(fp, "%f\t%f\t%f\t%f\t%f\n", tStampsInterp[topKmotifs[ii].ind1].str, tStampsInterp[topKmotifs[ii].ind1].end, tStampsInterp[topKmotifs[ii].ind2].str, tStampsInterp[topKmotifs[ii].ind2].end, topKmotifs[ii].dist);
-        printf("motif pair is %f\t%f\t%f\n", tStampsInterp[topKmotifs[ii].ind1].str,tStampsInterp[topKmotifs[ii].ind2].str, topKmotifs[ii].dist);
+        printf("motif pair is %f\t%f\t%f\t%lld\t%lld\n", tStampsInterp[topKmotifs[ii].ind1].str,tStampsInterp[topKmotifs[ii].ind2].str, topKmotifs[ii].dist, topKmotifs[ii].ind1%3, topKmotifs[ii].ind2%3);
     }
     printf("Total dtw computations %lld\n", count_DTW);
     fclose(fp);
@@ -465,7 +507,7 @@ int main( int argc , char *argv[])
     free(U);
     free(L);
     free(topKmotifs);
-    for(ii=0;ii<lenMotif;ii++)
+    for(ii=0;ii<lenMotifReal;ii++)
     {
         free(costMTX[ii]);
     }

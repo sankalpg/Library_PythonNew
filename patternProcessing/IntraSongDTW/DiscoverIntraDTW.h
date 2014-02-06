@@ -18,7 +18,7 @@
 #define INF 999999999999.0
 #define LOG2  0.693147180559945
 #define EPS 0.0000000000000001
-#define computeLBkimFL(a,b,c,d) ((a-b)*(a-b)) + ((c-d)*(c-d))
+//#define computeLBkimFL(a,b,c,d) ((a-b)*(a-b)) + ((c-d)*(c-d))
 
 
 #include <stdio.h>
@@ -36,6 +36,9 @@
 #include "../../similarityMeasures/dtw/dtw.h"
 #include "../../basicDSPFuncs/basicDSPCFuncs.h"
 #include <float.h>
+#include <gsl/gsl_errno.h>
+#include <gsl/gsl_spline.h>
+#include <gsl/gsl_interp.h>
 
 
 
@@ -56,6 +59,15 @@ typedef struct segInfo
     float str;
     float end;
 }segInfo;
+
+typedef struct segInfoInterp
+{
+    float str;
+    float end;
+    float endInterpH;
+    float endInterpL;
+    
+}segInfoInterp;
 
 //functions
 DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, segInfo *tStamps, int K, INDTYPE ind1 , INDTYPE ind2, DISTTYPE dist, float blackDur);
