@@ -14,6 +14,7 @@ MORE THAN THREE COMPARISONS PER ELEMENT
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 int computeRunningMinMax(double *data, double *U, double *L, int lenData, int winLen)
 {
@@ -106,3 +107,95 @@ int computeRunningMinMax(double *data, double *U, double *L, int lenData, int wi
     return 1;
     
 }
+
+void linearInterpolateV1(double *dataInp, double *dataOut, float *indInt, int N)
+{
+        int ii =0, ind;
+        double x0, x1, x2,x3,x4,t, a0, a1,a2,a3;
+        
+        for(ii=1;ii<N;ii++)
+        {
+            ind = floor(indInt[ii]);
+            t = indInt[ii] - ind;
+            
+            dataOut[ii] = dataInp[ind]*(1-t)  + dataInp[ind+1]*t ; 
+        }
+        
+}
+
+
+/*
+ * READ this reference for a nice comparison
+ * reference : http://radio.feld.cvut.cz/AES/atp2002/proc/paper07.pdf
+ */
+
+/*Not that this is not cubic spline interpolation*/
+void cubicInterpolate(double *dataInp, double *dataOut, float *indInt, int N)
+{
+    //NOTE you should pass N such that dataInp doesn't get out of index
+    
+        int ii =0, ind;
+        double x0, x1, x2,x3,x4,t, a0, a1,a2,a3;
+        
+        // for ii=0;
+        ii=0;
+        ind = floor(indInt[ii]);
+        t = indInt[ii] - ind;
+        x0 = dataInp[ind];      //ghost or phantom sample as they call it
+        x1 = dataInp[ind];
+        x2 = dataInp[ind+1];
+        x3 = dataInp[ind+2];
+        dataOut[ii] = x1 + (t/6.0)*(((-1.0*(t*t) + (3.0*t) -2 )*x0)  + 3*(((t*t) - (2.0*t) - 1)*x1) + 3.0*((-1.0*(t*t) + (t) + 2)*x2) + (((t*t) - 1)*x3) );
+        
+        for(ii=1;ii<N-1;ii++)
+        {
+            ind = floor(indInt[ii]);
+            t = indInt[ii] - ind;
+            x0 = dataInp[ind-1];
+            x1 = dataInp[ind];
+            x2 = dataInp[ind+1];
+            x3 = dataInp[ind+2];
+            dataOut[ii] = x1 + (t/6.0)*(((-1.0*(t*t) + (3.0*t) -2 )*x0)  + 3*(((t*t) - (2.0*t) - 1)*x1) + 3.0*((-1.0*(t*t) + (t) + 2)*x2) + (((t*t) - 1)*x3) );
+            
+        }
+        ii=N-1;
+        ind = floor(indInt[ii]);
+        t = indInt[ii] - ind;
+        x0 = dataInp[ind-1];
+        x1 = dataInp[ind];
+        x2 = dataInp[ind+1];
+        x3 = dataInp[ind+1];
+        dataOut[ii] = x1 + (t/6.0)*(((-1.0*(t*t) + (3.0*t) -2 )*x0)  + 3*(((t*t) - (2.0*t) - 1)*x1) + 3.0*((-1.0*(t*t) + (t) + 2)*x2) + (((t*t) - 1)*x3) );
+        
+
+}
+/*This is faster than cubic and not much worse in performance*/
+void quadraticInterpolate(double *dataInp, double *dataOut, float *indInt, int N)
+{
+        int ii =0, ind;
+        double x0, x1, x2,x3,x4,t, a0, a1,a2,a3;
+        
+        // for ii=0;
+        ii=0;
+        ind = floor(indInt[ii]);
+        t = indInt[ii] - ind;
+        x0 = dataInp[ind];      //ghost or phantom sample as they call it
+        x1 = dataInp[ind];
+        x2 = dataInp[ind+1];
+        x3 = dataInp[ind+2];
+        dataOut[ii] = x1 + (t/2.0)*(t*(x1-2.0*x2+x3) -3.0*x1+4.0*x2-x3);
+        
+        for(ii=1;ii<N;ii++)
+        {
+            ind = floor(indInt[ii]);
+            t = indInt[ii] - ind;
+            x0 = dataInp[ind-1];
+            x1 = dataInp[ind];
+            x2 = dataInp[ind+1];
+            x3 = dataInp[ind+2];
+            dataOut[ii] = x1 + (t/2.0)*(t*(x1-2.0*x2+x3) -3.0*x1+4.0*x2-x3);
+        }
+        
+}
+
+
