@@ -50,7 +50,7 @@ long long getNumLines(const char *file)
 
 int main( int argc , char *argv[])
 {
-    char *baseName, *pitchExt, *tonicExt, *segExt, *motifExt, pitchFile[200]={'\0'}, tonicFile[200]={'\0'}, segmentFile[200]={'\0'}, motifFile[200]={'\0'};
+    char *baseName, *pitchExt, *tonicExt, *segExt, *motifExt, pitchFile[200]={'\0'}, tonicFile[200]={'\0'}, segmentFile[200]={'\0'}, motifFile[200]={'\0'}, logFile[200]={'\0'};
     float tonic,blackDur, durMotif, t1,t2, pHop, *timeSamples, minPossiblePitch, allowedSilDur, temp1, pitchTemp, timeTemp, *stdVec, *mean, std, varDur, threshold,ex;
     int lenMotifReal,lenMotifRealM1,lenMotifInterpHM1, lenMotifInterpLM1, lenMotifInterpH, lenMotifInterpL, verbos=0, bandDTW, numReads,dsFactor, *blacklist,allowedSilSam, binsPOct, nRead; 
     INDTYPE    lenTS, count_DTW=0, ind, blackCnt=0;
@@ -63,6 +63,24 @@ int main( int argc , char *argv[])
     segInfo *taniSegs, *tStampsInterp;
     segInfoInterp *tStamps;
     float temp[4]={0}, maxPauseDur, flatThreshold,factorLow, factorHigh;
+    procLogs myProcLogs;
+    char commitID[] = "6f58f1c6eba3b863ba7945e4bc0a8cd997e84f97";
+    myProcLogs.commitID = commitID;
+    myProcLogs.timeDataLoad=0;
+    myProcLogs.timeGenSubs=0;
+    myProcLogs.timeRemBlacklist=0; 
+    myProcLogs.timeGenEnvelops=0;
+    myProcLogs.timeDiscovery=0;
+    myProcLogs.totalPitchSamples=0;
+    myProcLogs.totalPitchNonSilSamples=0;
+    myProcLogs.totalSubsGenerated=0;
+    myProcLogs.totalSubsBlacklisted=0;
+    myProcLogs.totalSubsInterpolated=0;
+    myProcLogs.totalFLDone=0;
+    myProcLogs.totalLBKeoghEQ=0;
+    myProcLogs.totalLBKeoghEC=0;
+    myProcLogs.totalDTWComputations=0;
+    myProcLogs.totalPriorityUpdates=0;
     
     if(argc < 11 || argc > 12)
     {
@@ -86,10 +104,6 @@ int main( int argc , char *argv[])
     
     if( argc == 12 ){verbos = atoi(argv[11]);}
     
-    //
-    
-    
-    
     //############ CRUCIAL PARAMETERS ##################
     minPossiblePitch = 60.0;
     allowedSilDur = 0.15;
@@ -101,10 +115,6 @@ int main( int argc , char *argv[])
     factorLow = 0.9;
     factorHigh = 1.1;
     
-    
-    
-    //DERIVED
-   
     //########################## READING PITCH DATA ##########################
     //pitch file name
     strcat(pitchFile,baseName);
@@ -115,12 +125,16 @@ int main( int argc , char *argv[])
     //segment file name
     strcat(segmentFile,baseName);
     strcat(segmentFile,segExt);
-    //segment file name
+    //motif file name
     strcat(motifFile,baseName);
     strcat(motifFile,motifExt);
+    //log file name
+    strcat(logFile,baseName);
+    strcat(logFile,".proclog");    
     
     // Reading number of lines in the pitch file
     numLinesInFile = getNumLines(pitchFile);
+    myProcLogs.totalPitchSamples = numLinesInFile;
     
     // after downsampling we will be left with these many points
     numLinesInFile = floor(numLinesInFile/dsFactor) +1;
@@ -198,6 +212,11 @@ int main( int argc , char *argv[])
               
     }
     fclose(fp);
+    t2 = clock();
+    myProcLogs.timeDataLoad = (t2-t1)/CLOCKS_PER_SEC;
+    myProcLogs.totalPitchNonSilSamples = ind;
+    if (verbos)
+    {printf("Time taken to load the pitch data :%f\n",myProcLogs.timeDataLoad);}
     
     //########################## Subsequence generation + selection step ##########################
     // In subsequence selection our aim is to discard those subsequences which result into trivial matches, 
@@ -208,7 +227,7 @@ int main( int argc , char *argv[])
     // For solving problem mentioned above we resort to short duration variance for deciding wheather a 
     // given sample belongs to a flat region or not. Later we accumulate total number of samples in a 
     // subsequence which belong to a flat region and filter the subsequence based on a threshold.
-    
+    t1 = clock();
     //computing local mean and variance
     for(ii=0;ii<2*varSam+1;ii++)
     {
@@ -292,8 +311,9 @@ int main( int argc , char *argv[])
        ind++;        
     }
     lenTS = lenTS-lenMotifInterpHM1;   //we only have lenMotifInterpHM1 samples less than original number lenTS. it still counts blacklisted candidates
+    myProcLogs.totalSubsGenerated = lenTS;
     t2 = clock();
-    printf("Time taken to load the data and create subsequences:%f\n",(t2-t1)/CLOCKS_PER_SEC);
+    printf("Time taken to create subsequences:%f\n",(t2-t1)/CLOCKS_PER_SEC);
     
     //free memory which is not needed further
     free(mean);
@@ -332,7 +352,8 @@ int main( int argc , char *argv[])
         
     }
     t2 = clock();
-    printf("Time taken to blacklist tani sections :%f\n",(t2-t1)/CLOCKS_PER_SEC);
+    if (verbos)
+    {printf("Time taken to blacklist tani sections :%f\n",(t2-t1)/CLOCKS_PER_SEC);}
     
     //%%%%%%%%%%%%%%%% Removing blacklisted subsequences %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     t1 = clock();
@@ -343,7 +364,7 @@ int main( int argc , char *argv[])
         if (blacklist[ii]==0)
             N++;
     }
-    
+    myProcLogs.totalSubsBlacklisted = myProcLogs.totalSubsGenerated-N;
     dataInterp = (DATATYPE **)malloc(sizeof(DATATYPE *)*N*3);   //allocating memory also to have interpolated subsequences
     tStampsInterp = (segInfo *)malloc(sizeof(segInfo)*(N)*3);         //allocating memory also to have interpolated subsequences
     jj=0;
@@ -397,10 +418,13 @@ int main( int argc , char *argv[])
     free(blacklist);
     
     t2 = clock();
-    printf("Time taken to remove blacklist subsequences :%f\n",(t2-t1)/CLOCKS_PER_SEC);
+    myProcLogs.timeRemBlacklist = (t2-t1)/CLOCKS_PER_SEC;
+    myProcLogs.totalSubsInterpolated = lenTS;
+    if (verbos)
+    {printf("Time taken to remove blacklist subsequences :%f\n", myProcLogs.timeRemBlacklist);}
     
     if( verbos == 1 )
-        printf("Finally number of subsequences are: %lld\nNumber of subsequences removed are: %lld\n",lenTS,blackCnt-N-lenMotifInterpHM1);
+        printf("Finally number of subsequences are: %lld\nNumber of subsequences removed are: %lld\n",lenTS,myProcLogs.totalSubsBlacklisted);
         printf("Length of Each Time Series : %d\n\n",lenMotifReal);
     
     //################# Precomputing envelope of each subsequence for the LB Keogh lower bound ###########################
@@ -420,7 +444,9 @@ int main( int argc , char *argv[])
         
     }
     t2 = clock();
-    printf("Time taken to generate envelopes for lower bound :%f\n",(t2-t1)/CLOCKS_PER_SEC);
+    myProcLogs.timeGenEnvelops = (t2-t1)/CLOCKS_PER_SEC;
+    if (verbos)
+    {printf("Time taken to generate envelopes for lower bound :%f\n",myProcLogs.timeGenEnvelops);}
     
     //initialization
     for(ii=0;ii<K;ii++)
@@ -449,7 +475,7 @@ int main( int argc , char *argv[])
         for(jj=ii+1;jj<lenTS;jj++)
         {
             // So we have three subs for every original sub. Its low interp, normal and high interp (if we consider 2 original subs we have now 9 combinations of 3 variants of each). Based on some intuitions we remove combinations which repeat (approximately repeat) like low1-normal2 would be really be close to normal1-high2 and so on and so forth. We removed 4 such combinations out of 9. This saves us a lot of computations
-            if (((ii%3==0)&&(jj%3==0))||((ii%3==0)&&(jj%3==1))||((ii%3==2)&&(jj%3==1))||((ii%3==2)&&(jj%3==2)))
+            if (((ii%3==0)&&(jj%3==0))||((ii%3==2)&&(jj%3==2))||((ii%3==0)&&(jj%3==1))||((ii%3==2)&&(jj%3==1)))
                 continue;
             if (fabs(tStampsInterp[ii].str-tStampsInterp[jj].str)<blackDur)
             {
@@ -457,19 +483,23 @@ int main( int argc , char *argv[])
             }
             
             LB_kim_FL = computeLBkimFL(dataInterp[ii][0], dataInterp[jj][0], dataInterp[ii][lenMotifReal-1], dataInterp[jj][lenMotifReal-1]);
+            myProcLogs.totalFLDone++;
             if (LB_kim_FL< bsf) 
             {
                 LB_Keogh_EQ = computeKeoghsLB(U[ii],L[ii],accLB, dataInterp[jj],lenMotifReal, bsf);
+                myProcLogs.totalLBKeoghEQ++;
                 if(LB_Keogh_EQ < bsf)
                 {
                     LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB, dataInterp[ii],lenMotifReal, bsf);
+                    myProcLogs.totalLBKeoghEC++;
                     if(LB_Keogh_EC < bsf)
                     {
                         realDist = dtw1dBandConst(dataInterp[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, 0, bandDTW, bsf, accLB);
-                        count_DTW+=1;
+                        myProcLogs.totalDTWComputations++;
                         if(realDist<bsf)
                         {
                             bsf = manageTopKMotifs(topKmotifs, tStampsInterp, K, ii, jj, realDist, blackDur);
+                            myProcLogs.totalPriorityUpdates++;
                         }
                     }
                 }
@@ -479,20 +509,69 @@ int main( int argc , char *argv[])
 
     //timing
     t2 = clock();
-    
+    myProcLogs.timeDiscovery = (t2-t1)/CLOCKS_PER_SEC;
     if (verbos)
-    {
-        printf("Time taken to compute all combinations :%f\n",(t2-t1)/CLOCKS_PER_SEC);
-    }
+    {printf("Time taken to compute all combinations :%f\n",myProcLogs.timeDiscovery);}
+    
     fp =fopen(motifFile,"w");
     for(ii=0;ii<K;ii++)
     {
-        fprintf(fp, "%f\t%f\t%f\t%f\t%f\n", tStampsInterp[topKmotifs[ii].ind1].str, tStampsInterp[topKmotifs[ii].ind1].end, tStampsInterp[topKmotifs[ii].ind2].str, tStampsInterp[topKmotifs[ii].ind2].end, topKmotifs[ii].dist);
+        fprintf(fp, "%f\t%f\t%f\t%f\t%f\t%lld\t%lld\n", tStampsInterp[topKmotifs[ii].ind1].str, tStampsInterp[topKmotifs[ii].ind1].end, tStampsInterp[topKmotifs[ii].ind2].str, tStampsInterp[topKmotifs[ii].ind2].end, topKmotifs[ii].dist, topKmotifs[ii].ind1, topKmotifs[ii].ind2);
         printf("motif pair is %f\t%f\t%f\t%lld\t%lld\n", tStampsInterp[topKmotifs[ii].ind1].str,tStampsInterp[topKmotifs[ii].ind2].str, topKmotifs[ii].dist, topKmotifs[ii].ind1%3, topKmotifs[ii].ind2%3);
     }
-    printf("Total dtw computations %lld\n", count_DTW);
     fclose(fp);
-
+    
+    
+    fp =fopen(logFile,"w");
+    fprintf(fp, "\nCommit Id of the code used for processing:\t%s\n", myProcLogs.commitID);
+    fprintf(fp, "\n#################### TIME RELATED STATS ####################\n");
+    fprintf(fp, "Time taken to load the pitch data:\t%f\n", myProcLogs.timeDataLoad);
+    fprintf(fp, "Time taken to generate subsequences:\t%f\n", myProcLogs.timeGenSubs);
+    fprintf(fp, "Time taken to remove blacklisted subsequences:\t%f\n", myProcLogs.timeRemBlacklist);
+    fprintf(fp, "Time taken to generate envelops:\t%f\n", myProcLogs.timeGenEnvelops);
+    fprintf(fp, "Time taken to discover patterns:\t%f\n", myProcLogs.timeDiscovery);
+    
+    fprintf(fp, "\n#################### DATA POINTS RELATED STATS ####################\n");
+    fprintf(fp, "Total number of pitch samples in the file:\t%lld\n", myProcLogs.totalPitchSamples);
+    fprintf(fp, "Total number of non zero pitch samples in the file:\t%lld\n", myProcLogs.totalPitchNonSilSamples);
+    fprintf(fp, "Total number of subsequences generated originally:\t%lld\n", myProcLogs.totalSubsGenerated);
+    fprintf(fp, "Total number of subsequences blacklisted:\t%lld\n", myProcLogs.totalSubsBlacklisted);
+    fprintf(fp, "Total number of subsequences after interpolation:\t%lld\n", myProcLogs.totalSubsInterpolated);
+    
+    fprintf(fp, "\n#################### FNC CALLS RELATED STATS ####################\n");
+    fprintf(fp, "Number of FL lowerbound is computed:\t%lld\n", myProcLogs.totalFLDone);
+    fprintf(fp, "Number of LB_Keogh_EQ computed:\t%lld\n", myProcLogs.totalLBKeoghEQ);
+    fprintf(fp, "Number of LB_Keogh_EC computed:\t%lld\n", myProcLogs.totalLBKeoghEC);
+    fprintf(fp, "Number of times DTW computed:\t%lld\n", myProcLogs.totalDTWComputations);
+    fprintf(fp, "Number of updates of priority list:\t%lld\n", myProcLogs.totalPriorityUpdates);
+    fclose(fp);
+    
+    
+    if (verbos)
+    {
+        printf("\nCommit Id of the code used for processing:\t%s\n", myProcLogs.commitID);
+        printf("\n#################### TIME RELATED STATS ####################\n");
+        printf("Time taken to load the pitch data:\t%f\n", myProcLogs.timeDataLoad);
+        printf("Time taken to generate subsequences:\t%f\n", myProcLogs.timeGenSubs);
+        printf("Time taken to remove blacklisted subsequences:\t%f\n", myProcLogs.timeRemBlacklist);
+        printf("Time taken to generate envelops:\t%f\n", myProcLogs.timeGenEnvelops);
+        printf("Time taken to discover patterns:\t%f\n", myProcLogs.timeDiscovery);
+        
+        printf("\n#################### DATA POINTS RELATED STATS ####################\n");
+        printf("Total number of pitch samples in the file:\t%lld\n", myProcLogs.totalPitchSamples);
+        printf("Total number of non zero pitch samples in the file:\t%lld\n", myProcLogs.totalPitchNonSilSamples);
+        printf("Total number of subsequences generated originally:\t%lld\n", myProcLogs.totalSubsGenerated);
+        printf("Total number of subsequences blacklisted:\t%lld\n", myProcLogs.totalSubsBlacklisted);
+        printf("Total number of subsequences after interpolation:\t%lld\n", myProcLogs.totalSubsInterpolated);
+        
+        printf("\n#################### FNC CALLS RELATED STATS ####################\n");        
+        printf("Number of FL lowerbound is computed:\t%lld\n", myProcLogs.totalFLDone);
+        printf("Number of LB_Keogh_EQ computed:\t%lld\n", myProcLogs.totalLBKeoghEQ);
+        printf("Number of LB_Keogh_EC computed:\t%lld\n", myProcLogs.totalLBKeoghEC);
+        printf("Number of times DTW computed:\t%lld\n", myProcLogs.totalDTWComputations);
+        printf("Number of updates of priority list:\t%lld\n", myProcLogs.totalPriorityUpdates);
+    }
+    
     //Memory clearing
     for(ii=0;ii<lenTS;ii++)
     {
@@ -512,9 +591,6 @@ int main( int argc , char *argv[])
         free(costMTX[ii]);
     }
     free(costMTX);
-    
-
-    
     return 1;
     
 }

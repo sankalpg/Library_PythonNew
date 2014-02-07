@@ -69,6 +69,29 @@ typedef struct segInfoInterp
     
 }segInfoInterp;
 
+typedef struct procLogs
+{
+    char *commitID;
+    
+    float timeDataLoad;
+    float timeGenSubs;
+    float timeRemBlacklist; 
+    float timeGenEnvelops;
+    float timeDiscovery;
+    
+    long long totalPitchSamples;
+    long long totalPitchNonSilSamples;
+    long long totalSubsGenerated;
+    long long totalSubsBlacklisted;
+    long long totalSubsInterpolated;
+    
+    long long totalFLDone;
+    long long totalLBKeoghEQ;
+    long long totalLBKeoghEC;
+    long long totalDTWComputations;
+    long long totalPriorityUpdates;
+}procLogs;
+
 //functions
 DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, segInfo *tStamps, int K, INDTYPE ind1 , INDTYPE ind2, DISTTYPE dist, float blackDur);
 
