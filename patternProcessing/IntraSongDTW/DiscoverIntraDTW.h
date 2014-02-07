@@ -36,11 +36,6 @@
 #include "../../similarityMeasures/dtw/dtw.h"
 #include "../../basicDSPFuncs/basicDSPCFuncs.h"
 #include <float.h>
-#include <gsl/gsl_errno.h>
-#include <gsl/gsl_spline.h>
-#include <gsl/gsl_interp.h>
-
-
 
 
 
