@@ -11,42 +11,6 @@
 
 
 
-/*
- * This function quickly returns number of lines in a text file
- */
-long long getNumLines(const char *file)
-{
-    int fp;
-    struct stat fs;
-    char *buf;
-    long long line=0, ii;
-
-    fp = open(file,O_RDONLY);
-    if (fp == -1) 
-    {
-                printf("Error opening file %s\n",file);
-                return 0;
-    }
-    if (fstat(fp, &fs) == -1)
-    {
-                printf("Error opening file %s\n",file);
-                return 0;
-    }
-    buf = (char*)mmap(0, fs.st_size, PROT_READ, MAP_SHARED, fp, 0);
-    
-    for (ii=0;ii<fs.st_size;ii++)
-    {
-        if (buf[ii]=='\n')
-            line++;
-    }
-    
-    munmap(buf, fs.st_size);
-    close(fp);
-    
-    return line;
-    
-}
-
 
 int main( int argc , char *argv[])
 {
@@ -665,3 +629,38 @@ void linearlyInterpolate(float *array, int size, float val1, float val2)
 
 
 
+/*
+ * This function quickly returns number of lines in a text file
+ */
+long long getNumLines(const char *file)
+{
+    int fp;
+    struct stat fs;
+    char *buf;
+    long long line=0, ii;
+
+    fp = open(file,O_RDONLY);
+    if (fp == -1) 
+    {
+                printf("Error opening file %s\n",file);
+                return 0;
+    }
+    if (fstat(fp, &fs) == -1)
+    {
+                printf("Error opening file %s\n",file);
+                return 0;
+    }
+    buf = (char*)mmap(0, fs.st_size, PROT_READ, MAP_SHARED, fp, 0);
+    
+    for (ii=0;ii<fs.st_size;ii++)
+    {
+        if (buf[ii]=='\n')
+            line++;
+    }
+    
+    munmap(buf, fs.st_size);
+    close(fp);
+    
+    return line;
+    
+}
