@@ -26,7 +26,7 @@ int main( int argc , char *argv[])
     motifInfo *topKmotifs;
     segInfo *taniSegs, *tStampsInterp;
     segInfoInterp *tStamps;
-    float temp[4]={0}, maxPauseDur, flatThreshold,factorLow, factorHigh;/Users/sankalp/Work/MTG_Barcelona/PhD/Library_PythonNew/patternProcessing/IntraSongDTW/DiscoverIntraDTW.h
+    float temp[4]={0}, maxPauseDur, flatThreshold,factorLow, factorHigh;
     double *indNormal;
     float *indHigh, *indLow;
     procLogs myProcLogs;
