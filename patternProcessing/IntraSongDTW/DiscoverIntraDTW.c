@@ -393,7 +393,7 @@ int main( int argc , char *argv[])
         printf("Length of Each Time Series : %d\n\n",lenMotifReal);
     
     //################# Precomputing envelope of each subsequence for the LB Keogh lower bound ###########################
-    bandDTW = (int)round(lenMotifReal*0.1);
+    bandDTW = (int)floor(lenMotifReal*0.1);
     U = (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS);
     L= (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS);
     accLB = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
