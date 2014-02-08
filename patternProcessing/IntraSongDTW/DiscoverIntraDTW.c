@@ -26,7 +26,7 @@ int main( int argc , char *argv[])
     motifInfo *topKmotifs;
     segInfo *taniSegs, *tStampsInterp;
     segInfoInterp *tStamps;
-    float temp[4]={0}, maxPauseDur, flatThreshold,factorLow, factorHigh;
+    float temp[4]={0}, maxPauseDur, flatThreshold,factorLow, factorHigh;/Users/sankalp/Work/MTG_Barcelona/PhD/Library_PythonNew/patternProcessing/IntraSongDTW/DiscoverIntraDTW.h
     double *indNormal;
     float *indHigh, *indLow;
     procLogs myProcLogs;
@@ -393,7 +393,7 @@ int main( int argc , char *argv[])
         printf("Length of Each Time Series : %d\n\n",lenMotifReal);
     
     //################# Precomputing envelope of each subsequence for the LB Keogh lower bound ###########################
-    bandDTW = int(lenMotifReal*0.1);
+    bandDTW = (int)round(lenMotifReal*0.1);
     U = (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS);
     L= (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS);
     accLB = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
@@ -556,6 +556,8 @@ int main( int argc , char *argv[])
         free(costMTX[ii]);
     }
     free(costMTX);
+    
+    
     return 1;
     
 }
