@@ -63,6 +63,8 @@ int main( int argc , char *argv[])
     segInfo *taniSegs, *tStampsInterp;
     segInfoInterp *tStamps;
     float temp[4]={0}, maxPauseDur, flatThreshold,factorLow, factorHigh;
+    double *indNormal;
+    float *indHigh, *indLow;
     procLogs myProcLogs;
     char commitID[] = "6f58f1c6eba3b863ba7945e4bc0a8cd997e84f97";
     myProcLogs.commitID = commitID;
@@ -370,8 +372,7 @@ int main( int argc , char *argv[])
     jj=0;
     
     //we do interpolation as well
-    double *indNormal;
-    float *indHigh, *indLow;
+    
     indLow = (float *)malloc(sizeof(float)*lenMotifReal);
     indHigh = (float *)malloc(sizeof(float)*lenMotifReal);
     for (ii=0;ii<lenMotifReal; ii++)

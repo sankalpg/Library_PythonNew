@@ -35,6 +35,7 @@ double LocalDist(double *a, double*b, int dim, DistMethods fptr, double *wghts)
         case 3:
             return ((*fptr)(a[0],b[0]))*wghts[0] + ((*fptr)(a[1],b[1]))*wghts[1] + ((*fptr)(a[2],b[2]))*wghts[2];
         }
+        return 0.0;
 }
 
 double min3(double a, double b, double c)
