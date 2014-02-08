@@ -7,3 +7,5 @@ void cubicInterpolate(double *dataInp, double *dataOut, float *indInt, int N);
 void linearInterpolateV1(double *dataInp, double *dataOut, float *indInt, int N);
 
 void quadraticInterpolate(double *dataInp, double *dataOut, float *indInt, int N);
+
+

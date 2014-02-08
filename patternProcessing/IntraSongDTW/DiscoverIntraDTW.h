@@ -95,3 +95,5 @@ long long getNumLines(const char *file);
 void linearlyInterpolate(float *array, int size, float val1, float val2);
 
 #endif //#ifndef DiscoverIntraDTW_H
+
+
