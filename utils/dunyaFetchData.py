@@ -28,8 +28,8 @@ def obtainPitchTonicInDB(root_dir):
                     tonicUrl = 'http://dunya.compmusic.upf.edu/document/by-id/' + mbid + '/ctonic?v=0.2&subtype=tonic'
                     pitchData = np.array(eval(requests.get(pitchUrl).content))
                     tonicData = float(requests.get(tonicUrl).content)
-                    np.savetxt(pithcFile, pitchData, delimiter = "\t", fmt='%0.2f')
-                    np.savetxt(tonicFile, np.array([tonicData]), delimiter = "\t" , fmt='%0.2f')
+                    np.savetxt(pithcFile, pitchData, delimiter = "\t", fmt='%0.5f')
+                    np.savetxt(tonicFile, np.array([tonicData]), delimiter = "\t" , fmt='%0.5f')
                 except:
                     cnt=cnt+1
                     print audiofile
