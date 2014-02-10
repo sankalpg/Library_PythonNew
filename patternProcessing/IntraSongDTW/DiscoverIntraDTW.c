@@ -14,7 +14,7 @@
 
 int main( int argc , char *argv[])
 {
-    char *baseName, *pitchExt, *tonicExt, *segExt, *motifExt, pitchFile[200]={'\0'}, tonicFile[200]={'\0'}, segmentFile[200]={'\0'}, motifFile[200]={'\0'}, logFile[200]={'\0'};
+    char *baseName, *pitchExt, *tonicExt, *segExt, *motifExt, *logExt, pitchFile[200]={'\0'}, tonicFile[200]={'\0'}, segmentFile[200]={'\0'}, motifFile[200]={'\0'}, logFile[200]={'\0'};
     float tonic,blackDur, durMotif, t1,t2, pHop, *timeSamples, minPossiblePitch, allowedSilDur, temp1, pitchTemp, timeTemp, *stdVec, *mean, std, varDur, threshold,ex;
     int lenMotifReal,lenMotifRealM1,lenMotifInterpHM1, lenMotifInterpLM1, lenMotifInterpH, lenMotifInterpL, verbos=0, bandDTW, numReads,dsFactor, *blacklist,allowedSilSam, binsPOct, nRead; 
     INDTYPE    lenTS, count_DTW=0, ind, blackCnt=0;
@@ -48,7 +48,7 @@ int main( int argc , char *argv[])
     myProcLogs.totalDTWComputations=0;
     myProcLogs.totalPriorityUpdates=0;
     
-    if(argc < 11 || argc > 12)
+    if(argc < 12 || argc > 13)
     {
         printf("\nInvalid number of arguments!!!\n");
         exit(1);
@@ -59,16 +59,17 @@ int main( int argc , char *argv[])
     tonicExt = argv[3];
     segExt = argv[4];
     motifExt = argv[5];
-    durMotif = atof(argv[6]);
-    K = atoi(argv[7]);
-    blackDur = atof(argv[8]);
-    if (atof(argv[9])>0)
+    logExt = argv[6];
+    durMotif = atof(argv[7]);
+    K = atoi(argv[8]);
+    blackDur = atof(argv[9]);
+    if (atof(argv[10])>0)
     {
-        bsf = atof(argv[9]);
+        bsf = atof(argv[10]);
     }
-    dsFactor = atoi(argv[10]);
+    dsFactor = atoi(argv[11]);
     
-    if( argc == 12 ){verbos = atoi(argv[11]);}
+    if( argc == 13 ){verbos = atoi(argv[12]);}
     
     //############ CRUCIAL PARAMETERS ##################
     minPossiblePitch = 60.0;
@@ -96,7 +97,7 @@ int main( int argc , char *argv[])
     strcat(motifFile,motifExt);
     //log file name
     strcat(logFile,baseName);
-    strcat(logFile,".proclog");    
+    strcat(logFile,logExt);    
     
     // Reading number of lines in the pitch file
     numLinesInFile = getNumLines(pitchFile);
