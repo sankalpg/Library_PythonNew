@@ -373,7 +373,251 @@ INDTYPE generateSubsequenceDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     return lenTS;
 }
 
-void dumpMotifInfo(char *motifFile, motifInfo *topKmotifs, segInfo_t *tStampsInterp, int K, int verbos)
+INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char *baseName, fileExts_t *myFileExts, procParams_t *myProcParams, int maxNMotifs, int verbos)
+{
+     FILE *fp;
+    char pitchFile[200]={'\0'}, tonicFile[200]={'\0'}, motifFile[200]={'\0'};
+    
+    INDTYPE numLinesInFile, ind, ii, jj, ll, lenTS, N, totalPitchNonSilSamples, *seedMotifInd;
+    DATATYPE *pitchSamples, **data, **dataInterp;
+    
+    float tonic, pHop, temp1, temp[10]={0}, ex, pitchTemp, timeTemp;
+    float *timeSamples, *indLow, *indHigh, min_val;
+    
+    int lenMotifReal,lenMotifRealM1,lenMotifInterpHM1, lenMotifInterpLM1, lenMotifInterpH, lenMotifInterpL,dsFactor, nRead; 
+    
+    segInfoInterp_t *tStamps;
+    segInfo_t *taniSegs, *tStampsInterp, *seedMotifs;
+    
+    
+    //pitch file name
+    strcat(pitchFile,baseName);
+    strcat(pitchFile,myFileExts->pitchExt);
+    //tonic file name
+    strcat(tonicFile,baseName);
+    strcat(tonicFile,myFileExts->tonicExt);
+    //motif file name
+    strcat(motifFile,baseName);
+    strcat(motifFile,myFileExts->seedMotifExt);
+    
+    //########################## READING PITCH DATA ##########################
+    // Reading number of lines in the pitch file
+    numLinesInFile = getNumLines(pitchFile);
+    // after downsampling we will be left with these many points
+    numLinesInFile = floor(numLinesInFile/myProcParams->dsFactor) +1;
+    
+    //allocating memory for pitch and time samples
+    pitchSamples = (DATATYPE*)malloc(sizeof(DATATYPE)*numLinesInFile);     // since we don't know silence regions, allocate maximum possible number of samples
+    timeSamples = (float*)malloc(sizeof(float)*numLinesInFile);
+    
+    //opening pitch file JUST FOR OBTAINING HOP SIZE OF THE PITCH SEQUENCE
+    fp =fopen(pitchFile,"r");
+    if (fp==NULL)
+    {
+        printf("Error opening file %s\n", pitchFile);
+        return 0;
+    }
+    //reading just first two lines, in order to obtain hopsize//
+    nRead = fscanf(fp, "%f\t%f\n",&temp[0],&temp[1]);
+    nRead = fscanf(fp, "%f\t%f\n",&temp[2],&temp[3]);
+    fclose(fp);
+    pHop = (temp[2]-temp[0])*myProcParams->dsFactor;  //final hop size afte downsampling
+    lenMotifReal = (int)round(myProcParams->durMotif/pHop);
+    *motifLen = lenMotifReal;
+    lenMotifInterpH = (int)ceil((myProcParams->durMotif*myProcParams->factorHigh)/pHop)+1;  //adding one because we need one extra sample for cubic interpolation
+    lenMotifInterpL = (int)round((myProcParams->durMotif*myProcParams->factorLow)/pHop);
+    temp1 = ((float)myProcParams->binsPOct)/LOG2;
+    lenMotifRealM1 = lenMotifReal-1;
+    lenMotifInterpHM1 = lenMotifInterpH-1;
+    lenMotifInterpLM1 = lenMotifInterpL-1;
+    
+    //Opening the tonic file
+    fp =fopen(tonicFile,"r");
+    if (fp==NULL)
+    {
+        printf("Error opening file %s\n", tonicFile);
+        return 0;
+    }
+    nRead = fscanf(fp, "%f\n",&tonic);
+    fclose(fp);
+    
+    
+    //Finally opening the pitch file to read the data
+    fp =fopen(pitchFile,"r");
+    ind=0;
+    jj=0;
+    while (fscanf(fp, "%f\t%f\n",&timeTemp,&pitchTemp)!=EOF)    //read till the end of the file
+    {
+        
+        if (pitchTemp>myProcParams->minPossiblePitch) //only fill in meaningful pitch data, reject other pitch samples
+        {
+            pitchSamples[ind]= (DATATYPE)round(temp1*log((pitchTemp+EPS)/tonic));
+            timeSamples[ind] = timeTemp;
+            ind++;
+            jj++;
+        }
+        
+        for(ii=0;ii<myProcParams->dsFactor-1;ii++)
+        {
+            // just bypass other samples to downsample the pitch sequence
+            nRead = fscanf(fp, "%f\t%f\n",&timeTemp,&pitchTemp);
+            jj++;
+        }
+        
+              
+    }
+    totalPitchNonSilSamples = ind;
+    fclose(fp);
+    
+    //################## reading seed motif information %%%%%%%%%%%%%%%%%%%%%
+    fp = fopen(motifFile,"r");
+    if (fp==NULL)
+    {
+        printf("Error opening file %s\n", motifFile);
+        return 0;
+    }
+    seedMotifs = (segInfo_t*)malloc(sizeof(segInfo_t)*maxNMotifs*2);
+    jj=0;
+    ii=0;
+    while(fscanf(fp,"%f\t%f\t%f\t%f\t%f\t%f\t%f\n", &temp[0], &temp[1], &temp[2], &temp[3], &temp[4], &temp[5], &temp[6])!=EOF)
+    {
+        if(ii>=maxNMotifs)
+            break;
+        
+        if(temp[4]<INF)
+        {
+            seedMotifs[jj].str=temp[0];
+            seedMotifs[jj].end=temp[1];
+            jj++;
+            
+            seedMotifs[jj].str=temp[2];
+            seedMotifs[jj].end=temp[3];
+            jj++;
+        }
+        ii++;
+    }
+    maxNMotifs=jj;
+    fclose(fp);
+    
+    //############ finding indexes where to start filling seed motif sequence #################
+    seedMotifInd = (INDTYPE*)malloc(sizeof(INDTYPE)*maxNMotifs);
+    for(ii=0;ii<maxNMotifs;ii++)
+    {
+        min_val = INF;
+        for(jj=0;jj<totalPitchNonSilSamples;jj++)
+        {
+            if (fabs(timeSamples[jj]-seedMotifs[ii].str)<min_val)
+            {
+                min_val = fabs(timeSamples[jj]-seedMotifs[ii].str);
+                seedMotifInd[ii] = jj;
+            }
+        }
+    }
+    
+    data = (DATATYPE **)malloc(sizeof(DATATYPE *)*maxNMotifs);         //since we don't know valid subsequences, we allocate max possible subsequences and later discard them and free the memory
+    tStamps = (segInfoInterp_t *)malloc(sizeof(segInfoInterp_t)*maxNMotifs); 
+    
+    for(ii=0;ii<maxNMotifs;ii++)
+    {
+        data[ii] = (DATATYPE *)malloc(sizeof(DATATYPE*)*lenMotifInterpH);
+        tStamps[ii].str = timeSamples[seedMotifInd[ii]];
+        tStamps[ii].end = timeSamples[seedMotifInd[ii]+lenMotifRealM1];
+        tStamps[ii].endInterpH = timeSamples[seedMotifInd[ii]+lenMotifInterpHM1];
+        tStamps[ii].endInterpL = timeSamples[seedMotifInd[ii]+lenMotifInterpLM1];
+        for(jj=0;jj<lenMotifInterpH;jj++)
+        {
+            data[ii][jj]=pitchSamples[seedMotifInd[ii]+jj];
+        }
+        
+    }
+    N = maxNMotifs;
+    dataInterp = (DATATYPE **)malloc(sizeof(DATATYPE *)*N*3);   //allocating memory also to have interpolated subsequences
+    tStampsInterp = (segInfo_t *)malloc(sizeof(segInfo_t)*(N)*3);         //allocating memory also to have interpolated subsequences
+    jj=0;
+    //we do interpolation as well
+    indLow = (float *)malloc(sizeof(float)*lenMotifReal);
+    indHigh = (float *)malloc(sizeof(float)*lenMotifReal);
+    for (ii=0;ii<lenMotifReal; ii++)
+    {
+        indLow[ii] = myProcParams->factorLow*ii;
+        indHigh[ii] = myProcParams->factorHigh*ii;
+    }
+    
+    for (ii=0;ii<N;ii++)
+    {
+        //low stretched subsequence
+        dataInterp[jj] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
+        cubicInterpolate(data[ii], dataInterp[jj], indLow, lenMotifReal);
+        tStampsInterp[jj].str = tStamps[ii].str;
+        tStampsInterp[jj].end = tStamps[ii].endInterpL;
+        jj++;
+        
+        //normal
+        dataInterp[jj] = data[ii];
+        tStampsInterp[jj].str = tStamps[ii].str;
+        tStampsInterp[jj].end = tStamps[ii].end;
+        jj++;
+        
+        //compacted subsequence
+        dataInterp[jj] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
+        cubicInterpolate(data[ii], dataInterp[jj], indHigh, lenMotifReal);
+        tStampsInterp[jj].str = tStamps[ii].str;
+        tStampsInterp[jj].end = tStamps[ii].endInterpH;
+        jj++;
+        
+
+    }
+    lenTS = N*3; 
+    free(data);
+    free(tStamps);
+    free(pitchSamples);
+    free(timeSamples);
+    
+    *d = dataInterp;
+    *t = tStampsInterp;
+    return lenTS;
+}
+
+void dumpSearchMotifInfo(char *motifFile, char *mappFile, char *searchFile, motifInfo** topKmotifs, segInfo_t *tStampsInterpSeed, segInfo_t *tStampsInterp, int NSeeds, INDTYPE K, mappInfo_t *mapp, int verbos)
+{
+    FILE *fp;
+    INDTYPE ii=0, lineWritten;
+    int jj=0;
+    int terminate=1;
+    fp = fopen(motifFile, "ab");
+    lineWritten=0;
+    for(ii=0;ii<K;ii++)
+    {
+        terminate=1;
+        for(jj=0;jj<NSeeds/3;jj++)
+        {
+            if(topKmotifs[jj][ii].dist<INF)
+            {
+                fprintf(fp, "%f\t%f\t%f\t%f\t%f\t", tStampsInterpSeed[topKmotifs[jj][ii].ind1].str, tStampsInterpSeed[topKmotifs[jj][ii].ind1].end, tStampsInterp[topKmotifs[jj][ii].ind2].str, tStampsInterp[topKmotifs[jj][ii].ind2].end, topKmotifs[jj][ii].dist);
+                terminate=0;
+                
+            }
+            else
+            {
+                fprintf(fp, "%f\t%f\t%f\t%f\t%f\t", -1.0, -1.0, -1.0, -1.0,-1.0);
+                
+            }
+        }
+        fprintf(fp, "\n");
+        lineWritten++;
+        if (terminate)
+            break;
+    }
+    fclose(fp);
+    
+    fp = fopen(mappFile, "ab");
+    fprintf(fp, "%s\t%lld\t%lld\n", searchFile, mapp->last_line, mapp->last_line+lineWritten-1);
+    mapp->last_line+=lineWritten;
+    fclose(fp);
+    
+}
+
+void dumpDiscoveredMotifInfo(char *motifFile, motifInfo *topKmotifs, segInfo_t *tStampsInterp, int K, int verbos)
 {
     FILE *fp;
     int ii;
@@ -389,7 +633,7 @@ void dumpMotifInfo(char *motifFile, motifInfo *topKmotifs, segInfo_t *tStampsInt
     fclose(fp);
 }
 
-void dumpLogs(char *logFile, procLogs_t myProcLogs, int verbos)
+void dumpDiscoveryLogs(char *logFile, procLogs_t myProcLogs, int verbos)
 {
     FILE *fp;
     

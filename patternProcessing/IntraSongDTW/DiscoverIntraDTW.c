@@ -182,8 +182,8 @@ int main( int argc , char *argv[])
     {printf("Time taken to compute all combinations :%f\n",myProcLogs.timeDiscovery);}
     
 
-    dumpMotifInfo(motifFile, topKmotifs, tStampsInterp, K, verbos);
-    dumpLogs(logFile, myProcLogs, verbos);
+    dumpDiscoveredMotifInfo(motifFile, topKmotifs, tStampsInterp, K, verbos);
+    dumpDiscoveryLogs(logFile, myProcLogs, verbos);
     
     //Memory clearing
     for(ii=0;ii<lenTS;ii++)
