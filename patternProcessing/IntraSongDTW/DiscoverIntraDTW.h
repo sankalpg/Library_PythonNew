@@ -47,13 +47,13 @@ typedef struct motifInfo
     INDTYPE ind1;
     INDTYPE ind2;
     
-}motifInfo;
+}motifInfo_t;
 
 typedef struct segInfo
 {
     float str;
     float end;
-}segInfo;
+}segInfo_t;
 
 typedef struct segInfoInterp
 {
@@ -62,7 +62,7 @@ typedef struct segInfoInterp
     float endInterpH;
     float endInterpL;
     
-}segInfoInterp;
+}segInfoInterp_t;
 
 typedef struct procLogs
 {
@@ -85,14 +85,37 @@ typedef struct procLogs
     long long totalLBKeoghEC;
     long long totalDTWComputations;
     long long totalPriorityUpdates;
-}procLogs;
+}procLogs_t;
+
+typedef struct procParams
+{
+    int binsPOct;
+    int dsFactor;
+    int removeTaniSegs;
+    float minPossiblePitch;
+    float allowedSilDur;
+    float varDur;
+    float threshold;
+    float flatThreshold;
+    float maxPauseDur;
+    float factorLow;
+    float factorHigh;
+    float durMotif;
+    float blackDur;
+}procParams_t;
+
+typedef struct fileExts
+{
+    char *pitchExt;
+    char *tonicExt;
+    char *segExt;
+    char *motifExt;
+    char *logExt;
+}fileExts_t;
+
 
 //functions
 DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, segInfo *tStamps, int K, INDTYPE ind1 , INDTYPE ind2, DISTTYPE dist, float blackDur);
-
-long long getNumLines(const char *file);
-
-void linearlyInterpolate(float *array, int size, float val1, float val2);
 
 #endif //#ifndef DiscoverIntraDTW_H
 
