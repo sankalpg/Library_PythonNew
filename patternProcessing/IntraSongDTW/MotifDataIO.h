@@ -22,3 +22,4 @@ void dumpDiscoveryLogs(char *logFile, procLogs_t myProcLogs, int verbos);
 void dumpDiscoveredMotifInfo(char *motifFile, motifInfo *topKmotifs, segInfo_t *tStampsInterp, int K, int verbos);
 
 #endif //MOTIFDATAIO_H
+

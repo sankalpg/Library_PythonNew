@@ -693,3 +693,4 @@ void dumpDiscoveryLogs(char *logFile, procLogs_t myProcLogs, int verbos)
     }
 }
 
+

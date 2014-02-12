@@ -359,3 +359,4 @@ DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, segInfo_t *tStamps1, segInfo_t 
 }
 
 
+
