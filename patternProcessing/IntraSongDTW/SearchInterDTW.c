@@ -17,8 +17,8 @@ int main( int argc , char *argv[])
 {
     FILE *fp, *fp_out;
     char *baseName, motifFile[200]={'\0'}, logFile[200]={'\0'}, searchFileList[200]={'\0'}, searchFile[400] = {'\0'}, mappFile[400] = {'\0'} ;
-    float t1,t2;
-    int lenMotifReal, verbos=0, bandDTW, maxNMotifs; 
+    float t1,t2, t3,t4;
+    int lenMotifReal, verbos=0, bandDTW, maxNMotifsPairs; 
     INDTYPE    NSeed, lenTS, count_DTW=0, numLinesInFile, K,ii,jj;
     
     DATATYPE **dataInterpSeed, **dataInterp, **U, **L, **USeed, **LSeed, *accLB;
@@ -31,6 +31,8 @@ int main( int argc , char *argv[])
     mappInfo_t mapp;
     mapp.last_line =1;
     
+    t3=clock();
+    
     char commitID[] = "6f58f1c6eba3b863ba7945e4bc0a8cd997e84f97";
     myProcLogs.commitID = commitID;
     myProcLogs.timeDataLoad=0;
@@ -38,6 +40,8 @@ int main( int argc , char *argv[])
     myProcLogs.timeRemBlacklist=0; 
     myProcLogs.timeGenEnvelops=0;
     myProcLogs.timeDiscovery=0;
+    myProcLogs.timeWriteData=0;
+    myProcLogs.timeTotal=0;
     myProcLogs.totalPitchSamples=0;
     myProcLogs.totalPitchNonSilSamples=0;
     myProcLogs.totalSubsGenerated=0;
@@ -48,6 +52,7 @@ int main( int argc , char *argv[])
     myProcLogs.totalLBKeoghEC=0;
     myProcLogs.totalDTWComputations=0;
     myProcLogs.totalPriorityUpdates=0;
+    
     
     if(argc < 16 || argc > 17)
     {
@@ -72,7 +77,7 @@ int main( int argc , char *argv[])
         bsf = atof(argv[13]);
     }
      myProcParams.dsFactor = atoi(argv[14]);
-     maxNMotifs = atoi(argv[15]);
+     maxNMotifsPairs = atoi(argv[15]);
     
     if( argc == 17 ){verbos = atoi(argv[16]);}
     
@@ -110,7 +115,7 @@ int main( int argc , char *argv[])
     
     
     // loading sequence corresponding to seed motifs
-    NSeed = loadSeedMotifSequence(&dataInterpSeed, &tStampsInterpSeed, &lenMotifReal, baseName, &myFileExts, &myProcParams, maxNMotifs, verbos);
+    NSeed = loadSeedMotifSequence(&dataInterpSeed, &tStampsInterpSeed, &lenMotifReal, baseName, &myFileExts, &myProcParams, maxNMotifsPairs, verbos);
     
     // generating envelops for the seed motifs
     bandDTW = (int)floor(lenMotifReal*0.1);
@@ -147,6 +152,7 @@ int main( int argc , char *argv[])
         //generating subsequence database for file to be searched
         lenTS = generateSubsequenceDB(&dataInterp, &tStampsInterp, &lenMotifReal, searchFile, &myFileExts, &myProcParams, &myProcLogs, verbos);
         
+        t1=clock();
         //computing envelops for the file to be searched
         U = (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS);
         L= (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS);
@@ -158,6 +164,8 @@ int main( int argc , char *argv[])
             computeRunningMinMax(dataInterp[ii], U[ii], L[ii], lenMotifReal, bandDTW);
             
         }
+        t2=clock();
+        myProcLogs.timeGenEnvelops += (t2-t1)/CLOCKS_PER_SEC;
         for(jj=0;jj<NSeed/3;jj++)
         {
             topKmotifs[jj] = (motifInfo *)malloc(sizeof(motifInfo)*lenTS);
@@ -168,7 +176,7 @@ int main( int argc , char *argv[])
                 topKmotifs[jj][ii].ind2 = 0;
             }
         }
-        
+        t1=clock();
         if (strcmp(baseName, searchFile))
         {
             for(ii=0;ii<NSeed;ii++)
@@ -243,9 +251,13 @@ int main( int argc , char *argv[])
                 }
             }            
         }
-
+    t2=clock();
+    myProcLogs.timeDiscovery += (t2-t1)/CLOCKS_PER_SEC;
+    t1=clock();
     dumpSearchMotifInfo(motifFile, mappFile, searchFile, topKmotifs, tStampsInterpSeed, tStampsInterp, NSeed, lenTS, &mapp, verbos);
-        
+    t2=clock();
+    myProcLogs.timeWriteData += (t2-t1)/CLOCKS_PER_SEC;
+    
     for(ii=0;ii<lenTS;ii++)
     {
         free(dataInterp[ii]);
@@ -284,6 +296,10 @@ int main( int argc , char *argv[])
     }
     free(costMTX);
     
+    t4=clock();
+    myProcLogs.timeTotal += (t4-t3)/CLOCKS_PER_SEC;
+    
+    dumpDiscoveryLogs(logFile, myProcLogs, verbos);
     
     return 1;
     

@@ -51,7 +51,7 @@ INDTYPE generateSubsequenceDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
      FILE *fp;
     char pitchFile[200]={'\0'}, tonicFile[200]={'\0'}, segmentFile[200]={'\0'};
     
-    INDTYPE numLinesInFile, ind, ii, jj, ll, lenTS, N;
+    INDTYPE numLinesInFile, ind, ii, jj, ll, lenTS, N, blacklistCNT;
     DATATYPE *pitchSamples, **data, **dataInterp;
     
     float tonic, pHop, temp1, temp[4]={0}, t1, t2, ex, pitchTemp, timeTemp;
@@ -77,7 +77,7 @@ INDTYPE generateSubsequenceDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     //########################## READING PITCH DATA ##########################
     // Reading number of lines in the pitch file
     numLinesInFile = getNumLines(pitchFile);
-    myProcLogs->totalPitchSamples = numLinesInFile;
+    myProcLogs->totalPitchSamples += numLinesInFile;
     // after downsampling we will be left with these many points
     numLinesInFile = floor(numLinesInFile/myProcParams->dsFactor) +1;
     
@@ -156,10 +156,10 @@ INDTYPE generateSubsequenceDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     }
     fclose(fp);
     t2 = clock();
-    myProcLogs->timeDataLoad = (t2-t1)/CLOCKS_PER_SEC;
-    myProcLogs->totalPitchNonSilSamples = ind;
+    myProcLogs->timeDataLoad += (t2-t1)/CLOCKS_PER_SEC;
+    myProcLogs->totalPitchNonSilSamples += ind;
     if (verbos)
-    {printf("Time taken to load the pitch data :%f\n",myProcLogs->timeDataLoad);}
+    {printf("Time taken to load the pitch data :%f\n",(t2-t1)/CLOCKS_PER_SEC);}
     
     //########################## Subsequence generation + selection step ##########################
     // In subsequence selection our aim is to discard those subsequences which result into trivial matches, 
@@ -254,7 +254,7 @@ INDTYPE generateSubsequenceDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
        ind++;        
     }
     lenTS = lenTS-lenMotifInterpHM1;   //we only have lenMotifInterpHM1 samples less than original number lenTS. it still counts blacklisted candidates
-    myProcLogs->totalSubsGenerated = lenTS;
+    myProcLogs->totalSubsGenerated += lenTS;
     t2 = clock();
     printf("Time taken to create subsequences:%f\n",(t2-t1)/CLOCKS_PER_SEC);
     
@@ -307,7 +307,8 @@ INDTYPE generateSubsequenceDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
         if (blacklist[ii]==0)
             N++;
     }
-    myProcLogs->totalSubsBlacklisted = myProcLogs->totalSubsGenerated-N;
+    blacklistCNT = lenTS-N;
+    myProcLogs->totalSubsBlacklisted += blacklistCNT;
     dataInterp = (DATATYPE **)malloc(sizeof(DATATYPE *)*N*3);   //allocating memory also to have interpolated subsequences
     tStampsInterp = (segInfo_t *)malloc(sizeof(segInfo_t)*(N)*3);         //allocating memory also to have interpolated subsequences
     jj=0;
@@ -359,13 +360,13 @@ INDTYPE generateSubsequenceDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     free(blacklist);
     
     t2 = clock();
-    myProcLogs->timeRemBlacklist = (t2-t1)/CLOCKS_PER_SEC;
-    myProcLogs->totalSubsInterpolated = lenTS;
+    myProcLogs->timeRemBlacklist += (t2-t1)/CLOCKS_PER_SEC;
+    myProcLogs->totalSubsInterpolated += lenTS;
     if (verbos)
-    {printf("Time taken to remove blacklist subsequences :%f\n", myProcLogs->timeRemBlacklist);}
+    {printf("Time taken to remove blacklist subsequences :%f\n",(t2-t1)/CLOCKS_PER_SEC);}
     
     if( verbos == 1 )
-        printf("Finally number of subsequences are: %lld\nNumber of subsequences removed are: %lld\n",lenTS,myProcLogs->totalSubsBlacklisted);
+        printf("Finally number of subsequences are: %lld\nNumber of subsequences removed are: %lld\n",lenTS,blacklistCNT);
         printf("Length of Each Time Series : %d\n\n",lenMotifReal);
 
     *d = dataInterp;
@@ -373,7 +374,7 @@ INDTYPE generateSubsequenceDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     return lenTS;
 }
 
-INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char *baseName, fileExts_t *myFileExts, procParams_t *myProcParams, int maxNMotifs, int verbos)
+INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char *baseName, fileExts_t *myFileExts, procParams_t *myProcParams, int maxNMotifsPairs, int verbos)
 {
      FILE *fp;
     char pitchFile[200]={'\0'}, tonicFile[200]={'\0'}, motifFile[200]={'\0'};
@@ -384,7 +385,7 @@ INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     float tonic, pHop, temp1, temp[10]={0}, ex, pitchTemp, timeTemp;
     float *timeSamples, *indLow, *indHigh, min_val;
     
-    int lenMotifReal,lenMotifRealM1,lenMotifInterpHM1, lenMotifInterpLM1, lenMotifInterpH, lenMotifInterpL,dsFactor, nRead; 
+    int lenMotifReal,lenMotifRealM1,lenMotifInterpHM1, lenMotifInterpLM1, lenMotifInterpH, lenMotifInterpL,dsFactor, nRead, NMotifs; 
     
     segInfoInterp_t *tStamps;
     segInfo_t *taniSegs, *tStampsInterp, *seedMotifs;
@@ -476,12 +477,12 @@ INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
         printf("Error opening file %s\n", motifFile);
         return 0;
     }
-    seedMotifs = (segInfo_t*)malloc(sizeof(segInfo_t)*maxNMotifs*2);
+    seedMotifs = (segInfo_t*)malloc(sizeof(segInfo_t)*maxNMotifsPairs*2);
     jj=0;
     ii=0;
     while(fscanf(fp,"%f\t%f\t%f\t%f\t%f\t%f\t%f\n", &temp[0], &temp[1], &temp[2], &temp[3], &temp[4], &temp[5], &temp[6])!=EOF)
     {
-        if(ii>=maxNMotifs)
+        if(ii>=maxNMotifsPairs)
             break;
         
         if(temp[4]<INF)
@@ -496,12 +497,12 @@ INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
         }
         ii++;
     }
-    maxNMotifs=jj;
+    NMotifs=jj;
     fclose(fp);
     
     //############ finding indexes where to start filling seed motif sequence #################
-    seedMotifInd = (INDTYPE*)malloc(sizeof(INDTYPE)*maxNMotifs);
-    for(ii=0;ii<maxNMotifs;ii++)
+    seedMotifInd = (INDTYPE*)malloc(sizeof(INDTYPE)*NMotifs);
+    for(ii=0;ii<NMotifs;ii++)
     {
         min_val = INF;
         for(jj=0;jj<totalPitchNonSilSamples;jj++)
@@ -514,10 +515,10 @@ INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
         }
     }
     
-    data = (DATATYPE **)malloc(sizeof(DATATYPE *)*maxNMotifs);         //since we don't know valid subsequences, we allocate max possible subsequences and later discard them and free the memory
-    tStamps = (segInfoInterp_t *)malloc(sizeof(segInfoInterp_t)*maxNMotifs); 
+    data = (DATATYPE **)malloc(sizeof(DATATYPE *)*NMotifs);         //since we don't know valid subsequences, we allocate max possible subsequences and later discard them and free the memory
+    tStamps = (segInfoInterp_t *)malloc(sizeof(segInfoInterp_t)*NMotifs); 
     
-    for(ii=0;ii<maxNMotifs;ii++)
+    for(ii=0;ii<NMotifs;ii++)
     {
         data[ii] = (DATATYPE *)malloc(sizeof(DATATYPE*)*lenMotifInterpH);
         tStamps[ii].str = timeSamples[seedMotifInd[ii]];
@@ -530,7 +531,7 @@ INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
         }
         
     }
-    N = maxNMotifs;
+    N = NMotifs;
     dataInterp = (DATATYPE **)malloc(sizeof(DATATYPE *)*N*3);   //allocating memory also to have interpolated subsequences
     tStampsInterp = (segInfo_t *)malloc(sizeof(segInfo_t)*(N)*3);         //allocating memory also to have interpolated subsequences
     jj=0;
@@ -645,6 +646,8 @@ void dumpDiscoveryLogs(char *logFile, procLogs_t myProcLogs, int verbos)
     fprintf(fp, "Time taken to remove blacklisted subsequences:\t%f\n", myProcLogs.timeRemBlacklist);
     fprintf(fp, "Time taken to generate envelops:\t%f\n", myProcLogs.timeGenEnvelops);
     fprintf(fp, "Time taken to discover patterns:\t%f\n", myProcLogs.timeDiscovery);
+    fprintf(fp, "Time taken to write data:\t%f\n", myProcLogs.timeWriteData);
+    fprintf(fp, "Total time taken by the process:\t%f\n", myProcLogs.timeTotal);
     
     fprintf(fp, "\n#################### DATA POINTS RELATED STATS ####################\n");
     fprintf(fp, "Total number of pitch samples in the file:\t%lld\n", myProcLogs.totalPitchSamples);
@@ -671,6 +674,8 @@ void dumpDiscoveryLogs(char *logFile, procLogs_t myProcLogs, int verbos)
         printf("Time taken to remove blacklisted subsequences:\t%f\n", myProcLogs.timeRemBlacklist);
         printf("Time taken to generate envelops:\t%f\n", myProcLogs.timeGenEnvelops);
         printf("Time taken to discover patterns:\t%f\n", myProcLogs.timeDiscovery);
+        printf("Time taken to write data:\t%f\n", myProcLogs.timeWriteData);
+        printf("Total time taken by the process:\t%f\n", myProcLogs.timeTotal);
         
         printf("\n#################### DATA POINTS RELATED STATS ####################\n");
         printf("Total number of pitch samples in the file:\t%lld\n", myProcLogs.totalPitchSamples);

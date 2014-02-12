@@ -73,6 +73,8 @@ typedef struct procLogs
     float timeRemBlacklist; 
     float timeGenEnvelops;
     float timeDiscovery;
+    float timeWriteData;
+    float timeTotal;
     
     long long totalPitchSamples;
     long long totalPitchNonSilSamples;
