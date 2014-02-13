@@ -16,7 +16,7 @@
 int main( int argc , char *argv[])
 {
     FILE *fp, *fp_out;
-    char *baseName, motifFile[200]={'\0'}, logFile[200]={'\0'}, searchFileList[200]={'\0'}, searchFile[400] = {'\0'}, mappFile[400] = {'\0'} ;
+    char *baseName, motifFile[400]={'\0'}, logFile[400]={'\0'}, searchFileList[400]={'\0'}, searchFile[400] = {'\0'}, mappFile[400] = {'\0'} ;
     float t1,t2, t3,t4;
     int lenMotifReal, verbos=0, bandDTW, maxNMotifsPairs; 
     INDTYPE    NSeed, lenTS, count_DTW=0, numLinesInFile, K,ii,jj;

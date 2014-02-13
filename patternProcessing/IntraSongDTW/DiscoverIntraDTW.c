@@ -16,7 +16,7 @@
 int main( int argc , char *argv[])
 {
     FILE *fp, *fp_out;
-    char *baseName, motifFile[200]={'\0'}, logFile[200]={'\0'};
+    char *baseName, motifFile[400]={'\0'}, logFile[400]={'\0'};
     float t1,t2;
     int lenMotifReal, verbos=0, bandDTW; 
     INDTYPE    lenTS, count_DTW=0, numLinesInFile, K,ii,jj;

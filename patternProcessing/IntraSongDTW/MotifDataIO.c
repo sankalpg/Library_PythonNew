@@ -49,7 +49,7 @@ INDTYPE getNumLines(const char *file)
 INDTYPE generateSubsequenceDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *baseName, fileExts_t *myFileExts, procParams_t *myProcParams, procLogs_t *myProcLogs, int verbos)
 {
      FILE *fp;
-    char pitchFile[200]={'\0'}, tonicFile[200]={'\0'}, segmentFile[200]={'\0'};
+    char pitchFile[400]={'\0'}, tonicFile[400]={'\0'}, segmentFile[400]={'\0'};
     
     INDTYPE numLinesInFile, ind, ii, jj, ll, lenTS, N, blacklistCNT;
     DATATYPE *pitchSamples, **data, **dataInterp;
@@ -377,7 +377,7 @@ INDTYPE generateSubsequenceDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
 INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char *baseName, fileExts_t *myFileExts, procParams_t *myProcParams, int maxNMotifsPairs, int verbos)
 {
      FILE *fp;
-    char pitchFile[200]={'\0'}, tonicFile[200]={'\0'}, motifFile[200]={'\0'};
+    char pitchFile[400]={'\0'}, tonicFile[400]={'\0'}, motifFile[400]={'\0'};
     
     INDTYPE numLinesInFile, ind, ii, jj, ll, lenTS, N, totalPitchNonSilSamples, *seedMotifInd;
     DATATYPE *pitchSamples, **data, **dataInterp;
