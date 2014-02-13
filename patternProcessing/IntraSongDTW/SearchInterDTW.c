@@ -264,6 +264,10 @@ int main( int argc , char *argv[])
         free(U[ii]);
         free(L[ii]);
     }
+    for(jj=0;jj<NSeed/3;jj++)
+        {
+            free(topKmotifs[jj]);
+        }
     free(U);
     free(L);
     free(dataInterp);
@@ -283,12 +287,10 @@ int main( int argc , char *argv[])
         
     }
     free(dataInterpSeed);
+    free(USeed);
+    free(LSeed);
     free(accLB);
     free(tStampsInterpSeed);
-    for(ii=0;ii<NSeed/3;ii++)
-    {
-        free(topKmotifs[ii]);
-    }
     free(topKmotifs);
     for(ii=0;ii<lenMotifReal;ii++)
     {

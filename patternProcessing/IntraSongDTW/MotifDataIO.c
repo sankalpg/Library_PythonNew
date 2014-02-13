@@ -358,6 +358,9 @@ INDTYPE generateSubsequenceDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     free(data);
     free(tStamps);
     free(blacklist);
+    free(indLow);
+    free(indHigh);
+    free(taniSegs);
     
     t2 = clock();
     myProcLogs->timeRemBlacklist += (t2-t1)/CLOCKS_PER_SEC;
@@ -573,6 +576,10 @@ INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     free(tStamps);
     free(pitchSamples);
     free(timeSamples);
+    free(indLow);
+    free(indHigh);
+    free(seedMotifs);
+    free(seedMotifInd);
     
     *d = dataInterp;
     *t = tStampsInterp;
