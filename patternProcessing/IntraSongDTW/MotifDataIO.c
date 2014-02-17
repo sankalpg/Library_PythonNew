@@ -387,6 +387,7 @@ INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     
     float tonic, pHop, temp1, temp[10]={0}, ex, pitchTemp, timeTemp;
     float *timeSamples, *indLow, *indHigh, min_val;
+    double temp4;
     
     int lenMotifReal,lenMotifRealM1,lenMotifInterpHM1, lenMotifInterpLM1, lenMotifInterpH, lenMotifInterpL,dsFactor, nRead, NMotifs; 
     
@@ -483,12 +484,12 @@ INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     seedMotifs = (segInfo_t*)malloc(sizeof(segInfo_t)*maxNMotifsPairs*2);
     jj=0;
     ii=0;
-    while(fscanf(fp,"%f\t%f\t%f\t%f\t%f\t%f\t%f\n", &temp[0], &temp[1], &temp[2], &temp[3], &temp[4], &temp[5], &temp[6])!=EOF)
+    while(fscanf(fp,"%f\t%f\t%f\t%f\t%lf\t%f\t%f\n", &temp[0], &temp[1], &temp[2], &temp[3], &temp4, &temp[5], &temp[6])!=EOF)
     {
         if(ii>=maxNMotifsPairs)
             break;
         
-        if(temp[4]<INF)
+        if(temp4<INF)
         {
             seedMotifs[jj].str=temp[0];
             seedMotifs[jj].end=temp[1];
@@ -632,7 +633,7 @@ void dumpDiscoveredMotifInfo(char *motifFile, motifInfo *topKmotifs, segInfo_t *
     fp =fopen(motifFile,"w");
     for(ii=0;ii<K;ii++)
     {
-        fprintf(fp, "%f\t%f\t%f\t%f\t%f\t%lld\t%lld\n", tStampsInterp[topKmotifs[ii].ind1].str, tStampsInterp[topKmotifs[ii].ind1].end, tStampsInterp[topKmotifs[ii].ind2].str, tStampsInterp[topKmotifs[ii].ind2].end, topKmotifs[ii].dist, topKmotifs[ii].ind1, topKmotifs[ii].ind2);
+        fprintf(fp, "%f\t%f\t%f\t%f\t%lf\t%lld\t%lld\n", tStampsInterp[topKmotifs[ii].ind1].str, tStampsInterp[topKmotifs[ii].ind1].end, tStampsInterp[topKmotifs[ii].ind2].str, tStampsInterp[topKmotifs[ii].ind2].end, topKmotifs[ii].dist, topKmotifs[ii].ind1, topKmotifs[ii].ind2);
         if (verbos)
         {
             printf("motif pair is %f\t%f\t%f\t%lld\t%lld\n", tStampsInterp[topKmotifs[ii].ind1].str,tStampsInterp[topKmotifs[ii].ind2].str, topKmotifs[ii].dist, topKmotifs[ii].ind1%3, topKmotifs[ii].ind2%3);
