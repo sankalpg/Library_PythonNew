@@ -21,7 +21,8 @@
 enum 
 {
 Euclidean=0,
-SqEuclidean
+SqEuclidean,
+OCTB2CITY
 };
 
 
@@ -49,6 +50,8 @@ typedef struct MatrixSize
 
 typedef double (*DistMethods)(double, double);
 
+double octBy2WrappedCitiblock(double a, double b);
+
 double dtwNd_std(double *x, double*y, MatrixSize*size_x, MatrixSize*size_y, int NFeatDim, double*cost, Config*myConfig);
 
 double dtw1d_std(double *x, double*y, int x_len, int y_len, double*cost, int dist_type);
@@ -58,6 +61,8 @@ int path(double *cost, int n, int m, int startx, int starty, DTW_path *p);
 double dist4Path(double *x, double*y, MatrixSize*size_x, MatrixSize*size_y, int NFeatDim, DTW_path* path_t, int path_len, Config* myConfig);
 
 double dtw1d_BandConstraint45(double *x, double*y, int x_len, int y_len, double*cost, int dist_type, int bandwidth);
+
+double dtw1d_BandConst_LocalConst_Subsequence(double *x, double*y, int x_len, int y_len, double*cost, int dist_type, int bandwidth);
 
 double computeKeoghsLB(double *U, double *L, double * accLB, double *data,int lenMotif, double bsf);
 

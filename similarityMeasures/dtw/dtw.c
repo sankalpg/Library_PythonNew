@@ -13,6 +13,8 @@ License: to be decided !!!
 #include "dtw.h"
 #include <float.h>
 
+#define BINPOMAKAM 53.0
+
 #define ENABLE_EA
 
 // euclidean distance
@@ -21,6 +23,15 @@ double EucDist(double a, double b)
     double diff;
     diff = a-b;
         return (diff*diff);
+}
+
+double octBy2WrappedCitiblock(double a, double b)
+{
+    double diff1, diff2;
+    diff1 = fabs(a-b);
+    diff2 = fmod(diff1, BINPOMAKAM);
+    return min(diff2, BINPOMAKAM-diff2);
+    
 }
 
 
@@ -192,6 +203,7 @@ double dtw1d_std(double *x, double*y, int x_len, int y_len, double*cost, int dis
         
         //setting up types of methods availale for measuring point to point distance
         myDistMethods[Euclidean]=&EucDist;
+        myDistMethods[OCTB2CITY]=&octBy2WrappedCitiblock;
         
         //Initializing the row and columns of cost matrix
         cost[0]= (*myDistMethods[dist_type])(x[0],y[0]);
@@ -230,12 +242,12 @@ double dtw1d_BandConstraint45(double *x, double*y, int x_len, int y_len, double*
         //the bandwidth of the constraint can't go beyong the abs(y_len-x_len), so
         bandwidth = max(bandwidth, abs(y_len-x_len)); // adapt constraint width
         //putting infi in all cost mtx
-        for (i=1;i<x_len;i++)
+        for (i=0;i<x_len;i++)
         {
-        for (j=1;j<y_len;j++)
-        {
-            cost[(i*y_len)+ j] = FLT_MAX;
-        }
+            for (j=0;j<y_len;j++)
+            {
+                cost[(i*y_len)+ j] = FLT_MAX;
+            }
         
         }
 
@@ -256,7 +268,7 @@ double dtw1d_BandConstraint45(double *x, double*y, int x_len, int y_len, double*
         //filling in all the cumulative cost matrix
         for (i=1;i<x_len;i++)
         {
-        for (j=max(1, i-bandwidth);j<min(y_len, i+bandwidth);j++)
+        for (j=max(1, i-bandwidth);j<=min(y_len-1, i+bandwidth);j++)
         {
             cost[(i*y_len)+ j] = (*myDistMethods[dist_type])(x[i],y[j]) + 
                                     min3(cost[(i-1)*y_len+j], cost[((i-1)*y_len)+(j-1)], cost[(i*y_len)+(j-1)]);
@@ -266,6 +278,87 @@ double dtw1d_BandConstraint45(double *x, double*y, int x_len, int y_len, double*
         
         return cost[(x_len*y_len)-1];
 }
+
+
+double dtw1d_BandConst_LocalConst_Subsequence(double *x, double*y, int x_len, int y_len, double*cost, int dist_type, int bandwidth)
+{
+        // declarations of variables
+        int i,j;    
+        float min_vals; 
+        DistMethods myDistMethods[5]={NULL};
+        
+        
+        //CHANGES DUE TO CONSTRAINTS
+        //the bandwidth of the constraint can't go beyong the abs(y_len-x_len), so
+        bandwidth = max(bandwidth, abs(y_len-x_len)); // adapt constraint width
+        //putting infi in all cost mtx
+        for (i=0;i<x_len;i++)
+        {
+            for (j=0;j<y_len;j++)
+            {
+                cost[(i*y_len)+ j] = FLT_MAX;
+            }
+        
+        }
+        
+        //setting up types of methods availale for measuring point to point distance
+        myDistMethods[Euclidean]=&EucDist;
+        myDistMethods[OCTB2CITY]=&octBy2WrappedCitiblock;
+        
+        //Initializing the row and columns of cost matrix
+        cost[0]= (*myDistMethods[dist_type])(x[0],y[0]);
+        for (i=1;i<bandwidth+1;i++)
+        {
+            cost[i*y_len]=(*myDistMethods[dist_type])(x[i],y[0]);
+        }
+        for (j=1;j<bandwidth+1;j++)
+        {
+            cost[j]=(*myDistMethods[dist_type])(x[0],y[j]);
+        }
+        for (i=1;i<=bandwidth+1;i++)
+        {
+            j=1;
+            cost[(i*y_len)+ j] = (*myDistMethods[dist_type])(x[i],y[j]) + min3(((i-1)*y_len)+ j, cost[((i-1)*y_len)+(j-1)], cost[((i)*y_len)+(j-1)]);
+        }
+        for (j=1;j<=bandwidth+1;j++)
+        {
+            i=1;
+            cost[(i*y_len)+ j] = (*myDistMethods[dist_type])(x[i],y[j]) + min3(cost[((i-1)*y_len)+(j)], cost[((i-1)*y_len)+(j-1)], cost[((i)*y_len)+(j-1)]);
+        }
+        
+        //filling in all the cumulative cost matrix
+        for (i=2;i<x_len;i++)
+        {
+        for (j=max(2, i-bandwidth);j<=min(y_len-1, i+bandwidth);j++)
+        {
+            cost[(i*y_len)+ j] = (*myDistMethods[dist_type])(x[i],y[j]) + 
+                                    min3(cost[(i-1)*y_len+(j-2)], cost[((i-1)*y_len)+(j-1)], cost[((i-2)*y_len)+(j-1)]);
+        }
+        
+        }
+        min_vals = FLT_MAX;
+        for (i=x_len-1;i>=x_len-1-bandwidth;i--)
+        {
+            j = y_len -1;
+            if(cost[(i*y_len)+ j] < min_vals)
+            {
+                min_vals = cost[(i*y_len)+ j];
+            }
+        }
+        for (j=y_len-1;j>=y_len-1-bandwidth;j--)
+        {
+            i = x_len -1;
+            if(cost[(i*y_len)+ j] < min_vals)
+            {
+                min_vals = cost[(i*y_len)+ j];
+            }
+        } 
+        return min_vals;
+        
+
+}
+
+
 
 /*
  * This is an optimized DTW code with ability to band contraint the path. Additionally it has early abandoning included which is enabled if #define ENABLE_EA is there.
