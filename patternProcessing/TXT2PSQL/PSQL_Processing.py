@@ -186,7 +186,6 @@ def createPatternMatchTable(root_dir, motifDiscExt, motifSearchExt, motifSearchM
             con.commit()
             
             #start inserting information about the searched patterns.
-            matchArray = []
             for line in searchMappData:
                 fileSearched, start, end = line.split('\t')
                 fileSearched = fileSearched.strip() + '.mp3'
@@ -204,7 +203,7 @@ def createPatternMatchTable(root_dir, motifDiscExt, motifSearchExt, motifSearchM
                         con.rollback()
                         con.close()
                     sys.exit(1)
-                print cmd7%(fileSearched_WOPre)
+                
                 cur.execute(cmd7%(fileSearched_WOPre))
                 file_id_Searched = cur.fetchone()[0]
                 
@@ -215,10 +214,8 @@ def createPatternMatchTable(root_dir, motifDiscExt, motifSearchExt, motifSearchM
                             cur.execute(cmd1%(file_id_Searched, searchMotifData[jj][colInd+2], searchMotifData[jj][colInd+3], version))
                             cur.execute(cmd4)
                             pattern_id3 = cur.fetchone()[0]
-                            #matchArray.append((seedPatternIds[ii], pattern_id3, searchMotifData[jj][colInd+4]))
                             cur.execute(cmd6%(seedPatternIds[ii], pattern_id3, searchMotifData[jj][colInd+4]))
                     
-            #cur.executemany(cmd6, matchArray)
             con.commit()
     except psy.DatabaseError, e:
         print 'Error %s' % e
