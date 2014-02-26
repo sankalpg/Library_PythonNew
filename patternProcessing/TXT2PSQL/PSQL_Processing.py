@@ -109,6 +109,7 @@ def createPatternMatchTable(root_dir, motifDiscExt, motifSearchExt, motifSearchM
     cmd4 = "SELECT currval('pattern_id_seq')"
     cmd5 = "UPDATE pattern SET pair_id = %ld WHERE id = %ld"
     cmd6 = "INSERT INTO match (source_id, target_id, distance) VALUES (%ld, %ld, %f)"
+    cmd7 = "SELECT id FROM file WHERE filename = $$%s$$"#searching file id
     
     
     con = None
@@ -140,21 +141,23 @@ def createPatternMatchTable(root_dir, motifDiscExt, motifSearchExt, motifSearchM
             searchMotifData = np.loadtxt(motifSearchFile)
             searchMappData = open(motifMappFile,'r').readlines()
             
+            #storing seed patterns
+            try:
+                mbid_seed_file = fetchMBID(audiofile)
+            except:
+                print "MBID not embedded in file %s"%audiofile
+                if con:
+                    con.rollback()
+                    con.close()
+                sys.exit(1)
+            
             #storing seed + searched patterns in database
+            #array to store the pattern ids
+            seedPatternIds = []
             for ii in range(0, seedMotifData.shape[0]):
                 
                 if seedMotifData[ii][4]>9999999999:
                     break
-                
-                #storing seed patterns
-                try:
-                    mbid_seed_file = fetchMBID(audiofile)
-                except:
-                    print "MBID not embedded in file %s"%audiofile
-                    if con:
-                        con.rollback()
-                        con.close()
-                    sys.exit(1)
                 
                 cur.execute(cmd2%(mbid_seed_file))
                 file_id = cur.fetchone()[0]
@@ -163,11 +166,15 @@ def createPatternMatchTable(root_dir, motifDiscExt, motifSearchExt, motifSearchM
                 cur.execute(cmd1%(file_id, seedMotifData[ii][0], seedMotifData[ii][1], version))
                 cur.execute(cmd4)
                 pattern_id1 = cur.fetchone()[0]
+                seedPatternIds.append(pattern_id1)
                 
                 #entering in table pattern the second instance of seed pair
                 cur.execute(cmd1%(file_id, seedMotifData[ii][2], seedMotifData[ii][3], version))
                 cur.execute(cmd4)
                 pattern_id2 = cur.fetchone()[0]
+                seedPatternIds.append(pattern_id2)
+                
+                
                 #cross referencing these two ids
                 cur.execute(cmd5%(pattern_id2,pattern_id1))
                 cur.execute(cmd5%(pattern_id1,pattern_id2))
@@ -175,46 +182,46 @@ def createPatternMatchTable(root_dir, motifDiscExt, motifSearchExt, motifSearchM
                 #also inserting match info about the seed pair
                 cur.execute(cmd6%(pattern_id1, pattern_id2, seedMotifData[ii][4]))
                 cur.execute(cmd6%(pattern_id2, pattern_id1, seedMotifData[ii][4]))
+            
+            con.commit()
+            
+            #start inserting information about the searched patterns.
+            matchArray = []
+            for line in searchMappData:
+                fileSearched, start, end = line.split('\t')
+                fileSearched = fileSearched.strip() + '.mp3'
+                start = int(start.strip())-1
+                end = int(end.strip())
                 
-                #start inserting information about the searched patterns.
-                for line in searchMappData:
-                    fileSearched, start, end = line.split('\t')
-                    fileSearched = fileSearched.strip()
-                    fileSearched = fileSearched.replace(serverPrefix, localPrefix)
-                    start = int(start.strip())-1
-                    end = int(end.strip())
-                    
-                    try:
-                        mbid_search_file = fetchMBID(fileSearched+'.mp3')
-                    except:
-                        print "MBID not embedded in file %s"%fileSearched
-                        if con:
-                            con.rollback()
-                            con.close()
-                        sys.exit(1)
-                            
-                    cur.execute(cmd2%(mbid_search_file))
-                    file_id_Searched = cur.fetchone()[0]
-                    colInd = 10*ii
-                    
+                #removing prefix
+                if fileSearched.count(serverPrefix):
+                    fileSearched_WOPre = fileSearched.split(serverPrefix)[1]
+                elif audiofile.count(localPrefix):
+                    fileSearched_WOPre = fileSearched.split(localPrefix)[1]
+                else:
+                    print "please provide files with known prefixes (paths)"
+                    if con:
+                        con.rollback()
+                        con.close()
+                    sys.exit(1)
+                print cmd7%(fileSearched_WOPre)
+                cur.execute(cmd7%(fileSearched_WOPre))
+                file_id_Searched = cur.fetchone()[0]
+                
+                for ii in range(len(seedPatternIds)):
+                    colInd = 5*ii                    
                     for jj in range(start, end):                    
                         if searchMotifData[jj][colInd+4] != -1:
                             cur.execute(cmd1%(file_id_Searched, searchMotifData[jj][colInd+2], searchMotifData[jj][colInd+3], version))
                             cur.execute(cmd4)
                             pattern_id3 = cur.fetchone()[0]
-                            cur.execute(cmd6%(pattern_id1, pattern_id3, searchMotifData[jj][colInd+4]))
+                            #matchArray.append((seedPatternIds[ii], pattern_id3, searchMotifData[jj][colInd+4]))
+                            cur.execute(cmd6%(seedPatternIds[ii], pattern_id3, searchMotifData[jj][colInd+4]))
                     
-                    colInd = 10*ii + 5
-                    for jj in range(start, end):                    
-                        if searchMotifData[jj][colInd+4] != -1:
-                            cur.execute(cmd1%(file_id_Searched, searchMotifData[jj][colInd+2], searchMotifData[jj][colInd+3], version))
-                            cur.execute(cmd4)
-                            pattern_id3 = cur.fetchone()[0]
-                            cur.execute(cmd6%(pattern_id2, pattern_id3, searchMotifData[jj][colInd+4]))
-                        
-                
-                con.commit()
-    except:
+            #cur.executemany(cmd6, matchArray)
+            con.commit()
+    except psy.DatabaseError, e:
+        print 'Error %s' % e
         if con:
             con.rollback()
             con.close()
