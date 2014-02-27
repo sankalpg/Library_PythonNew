@@ -58,6 +58,8 @@ def createFileTable(root_dir, filterExt = '.mp3'):
     audioFiles = BP.GetFileNamesInDir(root_dir, filterExt)
     dataDump = []
     query = "INSERT INTO file (filename, mbid) VALUES (%s, %s)"
+    cmd1 = "create index on file(filename)"
+    cmd2 = "create index on file(mbid)"
     
     
     for audiofile in audioFiles:
@@ -83,6 +85,8 @@ def createFileTable(root_dir, filterExt = '.mp3'):
         con = psy.connect(database=myDatabase, user=myUser) 
         cur = con.cursor()
         cur.executemany(query, dataDump)
+        cur.execute(cmd1)
+        cur.execute(cmd2)
         con.commit()
         print "Successfully updated file table in %s database"%(myDatabase)
 
@@ -103,12 +107,15 @@ def createPatternMatchTable(root_dir, motifDiscExt, motifSearchExt, motifSearchM
     
     
     #commands for doing different tasks
-    cmd1 = "INSERT INTO pattern (file_id, start_time, end_time, version) VALUES (%ld, %f, %f, %d)"#storing seed motifs
-    cmd2 = "SELECT id FROM file WHERE mbid = '%s'"#searching file id
-    cmd3 = "INSERT INTO pattern (id, pair_id) VALUES (%ld, %ld)"#storing seed motifs
-    cmd4 = "SELECT currval('pattern_id_seq')"
-    cmd5 = "UPDATE pattern SET pair_id = %ld WHERE id = %ld"
+    cmd1 = "INSERT INTO pattern (file_id, start_time, end_time, version) VALUES (%ld, %f, %f, %d) RETURNING id"#storing seed motifs
     cmd6 = "INSERT INTO match (source_id, target_id, distance) VALUES (%ld, %ld, %f)"
+    
+    #cmd3 = "INSERT INTO pattern (id, pair_id) VALUES (%ld, %ld)"#storing seed motifs
+    #cmd4 = "SELECT currval('pattern_id_seq')"
+    cmd5 = "UPDATE pattern SET pair_id = %ld WHERE id = %ld"
+    
+    
+    cmd2 = "SELECT id FROM file WHERE mbid = '%s'"#searching file id
     cmd7 = "SELECT id FROM file WHERE filename = $$%s$$"#searching file id
     
     
@@ -164,13 +171,13 @@ def createPatternMatchTable(root_dir, motifDiscExt, motifSearchExt, motifSearchM
                 
                 #entering in table pattern the first instance of seed pair
                 cur.execute(cmd1%(file_id, seedMotifData[ii][0], seedMotifData[ii][1], version))
-                cur.execute(cmd4)
+                #cur.execute(cmd4)
                 pattern_id1 = cur.fetchone()[0]
                 seedPatternIds.append(pattern_id1)
                 
                 #entering in table pattern the second instance of seed pair
                 cur.execute(cmd1%(file_id, seedMotifData[ii][2], seedMotifData[ii][3], version))
-                cur.execute(cmd4)
+                #cur.execute(cmd4)
                 pattern_id2 = cur.fetchone()[0]
                 seedPatternIds.append(pattern_id2)
                 
@@ -212,7 +219,7 @@ def createPatternMatchTable(root_dir, motifDiscExt, motifSearchExt, motifSearchM
                     for jj in range(start, end):                    
                         if searchMotifData[jj][colInd+4] != -1:
                             cur.execute(cmd1%(file_id_Searched, searchMotifData[jj][colInd+2], searchMotifData[jj][colInd+3], version))
-                            cur.execute(cmd4)
+                            #cur.execute(cmd4)
                             pattern_id3 = cur.fetchone()[0]
                             cur.execute(cmd6%(seedPatternIds[ii], pattern_id3, searchMotifData[jj][colInd+4]))
                     
@@ -266,6 +273,16 @@ CREATE TABLE match (
 
 sudo -u postgres dropdb motif_local
 sudo -u postgres createdb motif_local -O sankalp
+create index on file(filename);
+
+Useful tips
+1) Use truncate instead of delete
+2) Use escape function to handle escape characters
+3) Use return id statement instead of querrying for currval
+4) index columns once the dataset is frozen. Beware to remove indexing when you want to add new entries
+5) Also we can use tables without references and we can update references after the entries are done
+6) ALWAYS remember to remove indexes before adding new entries
+
 
 
 """
