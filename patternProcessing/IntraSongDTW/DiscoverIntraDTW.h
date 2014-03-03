@@ -102,6 +102,7 @@ typedef struct procParams
     float factorHigh;
     float durMotif;
     float blackDur;
+    float DTWBand;
 }procParams_t;
 
 typedef struct fileExts

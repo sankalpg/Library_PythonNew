@@ -81,7 +81,9 @@ int main( int argc , char *argv[])
     myProcParams.maxPauseDur = 0.5;
     myProcParams.factorLow = 0.9;
     myProcParams.factorHigh = 1.1;
+    myProcParams.DTWBand = 0.1;
     myProcParams.removeTaniSegs=1;
+    
     
     //####################################################
     //motif file name
@@ -96,7 +98,7 @@ int main( int argc , char *argv[])
     
     
     //################# Precomputing envelope of each subsequence for the LB Keogh lower bound ###########################
-    bandDTW = (int)floor(lenMotifReal*0.1);
+    bandDTW = (int)floor(lenMotifReal*myProcParams.DTWBand);
     U = (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS);
     L= (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS);
     accLB = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);

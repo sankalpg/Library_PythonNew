@@ -91,6 +91,7 @@ int main( int argc , char *argv[])
     myProcParams.maxPauseDur = 0.5;
     myProcParams.factorLow = 0.9;
     myProcParams.factorHigh = 1.1;
+    myProcParams.DTWBand = 0.1;
     myProcParams.removeTaniSegs=1;
     
     //####################################################
@@ -118,7 +119,7 @@ int main( int argc , char *argv[])
     NSeed = loadSeedMotifSequence(&dataInterpSeed, &tStampsInterpSeed, &lenMotifReal, baseName, &myFileExts, &myProcParams, maxNMotifsPairs, verbos);
     
     // generating envelops for the seed motifs
-    bandDTW = (int)floor(lenMotifReal*0.1);
+    bandDTW = (int)floor(lenMotifReal*myProcParams.DTWBand);
     USeed = (DATATYPE **)malloc(sizeof(DATATYPE *)*NSeed);
     LSeed= (DATATYPE **)malloc(sizeof(DATATYPE *)*NSeed);
     accLB = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
@@ -207,6 +208,7 @@ int main( int argc , char *argv[])
                                 myProcLogs.totalDTWComputations++;
                                 if(realDist<bsf)
                                 {
+                                    realDist = dtw1dBandConst_localConst(dataInterpSeed[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, 0, bandDTW, bsf, accLB);
                                     manageTopKMotifs(topKmotifs[ii/3], tStampsInterpSeed, tStampsInterp, lenTS, ii, jj, realDist, myProcParams.blackDur);
                                     myProcLogs.totalPriorityUpdates++;
                                 }
@@ -242,6 +244,7 @@ int main( int argc , char *argv[])
                                 myProcLogs.totalDTWComputations++;
                                 if(realDist<bsf)
                                 {
+                                    realDist = dtw1dBandConst_localConst(dataInterpSeed[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, 0, bandDTW, bsf, accLB);
                                     manageTopKMotifs(topKmotifs[ii/3], tStampsInterpSeed, tStampsInterp, lenTS, ii, jj, realDist, myProcParams.blackDur);
                                     myProcLogs.totalPriorityUpdates++;
                                 }
