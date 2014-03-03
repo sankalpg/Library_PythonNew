@@ -164,7 +164,8 @@ def GetFileNamesInDir(dir_name, filter=".wav"):
     names = []
     for (path, dirs, files) in os.walk(dir_name):
         for f in files:
-            if filter in f.lower():
+            #if filter in f.lower():
+            if filter.split('.')[-1] == f.split('.')[-1]:
                 #print(path+"/"+f)
                 #print(path)
                 #ftxt.write(path + "/" + f + "\n")
