@@ -34,3 +34,4 @@ cdef extern from "dtw.h":
 	double dist4Path(double *x, double*y, MatrixSize*size_x, MatrixSize*size_y, int NFeatDim, DTW_path* path_t, int path_len, Config* myConfig)
 	double dtw_std_C(double *x, double*y, int x_len, int y_len, double*cost, int dist_type)
 	double dtw1d_BandConst_LocalConst_Subsequence(double *x, double*y, int x_len, int y_len, double*cost, int dist_type, int bandwidth)
+	double dtw1d_BandConst_LocalConst(double *x, double*y, int x_len, int y_len, double*cost, int dist_type, int bandwidth)

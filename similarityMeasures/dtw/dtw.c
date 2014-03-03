@@ -12,10 +12,30 @@ License: to be decided !!!
 #include <math.h>
 #include "dtw.h"
 #include <float.h>
+#include "tables.h"
 
 #define BINPOMAKAM 53.0
+#define DIST_TABLE_RESOLUTION 0.1
+#define BINSPOCTAVE 120
+#define TABLEFACTOR 1200/(BINSPOCTAVE*DIST_TABLE_RESOLUTION)
+#define THREE_OCTAVES 3*BINSPOCTAVE
 
 #define ENABLE_EA
+
+double customDist1(double a, double b)
+{
+    double diff;
+    diff = fabs(a-b);
+    
+    if (diff<THREE_OCTAVES)
+    {
+        return customDist_25_100___1_25[(int)(diff*TABLEFACTOR)];
+    }
+    else
+    {
+        return FLT_MAX;
+    }
+}
 
 // euclidean distance
 double EucDist(double a, double b)
@@ -280,6 +300,69 @@ double dtw1d_BandConstraint45(double *x, double*y, int x_len, int y_len, double*
 }
 
 
+double dtw1d_BandConst_LocalConst(double *x, double*y, int x_len, int y_len, double*cost, int dist_type, int bandwidth)
+{
+        // declarations of variables
+        int i,j;    
+        float min_vals; 
+        DistMethods myDistMethods[5]={NULL};
+        
+        
+        //CHANGES DUE TO CONSTRAINTS
+        //the bandwidth of the constraint can't go beyong the abs(y_len-x_len), so
+        bandwidth = max(bandwidth, abs(y_len-x_len)); // adapt constraint width
+        //putting infi in all cost mtx
+        for (i=0;i<x_len;i++)
+        {
+            for (j=0;j<y_len;j++)
+            {
+                cost[(i*y_len)+ j] = FLT_MAX;
+            }
+        
+        }
+        
+        //setting up types of methods availale for measuring point to point distance
+        myDistMethods[Euclidean]=&EucDist;
+        myDistMethods[OCTB2CITY]=&octBy2WrappedCitiblock;
+        
+        //Initializing the row and columns of cost matrix
+        cost[0]= (*myDistMethods[dist_type])(x[0],y[0]);
+        for (i=1;i<bandwidth+1;i++)
+        {
+            cost[i*y_len]=(*myDistMethods[dist_type])(x[i],y[0])  + cost[(i-1)*y_len];
+        }
+        for (j=1;j<bandwidth+1;j++)
+        {
+            cost[j]=(*myDistMethods[dist_type])(x[0],y[j]) + cost[j-1];
+        }
+        for (i=1;i<=bandwidth+1;i++)
+        {
+            j=1;
+            cost[(i*y_len)+ j] = (*myDistMethods[dist_type])(x[i],y[j]) + min3(((i-1)*y_len)+ j, cost[((i-1)*y_len)+(j-1)], cost[((i)*y_len)+(j-1)]);
+        }
+        for (j=1;j<=bandwidth+1;j++)
+        {
+            i=1;
+            cost[(i*y_len)+ j] = (*myDistMethods[dist_type])(x[i],y[j]) + min3(cost[((i-1)*y_len)+(j)], cost[((i-1)*y_len)+(j-1)], cost[((i)*y_len)+(j-1)]);
+        }
+        
+        //filling in all the cumulative cost matrix
+        for (i=2;i<x_len;i++)
+        {
+        for (j=max(2, i-bandwidth);j<=min(y_len-1, i+bandwidth);j++)
+        {
+            cost[(i*y_len)+ j] = (*myDistMethods[dist_type])(x[i],y[j]) + 
+                                    min3(cost[(i-1)*y_len+(j-2)], cost[((i-1)*y_len)+(j-1)], cost[((i-2)*y_len)+(j-1)]);
+        }
+        
+        }
+
+        return cost[(x_len*y_len)-1];
+        
+
+}
+
+
 double dtw1d_BandConst_LocalConst_Subsequence(double *x, double*y, int x_len, int y_len, double*cost, int dist_type, int bandwidth)
 {
         // declarations of variables
@@ -516,34 +599,36 @@ double dtw1dBandConst_localConst(double *x, double*y, int x_len, int y_len, doub
         // declarations of variables
         int i,j, ind, overflow; 
         double min_vals, leftLB, temp;
+        DistMethods myDistMethods[1]={NULL};
+        myDistMethods[0]  = &customDist1;
 
 #ifdef ENABLE_EA
         temp = bsf - accLB[y_len-1] ;
 #endif        
         
         //Initializing the row and columns of cost matrix
-        cost[0][0]= EucDist(x[0],y[0]);
+        cost[0][0]= myDistMethods[0](x[0],y[0]);
 
         for (i=1;i<=bandwidth;i++)
         {
-        cost[i][0]=EucDist(x[i],y[0]) + cost[i-1][0];
+        cost[i][0]=myDistMethods[0](x[i],y[0]) + cost[i-1][0];
         }
         for (j=1;j<=bandwidth;j++)
         {
-        cost[0][j]=EucDist(x[0],y[j]) + cost[0][j-1];
+        cost[0][j]=myDistMethods[0](x[0],y[j]) + cost[0][j-1];
         }
         
         for (i=1;i<=bandwidth+1;i++)
         {
             j=1;
             min_vals = min3(cost[i-1][j], cost[i-1][j-1], cost[i][j-1]);
-            cost[i][j] = EucDist(x[i],y[j]) + min_vals;
+            cost[i][j] = myDistMethods[0](x[i],y[j]) + min_vals;
         }
         for (j=1;j<=bandwidth+1;j++)
         {
             i=1;
             min_vals = min3(cost[i-1][j], cost[i-1][j-1], cost[i][j-1]);
-            cost[i][j] = EucDist(x[i],y[j]) + min_vals;
+            cost[i][j] = myDistMethods[0](x[i],y[j]) + min_vals;
         }
         
         //filling in all the cumulative cost matrix
@@ -566,7 +651,7 @@ double dtw1dBandConst_localConst(double *x, double*y, int x_len, int y_len, doub
                 }
                 else
                 {
-                    cost[i][j] = EucDist(x[i],y[j]) + min_vals;
+                    cost[i][j] = myDistMethods[0](x[i],y[j]) + min_vals;
                 }
                 
                 if (cost[i][j] < leftLB)
@@ -575,7 +660,7 @@ double dtw1dBandConst_localConst(double *x, double*y, int x_len, int y_len, doub
                 }
 
 #else
-                cost[i][j] = EucDist(x[i],y[j]) + min_vals;
+                cost[i][j] = myDistMethods[0](x[i],y[j]) + min_vals;
 #endif 
 
             }

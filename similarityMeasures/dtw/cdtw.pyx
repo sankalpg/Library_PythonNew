@@ -213,6 +213,90 @@ def dtw1d(x, y, configuration):
             return udist, path_t.plen, (px_cord, py_cord)
         else:
             return udist, path_t.plen, (px_cord, py_cord), cost_arr         
+
+            
+def dtw1dLocalBand(x, y, configuration):
+    """Modified version of standard DTW as described in [Muller07] and [Keogh01],
+    Modified code provided in mlpy.dtw
+    This version is a subsequence version of the code with local constraints and global band constraint:
+      
+    :Parameters:
+    x : 1d numpy array (length N) first sequence
+    y : 1d numpy array (length M) second sequence 
+    configuration: dictionary specifying configuration params
+    configuration = {
+            'Output': n = {1-4} specify how many items you need from this ordered list
+                'udist' (unnormalized warped distance)
+                'plength' (path length)
+                'path' (tuple of dtw path)              
+                'cost' (cost matrix)
+                
+            'Ldistance': {
+                  'type': 0 (Euclidean) or 1 (squared Euclidean) or 2 (octBy2WrappedCitiblock - used in makam music score alignment)
+                   }
+            'Constraint': {
+                  'type':'Band' or 'Local' or 'BandLocal'
+                  'CVal': bandwidth for band
+                  }   
+              }
+    :Returns: a list of same entities specified in the configuration parameter for 'Output'
+    udist : (float) unnormalized minimum-distance of warp path between sequences
+    plength : (float) path length 
+    path : tuple of two 1d numpy array (path_x, path_y) warp path
+    cost : 2d numpy array (N,M) containing accumulated cost matrix
+    
+      
+    References
+    .. [Muller07] M Muller. Information Retrieval for Music and Motion. Springer, 2007.
+    .. [Keogh01] E J Keogh, M J Pazzani. Derivative Dynamic Time Warping. In FirsWt SIAM International Conference on Data Mining, 2001.
+      
+    Additional Functionalities:
+    1) DTW path constraints
+    2) Support for N dimensional input data in addition to just single dimension
+    3) Many more options for computing local cost (using N dimensional data + modulus option useful for melodic similarity)   
+      
+      """
+    cdef np.ndarray[np.float_t, ndim=1] x_arr
+    cdef np.ndarray[np.float_t, ndim=1] y_arr  
+    cdef np.ndarray[np.float_t, ndim=2] cost_arr
+    cdef np.ndarray[np.int_t, ndim=1] px_cord
+    cdef np.ndarray[np.int_t, ndim=1] py_cord
+    
+    cdef double udist
+    cdef DTW_path path_t    
+    
+    x_arr = np.ascontiguousarray(x, dtype=np.float)
+    y_arr = np.ascontiguousarray(y, dtype=np.float)
+    
+    cost_arr = np.empty((x_arr.shape[0], y_arr.shape[0]), dtype=np.float)
+        
+    udist = dtw1d_BandConst_LocalConst(<double *>x_arr.data, <double*>y_arr.data, x_arr.shape[0],y_arr.shape[0], <double*>cost_arr.data,configuration['Ldistance']['type'], configuration['Constraint']['CVal'])
+
+    if configuration['Output'] ==1:
+        
+        return udist
+    
+    else:
+        
+        path(<double*>cost_arr.data, cost_arr.shape[0], cost_arr.shape[1], -1, -1, &path_t)
+        
+        px_cord = np.empty(path_t.plen, dtype=np.int)
+        py_cord = np.empty(path_t.plen, dtype=np.int)
+        for i in range(path_t.plen):
+            px_cord[i] = path_t.px[i]
+            py_cord[i] = path_t.py[i] 
+        free (path_t.px)
+        free (path_t.py)
+        
+        if configuration['Output'] == 2:
+            return udist, path_t.plen
+        elif configuration['Output'] == 3:
+            return udist, path_t.plen, (px_cord, py_cord)
+        else:
+            return udist, path_t.plen, (px_cord, py_cord), cost_arr 
+            
+            
+            
             
 def dtw1dSubLocalBand(x, y, configuration):
     """Modified version of standard DTW as described in [Muller07] and [Keogh01],
