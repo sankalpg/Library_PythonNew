@@ -12,7 +12,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../machineLearning'))
 import batchProcessing as BP
 import mlWrapper as mlw
 
-
 def feature_extractor_standard(filename, frameSize, hopSize, aggLen):
     
     #print('Starting Feature Extraction for %s',filename)
@@ -20,46 +19,46 @@ def feature_extractor_standard(filename, frameSize, hopSize, aggLen):
     #loading the audio file into an array
     audio_in=es.MonoLoader(filename=filename)()
     
+    
     #creating algorithm objects and pool objects
-    pool=ess.Pool()
-    pool2=ess.Pool()
     win=es.Windowing()
     spec=es.Spectrum()
     centroid = es.Centroid()
     flatness = es.Flatness()
-    flux = es.Flux()
     mfcc=es.MFCC(lowFrequencyBound=40)
     
     #Compute features frame by frame
+    mfcc_ftrsArray = []
+    sCentroidArray = []
+    sFlatnessArray = []
+    
     for frame in es.FrameGenerator(audio_in, frameSize = frameSize, hopSize = hopSize):
         spectrum = spec(win(frame))
         band_eneg, mfcc_ftrs=mfcc(spectrum)
         sCentroid = centroid(spectrum)
         sFlatness = flatness(spectrum)
-        sFlux = flux(spectrum)
+        #sFlux = flux(spectrum)
         
-        pool.add('lowlevel.mfcc', mfcc_ftrs)
-        pool.add('lowlevel.sCentroid', [sCentroid])
-        pool.add('lowlevel.sFlatness', [sFlatness])
+        mfcc_ftrsArray.append(mfcc_ftrs)
+        sCentroidArray.append(sCentroid)
+        sFlatnessArray.append(sFlatness)
         
-    for ii in xrange(0,pool['lowlevel.mfcc'].shape[0]-aggLen,aggLen):
-        pool2.add('meanMFCC', np.mean(pool['lowlevel.mfcc'][ii:ii+aggLen,:],axis=0))
-        pool2.add('varMFCC', np.var(pool['lowlevel.mfcc'][ii:ii+aggLen,:],axis=0))
-        pool2.add('meanCent', np.mean(pool['lowlevel.sCentroid'][ii:ii+aggLen],axis=0))
-        pool2.add('varCent', np.var(pool['lowlevel.sCentroid'][ii:ii+aggLen],axis=0))
-        pool2.add('meanFlat', np.mean(pool['lowlevel.sFlatness'][ii:ii+aggLen],axis=0))
-        pool2.add('varFlat', np.var(pool['lowlevel.sFlatness'][ii:ii+aggLen],axis=0))
+    del audio_in    
+    meanMFCC = []
+    varMFCC = []
+    meanCent = []
+    varCent = []
+    meanFlat = []
+    varFlat = []
+    for ii in xrange(0, len(mfcc_ftrsArray)-aggLen,aggLen):
+        meanMFCC.append(np.mean(mfcc_ftrsArray[ii:ii+aggLen],axis=0))
+        varMFCC.append(np.var(mfcc_ftrsArray[ii:ii+aggLen],axis=0))
+        meanCent.append(np.mean(sCentroidArray[ii:ii+aggLen]))
+        varCent.append(np.var(sCentroidArray[ii:ii+aggLen]))
+        meanFlat.append(np.mean(sFlatnessArray[ii:ii+aggLen]))
+        varFlat.append(np.var(sFlatnessArray[ii:ii+aggLen]))
 
-    pool.clear()
-    
-    meanMFCC = copy.deepcopy(pool2['meanMFCC'])
-    varMFCC = copy.deepcopy(pool2['varMFCC'])
-    meanCent = copy.deepcopy(pool2['meanCent'])
-    varCent = copy.deepcopy(pool2['varCent'])
-    meanFlat = copy.deepcopy(pool2['meanFlat'])
-    varFlat = copy.deepcopy(pool2['varFlat'])
-    pool2.clear()
-    return meanMFCC, varMFCC, meanCent, varCent, meanFlat, varFlat
+    return np.concatenate((np.array(meanMFCC), np.array(varMFCC), np.transpose(np.array(meanCent, ndmin=2)), np.transpose(np.array(varCent, ndmin=2)), np.transpose(np.array(meanFlat,ndmin=2)), np.transpose(np.array(varFlat,ndmin=2))),axis=1)
 
 def featuresUsed():    
     return ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm12', 'm13', 'v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v11', 'v12', 'v13', 'mCent','vCent','mFlat', 'vFlat']
@@ -95,7 +94,7 @@ def generateBinaryAggMFCCARFF(class1Folder, class2Folder, class1, class2, arffFi
     
     #writing header for arff file
     fid = open(arffFile,'w')
-    fidMapp = open(mappFile,'w')
+    
     fid.write("@relation 'ToWeka_sectionSegmentation'\n")
     for feature in features:
         fid.write("@attribute %s numeric\n"%feature)
@@ -104,10 +103,16 @@ def generateBinaryAggMFCCARFF(class1Folder, class2Folder, class1, class2, arffFi
         fid.write("%s,\t"%clas)
     fid.write("}\n")
     fid.write("@data\n")
+    fid.close()
+
+    fidMapp = open(mappFile,'w')
+    fidMapp.close()
     
     #start extracting features and write
     class1audiofiles = BP.GetFileNamesInDir(class1Folder,'wav')
     for audiofile in class1audiofiles:
+        fid = open(arffFile,'a')
+        fidMapp = open(mappFile,'a')
         print audiofile
         #computing dynamically fs, aggLen based on provided hop size
         fs=float(es.MetadataReader(filename=audiofile)()[9])
@@ -117,16 +122,22 @@ def generateBinaryAggMFCCARFF(class1Folder, class2Folder, class1, class2, arffFi
         hopsize = int(np.round(fs*hopDur))
         aggLen = int(np.round(aggDur*fs/hopsize))
         
-        meanMFCC, varMFCC, meanCent, varCent, meanFlat, varFlat  = feature_extractor_standard(audiofile, framesize, hopsize, aggLen);
-        featuresAll = np.concatenate((meanMFCC, varMFCC, meanCent, varCent, meanFlat, varFlat),axis=1)[:,ind_features]
+        audio_in=es.MonoLoader(filename=audiofile)()
+        featuresAll = feature_extractor_standard(audiofile, framesize, hopsize, aggLen)
+        featuresAll = featuresAll[:,ind_features]
         for ftr in featuresAll:
             fid.write("%f,"*len(features)%tuple(ftr))
             fid.write("%s\n"%classes[0])
-        fidMapp.write("%s\t%d\n,"%(audiofile, featuresAll.shape[0]))
+        fidMapp.write("%s\t%d\n"%(audiofile, featuresAll.shape[0]))
+        del featuresAll
+        fid.close()
+        fidMapp.close()
         
     
     class2audiofiles = BP.GetFileNamesInDir(class2Folder,'wav')
     for audiofile in class2audiofiles:
+        fid = open(arffFile,'a')
+        fidMapp = open(mappFile,'a')
         print audiofile
         #computing dynamically fs, aggLen based on provided hop size
         fs=float(es.MetadataReader(filename=audiofile)()[9])
@@ -136,15 +147,17 @@ def generateBinaryAggMFCCARFF(class1Folder, class2Folder, class1, class2, arffFi
         hopsize = int(np.round(fs*hopDur))
         aggLen = int(np.round(aggDur*fs/hopsize))
         
-        meanMFCC, varMFCC, meanCent, varCent, meanFlat, varFlat  = feature_extractor_standard(audiofile, framesize, hopsize, aggLen)
-        featuresAll = np.concatenate((meanMFCC, varMFCC, meanCent, varCent, meanFlat, varFlat),axis=1)[:,ind_features]
+        audio_in=es.MonoLoader(filename=audiofile)()
+        featuresAll = feature_extractor_standard(audiofile, framesize, hopsize, aggLen)
+        featuresAll = featuresAll[:,ind_features]
         for ftr in featuresAll:
             fid.write("%f,"*len(features)%tuple(ftr))
             fid.write("%s\n"%classes[1])
-        fidMapp.write("%s\t%d\n,"%(audiofile, featuresAll.shape[0]))
-        
-    fid.close()
-    fidMapp.close()
+        fidMapp.write("%s\t%d\n"%(audiofile, featuresAll.shape[0]))
+        del featuresAll
+        fid.close()
+        fidMapp.close()
+
     
     
 def exportTREEModel(arffFile, modelFile, normFile):
