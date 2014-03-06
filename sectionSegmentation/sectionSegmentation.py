@@ -45,28 +45,40 @@ def feature_extractor_standard(filename, frameSize, hopSize, aggLen):
     for ii in xrange(0,pool['lowlevel.mfcc'].shape[0]-aggLen,aggLen):
         pool2.add('meanMFCC', np.mean(pool['lowlevel.mfcc'][ii:ii+aggLen,:],axis=0))
         pool2.add('varMFCC', np.var(pool['lowlevel.mfcc'][ii:ii+aggLen,:],axis=0))
+        pool2.add('meanCent', np.mean(pool['lowlevel.sCentroid'][ii:ii+aggLen],axis=0))
         pool2.add('varCent', np.var(pool['lowlevel.sCentroid'][ii:ii+aggLen],axis=0))
+        pool2.add('meanFlat', np.mean(pool['lowlevel.sFlatness'][ii:ii+aggLen],axis=0))
         pool2.add('varFlat', np.var(pool['lowlevel.sFlatness'][ii:ii+aggLen],axis=0))
 
     pool.clear()
     
     meanMFCC = copy.deepcopy(pool2['meanMFCC'])
     varMFCC = copy.deepcopy(pool2['varMFCC'])
+    meanCent = copy.deepcopy(pool2['meanCent'])
     varCent = copy.deepcopy(pool2['varCent'])
+    meanFlat = copy.deepcopy(pool2['meanFlat'])
     varFlat = copy.deepcopy(pool2['varFlat'])
     pool2.clear()
-    return meanMFCC, varMFCC, varCent, varFlat
+    return meanMFCC, varMFCC, meanCent, varCent, meanFlat, varFlat
 
+def featuresUsed():    
+    return ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm12', 'm13', 'v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v11', 'v12', 'v13', 'mCent','vCent','mFlat', 'vFlat']
+
+def featuresExtracted():
+    return ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm12', 'm13', 'v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v11', 'v12', 'v13', 'mCent','vCent','mFlat', 'vFlat']
 
 
 def generateBinaryAggMFCCARFF(class1Folder, class2Folder, class1, class2, arffFile, frameDur, hopDur, aggDur):
     """
     This function generates an arff file of MFCC features for two classes class1 and class2 for which MFCCs are extracted from the audio files kept in appropriate folders (first two args)
+    mappFile store audiofile names and number of features extracted from that file
     """
+    fname,ext = os.path.splitext(arffFile)
+    mappFile = fname + '.mappFileFeat'
     
     #features extracted and features to use
-    features = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm12', 'm13', 'v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v11', 'v12', 'v13', 'vCent', 'vFlat']
-    features2Use = ['m1', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10', 'm13', 'v1', 'v2', 'v4', 'v12', 'v13', 'vCent', 'vFlat']
+    features = featuresExtracted()
+    features2Use = featuresUsed()
     
     #array of class labels
     classes = [class1, class2]
@@ -83,6 +95,7 @@ def generateBinaryAggMFCCARFF(class1Folder, class2Folder, class1, class2, arffFi
     
     #writing header for arff file
     fid = open(arffFile,'w')
+    fidMapp = open(mappFile,'w')
     fid.write("@relation 'ToWeka_sectionSegmentation'\n")
     for feature in features:
         fid.write("@attribute %s numeric\n"%feature)
@@ -95,7 +108,7 @@ def generateBinaryAggMFCCARFF(class1Folder, class2Folder, class1, class2, arffFi
     #start extracting features and write
     class1audiofiles = BP.GetFileNamesInDir(class1Folder,'wav')
     for audiofile in class1audiofiles:
-        
+        print audiofile
         #computing dynamically fs, aggLen based on provided hop size
         fs=float(es.MetadataReader(filename=audiofile)()[9])
         framesize = int(np.round(fs*frameDur))
@@ -104,16 +117,17 @@ def generateBinaryAggMFCCARFF(class1Folder, class2Folder, class1, class2, arffFi
         hopsize = int(np.round(fs*hopDur))
         aggLen = int(np.round(aggDur*fs/hopsize))
         
-        meanMFCC, varMFCC, varCent, varFlat  = feature_extractor_standard(audiofile, framesize, hopsize, aggLen);
-        featuresAll = np.concatenate((meanMFCC, varMFCC, varCent, varFlat),axis=1)[:,ind_features]
+        meanMFCC, varMFCC, meanCent, varCent, meanFlat, varFlat  = feature_extractor_standard(audiofile, framesize, hopsize, aggLen);
+        featuresAll = np.concatenate((meanMFCC, varMFCC, meanCent, varCent, meanFlat, varFlat),axis=1)[:,ind_features]
         for ftr in featuresAll:
             fid.write("%f,"*len(features)%tuple(ftr))
             fid.write("%s\n"%classes[0])
+        fidMapp.write("%s\t%d\n,"%(audiofile, featuresAll.shape[0]))
         
     
     class2audiofiles = BP.GetFileNamesInDir(class2Folder,'wav')
     for audiofile in class2audiofiles:
-        
+        print audiofile
         #computing dynamically fs, aggLen based on provided hop size
         fs=float(es.MetadataReader(filename=audiofile)()[9])
         framesize = int(np.round(fs*frameDur))
@@ -122,13 +136,15 @@ def generateBinaryAggMFCCARFF(class1Folder, class2Folder, class1, class2, arffFi
         hopsize = int(np.round(fs*hopDur))
         aggLen = int(np.round(aggDur*fs/hopsize))
         
-        meanMFCC, varMFCC, varCent, varFlat  = feature_extractor_standard(audiofile, framesize, hopsize, aggLen)
-        featuresAll = np.concatenate((meanMFCC, varMFCC, varCent, varFlat),axis=1)[:,ind_features]
+        meanMFCC, varMFCC, meanCent, varCent, meanFlat, varFlat  = feature_extractor_standard(audiofile, framesize, hopsize, aggLen)
+        featuresAll = np.concatenate((meanMFCC, varMFCC, meanCent, varCent, meanFlat, varFlat),axis=1)[:,ind_features]
         for ftr in featuresAll:
             fid.write("%f,"*len(features)%tuple(ftr))
             fid.write("%s\n"%classes[1])
+        fidMapp.write("%s\t%d\n,"%(audiofile, featuresAll.shape[0]))
         
     fid.close()
+    fidMapp.close()
     
     
 def exportTREEModel(arffFile, modelFile, normFile):
@@ -141,8 +157,8 @@ def exportTREEModel(arffFile, modelFile, normFile):
 def extractSoloPercussion(audiofile, segFile, modelFile, normFile, frameDur, hopDur, aggDur, medianDur=20):
     
     #extactly same set of features used in training of the model
-    features = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm12', 'm13', 'v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v11', 'v12', 'v13', 'vCent', 'vFlat']
-    features2Use = ['m1', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10', 'm13', 'v1', 'v2', 'v4', 'v12', 'v13', 'vCent', 'vFlat']
+    features = featuresExtracted()
+    features2Use = featuresUsed()
     
     # indexes of the chosen features
     ind_features = []
@@ -159,8 +175,8 @@ def extractSoloPercussion(audiofile, segFile, modelFile, normFile, frameDur, hop
     aggLen = int(np.round(aggDur*fs/hopsize))
         
     #computing features
-    meanMFCC, varMFCC, varCent, varFlat  = feature_extractor_standard(audiofile, framesize, hopsize, aggLen)
-    features = np.concatenate((meanMFCC, varMFCC, varCent, varFlat),axis=1)[:,ind_features]
+    meanMFCC, varMFCC, meanCent, varCent, meanFlat, varFlat  = feature_extractor_standard(audiofile, framesize, hopsize, aggLen)
+    features = np.concatenate((meanMFCC, varMFCC, meanCent, varCent, meanFlat, varFlat),axis=1)[:,ind_features]
     
     #normalization step, read the values used to normalize features while building the model
     fid=file(normFile,'r')
