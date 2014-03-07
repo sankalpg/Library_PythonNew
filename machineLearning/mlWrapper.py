@@ -318,12 +318,6 @@ class experimenter(classifiers):
         self.setClassifierName(classifier[0])
         self.setClassifierParams(classifier[1])
 
-        print "Number of experiments: %d \n"%self.nExp
-        print "Type of evaluation: %s \n"%self.typeEval[0]
-        print "Evaluation parameter for %s is: %d\n"%(self.typeEval[0], self.typeEval[1])
-        print "Instances per class selected: %d\n" %self.nInstPerClass
-        print "Classifier selected: %s\n"%self.classifierName
-
 
     def setFeaturesAndClassLabels(self, features, classLabels):
 
@@ -348,6 +342,13 @@ class experimenter(classifiers):
         return (array-np.mean(array))/np.sqrt(np.var(array))
 
     def runExperiment(self, features = -1, classLabels = -1, features2Use=-1):
+        
+        
+        print "Number of experiments: %d \n"%self.nExp
+        print "Type of evaluation: %s \n"%self.typeEval[0]
+        print "Evaluation parameter for %s is: %d\n"%(self.typeEval[0], self.typeEval[1])
+        print "Instances per class selected: %d\n" %self.nInstPerClass
+        print "Classifier selected: %s\n"%self.classifierName
 
         if not isinstance(features, int) and not isinstance(classLabels, int):
             self.setFeaturesAndClassLabels(features, classLabels)
