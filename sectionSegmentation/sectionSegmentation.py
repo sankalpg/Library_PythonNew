@@ -252,3 +252,19 @@ def extractSoloPercussionBATCHPROC(root_dir, modelFile, normFile, frameDur, hopD
         fname, ext = os.path.splitext(audiofile)
         segFile = fname + '.taniSeg'
         extractSoloPercussion(audiofile, segFile, modelFile, normFile, frameDur, hopDur, aggDur, medianDur)
+
+
+def generateARFF4DiffConfigs(percFolder, nonPercFolder, output_dir):
+    # this function generates different arff files for different ocnfigurations for experiments
+    
+    AvgLens = [1, 2, 4]
+    FrameLens = (1024.0/44100.0)*np.array([1, 2])
+    
+    class1 = 'perc'
+    class2 = 'nonperc'
+    
+    for AvgLen in AvgLens:
+        for FrameLen in FrameLens:
+            arffFile = output_dir + '/' + 'MFCC_CENT_FLAT_' + str(int(AvgLen*10)) + '_' + str(int(FrameLen*44100))+'.arff'
+            generateBinaryAggMFCCARFF(percFolder, nonPercFolder, class1, class2, arffFile, FrameLen, FrameLen/2.0, AvgLen)
+            
