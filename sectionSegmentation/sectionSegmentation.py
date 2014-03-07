@@ -12,13 +12,9 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../machineLearning'))
 import batchProcessing as BP
 import mlWrapper as mlw
 
-def feature_extractor_standard(filename, frameSize, hopSize, aggLen):
+def feature_extractor_standard(audio_in, frameSize, hopSize, aggLen):
     
     #print('Starting Feature Extraction for %s',filename)
-    
-    #loading the audio file into an array
-    audio_in=es.MonoLoader(filename=filename)()
-    
     
     #creating algorithm objects and pool objects
     win=es.Windowing()
@@ -42,8 +38,7 @@ def feature_extractor_standard(filename, frameSize, hopSize, aggLen):
         mfcc_ftrsArray.append(mfcc_ftrs)
         sCentroidArray.append(sCentroid)
         sFlatnessArray.append(sFlatness)
-        
-    del audio_in    
+
     meanMFCC = []
     varMFCC = []
     meanCent = []
@@ -108,6 +103,11 @@ def generateBinaryAggMFCCARFF(class1Folder, class2Folder, class1, class2, arffFi
     fidMapp = open(mappFile,'w')
     fidMapp.close()
     
+    
+    #loading the audio file into an array
+    ML =es.MonoLoader()
+    
+    
     #start extracting features and write
     class1audiofiles = BP.GetFileNamesInDir(class1Folder,'wav')
     for audiofile in class1audiofiles:
@@ -121,9 +121,10 @@ def generateBinaryAggMFCCARFF(class1Folder, class2Folder, class1, class2, arffFi
             framesize=framesize+1
         hopsize = int(np.round(fs*hopDur))
         aggLen = int(np.round(aggDur*fs/hopsize))
-        
-        audio_in=es.MonoLoader(filename=audiofile)()
-        featuresAll = feature_extractor_standard(audiofile, framesize, hopsize, aggLen)
+
+        ML.configure(filename = audiofile)
+        audio_in = ML()
+        featuresAll = feature_extractor_standard(audio_in, framesize, hopsize, aggLen)
         featuresAll = featuresAll[:,ind_features]
         for ftr in featuresAll:
             fid.write("%f,"*len(features)%tuple(ftr))
@@ -147,8 +148,9 @@ def generateBinaryAggMFCCARFF(class1Folder, class2Folder, class1, class2, arffFi
         hopsize = int(np.round(fs*hopDur))
         aggLen = int(np.round(aggDur*fs/hopsize))
         
-        audio_in=es.MonoLoader(filename=audiofile)()
-        featuresAll = feature_extractor_standard(audiofile, framesize, hopsize, aggLen)
+        ML.configure(filename = audiofile)
+        audio_in = ML()
+        featuresAll = feature_extractor_standard(audio_in, framesize, hopsize, aggLen)
         featuresAll = featuresAll[:,ind_features]
         for ftr in featuresAll:
             fid.write("%f,"*len(features)%tuple(ftr))
@@ -267,4 +269,20 @@ def generateARFF4DiffConfigs(percFolder, nonPercFolder, output_dir):
         for FrameLen in FrameLens:
             arffFile = output_dir + '/' + 'MFCC_CENT_FLAT_' + str(int(AvgLen*10)) + '_' + str(int(FrameLen*44100))+'.arff'
             generateBinaryAggMFCCARFF(percFolder, nonPercFolder, class1, class2, arffFile, FrameLen, FrameLen/2.0, AvgLen)
+            
+            
+            
+if __name__=="__main__":
+    
+    
+    percFolder = sys.argv[1]
+    nonPercFolder = sys.argv[2]
+    class1 = sys.argv[3]
+    class2 = sys.argv[4]
+    arffFile = sys.argv[5]
+    FrameLen = float(sys.argv[6])
+    AvgLen = float(sys.argv[7])
+    
+    
+    generateBinaryAggMFCCARFF(percFolder, nonPercFolder, class1, class2, arffFile, FrameLen, FrameLen/2.0, AvgLen)
             
