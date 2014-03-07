@@ -10,7 +10,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegression
 
-from sklearn.cross_validation import KFold
+import sklearn.cross_validation as crossVal
 from collections import Counter
 from scipy.stats import mannwhitneyu
 import json
@@ -310,14 +310,16 @@ class experimenter(classifiers):
             
             self.classLabelsInt= (self.classLabelsInt).astype(np.int)
 
-    def setExperimentParams(self, nExp = 10, typeEval = ("kFoldCrossVal",10), nInstPerClass = -1, classifier = ('svm',"default")):
+    def setExperimentParams(self, nExp = 10, typeEval = ("kFoldCrossVal",10), nInstPerClass = -1, classifier = ('svm',"default"), balanceClasses=1):
         self.nExp = nExp
         self.typeEval = typeEval
         self.nInstPerClass = nInstPerClass  #this means balance the dataset taking least number of instances present in a class
 
         self.setClassifierName(classifier[0])
         self.setClassifierParams(classifier[1])
-
+        
+        self.balanceClasses = balanceClasses
+        
 
     def setFeaturesAndClassLabels(self, features, classLabels):
 
@@ -340,56 +342,48 @@ class experimenter(classifiers):
     def normFeatures(self,array):
 
         return (array-np.mean(array))/np.sqrt(np.var(array))
+    
+    
+    ############################ MAIN FUNCTION FOR RUNNING EXPERIMENTS ###########################
+    
+    def runExperiment(self, features = -1, classLabels = -1, features2Use=-1, filterArray = -1, verbose=1):
+        """
+        This is the main function to run experiments. There are two option to load data, either pass them as ndarray or use arff file (in which case use readArff function).
+        
+        Steps in this function:
+        1) Handle Data IO (either through ndarray or through arff file)
+        
+        """
+        
+        #printing useful information 
+        if verbose:
+            print "Number of experiments: %d \n"%self.nExp
+            print "Evaluation parameter for %s is: %d\n"%(self.typeEval[0], self.typeEval[1])
+            print "Instances per class selected: %d\n" %self.nInstPerClass   
+            print "Classifier selected: %s\n"%self.classifierName
 
-    def runExperiment(self, features = -1, classLabels = -1, features2Use=-1):
         
         
-        print "Number of experiments: %d \n"%self.nExp
-        print "Type of evaluation: %s \n"%self.typeEval[0]
-        print "Evaluation parameter for %s is: %d\n"%(self.typeEval[0], self.typeEval[1])
-        print "Instances per class selected: %d\n" %self.nInstPerClass
-        print "Classifier selected: %s\n"%self.classifierName
-
+        ### 1. Handle Data IO          (only if its provided in terms of ndarray). If you want to use arff file use readarff function before calling this function.
         if not isinstance(features, int) and not isinstance(classLabels, int):
             self.setFeaturesAndClassLabels(features, classLabels)
-
+       
+       
+        ### Checking if there is not data
         if self.features.shape[0] ==0:
             print "Please input features and class labels or provide path for arff file"
             return -1
+        
+        
+        ### Before trying to run experiment provide experiment parameters
         if len(self.classifierName) ==0:
             print "Before proceeding setExperimentParams()"
             return -1
-
-        #Gathering all the indices corresponding to each class to further proceed for resampling dataset
-        classMapp = []
-        minInstPerClass = sys.float_info.max
-        for i in range(0,len(self.cNames)):
-            classMapp.append(np.where(self.classLabelsInt == i)[0])  #the indices of this classMapp array is the class names as the class name to Integer mapping is 0-N.. So classMap stores array of indices of members of that class
-            print "Number of instances in class %s is %d \n"%(self.cNames[i],len(classMapp[i]))
-            print type(classMapp[0])
-            if(len(classMapp[i])<minInstPerClass):
-                minInstPerClass = len(classMapp[i])
+        ### TODO <Put additional checks here for other necessary parameters needed to run the experiment>
         
-
-
-        ### Resampling of the dataset (if it should have equal number of features from both the classes (given a number N or minimum number of features of two classes)
-        ### TODO: include sampling of instances of class which has few instances and repeat a random subset to increase the number of instances
-
-        InstPerClass = np.zeros(len(self.cNames),dtype=int)
-        if self.nInstPerClass == -1: #balancing the dataset with least number of instances present in any class
-            InstPerClass[:] = minInstPerClass
-        else:
-            InstPerClass[:] = self.InstPerClass
-
-        ### Variable to store confusion matrix of all experiments
-        self.cMTXWhole = np.zeros([len(self.cNames),len(self.cNames)])
-        self.cMTXExp = [[self.cMTXWhole] for x in range(self.nExp)]    #store confusion matrix of each iteration
-        self.accuracy = [[] for x in range(self.nExp)]
-        self.decArray = [[] for x in xrange(len(self.classLabelsInt))]  #stores all the decision for each feature vector in all the experiments
-
-
-        #selection of the features
-        ### Select all the user specified features
+        
+        
+        ### Selection of the features (Select all the user specified features)
         if isinstance(features2Use,int):
             self.featuresSelected = copy.deepcopy(self.features)
         elif isinstance(features2Use, list):
@@ -399,55 +393,92 @@ class experimenter(classifiers):
             self.featuresSelected = copy.deepcopy(self.features[:,ind_features])
         else:
             print "Features2Use should be either list of features or -1"
+        
+        
+        ### Feature Normalization (perform normalization only when classifier is not mYkNN)
+        self.normalizeFeatures()
+        
+        # Soon after setting experimental params we can initialize variables to store the results/ other stats for each experiment
+        ### Variable to store stats of all the experiments
+        self.cMTXWhole = np.zeros([len(self.cNames),len(self.cNames)])
+        self.cMTXExp = [[self.cMTXWhole] for x in range(self.nExp)]    #store confusion matrix of each iteration
+        self.accuracy = [[] for x in range(self.nExp)]
+        self.decArray = [[] for x in xrange(len(self.classLabelsInt))]  #stores all the decision for each feature vector in all the experiments
+        
 
-        # perform feature normalization and other procesing only when classifier is not mYkNN
-        if not (self.classifierName == "mYkNN"):
-            #normalization of the features
-            for i in range(self.featuresSelected.shape[1]):
-                self.featuresSelected[:,i] = self.normFeatures(self.featuresSelected[:,i])
-
-            #making every feature non negative by giving DC offset
-            if not self.requireNormFeatures(self.classifierName):
-                for i in range(self.featuresSelected.shape[1]):
-                    self.featuresSelected[:,i] = self.featuresSelected[:,i] + -1*np.min(self.featuresSelected[:,i])
-
-
-
-
-
+        
+        ### FOLD GENERATION LOGIC is a crucial component of this functions there are various possibilities
+        ## CASE 1) when filtering array is provided. Meaning no two token of the same id in filtering array can be in training and testing. Options here are:
+        #               1) Leave one "id" cross validation (where one "id" is all the tokens of the same id in filtering array )
+        #                       1) Balance the classes in training set or not. In this case there is no balance of classes in testing fold (since its determined by "id")
+        #               2) Decide fold based on min # id count. 1 fold size = min(#"id"). IF YOU THINK DEEPLY SINCE THE TRAINING SET REMAINS SAME FOR EVREY FOLD THE CASE IS EXACTLY SIMILAR TO THE 1) in this category
+        
+        # CASE 2) When filtering array is not provided.
+        #               1) K fold cross validation by having balanced classes in both testing and training set or not.
+        
+        
         ### Experiment iterations start here
         for exp_cnt in range(0,self.nExp):
+            
+            train_test_ind=[]
+            if isinstance(filterArray, int):
+                
+                if self.balanceClasses:
+                    classMapp = []
+                    minInstPerClass = sys.float_info.max
+                    for i in range(0,len(self.cNames)):
+                        classMapp.append(np.where(self.classLabelsInt == i)[0])
+                        if(len(classMapp[i])<minInstPerClass):
+                            minInstPerClass = len(classMapp[i])
+                    if self.nInstPerClass==-1:
+                        self.nInstPerClass = minInstPerClass
+                    
+                    expIndices = np.array([], dtype = int)  # this array will contain indices of instances which are to be used in one experiment
+                    for j in range(0,len(self.cNames)):     #reshuffling the order in every experiment before selecting the samples for each experiment
+                        np.random.shuffle(classMapp[j])
+                        expIndices = np.append(expIndices, classMapp[j][:self.nInstPerClass])
+                    
+                    if self.typeEval[0] =="kFoldCrossVal":
+                        if (self.typeEval[1]==-1):
+                            n_folds = expIndices.shape[0]
+                        else:
+                            n_folds = self.typeEval[1]
+                            
+                        np.random.shuffle(expIndices)
+                        kfold = crossVal.StratifiedKFold(self.classLabelsInt[expIndices], n_folds=n_folds, indices=True)
+                        for train, test in kfold:
+                            train_test_ind.append((train,test))
+                            
+                    
+                else:
+                    expIndices = np.arange(self.featuresSelected.shape[0])
+                        
+                    if self.typeEval[0] =="kFoldCrossVal":
+                        if (self.typeEval[1]==-1):
+                            n_folds = expIndices.shape[0]
+                        else:
+                            n_folds = self.typeEval[1]
+                            
+                        np.random.shuffle(expIndices)
+                        kfold = crossVal.KFold(expIndices.shape[0], n_folds=n_folds, indices=True)
+                        for train, test in kfold:
+                            train_test_ind.append((train,test))
 
-            expIndices = np.array([], dtype = int)  # this array will contain indices of instances which are to be used in one experiment
-            for j in range(0,len(self.cNames)):     #reshuffling the order in every experiment before selecting the samples for each experiment
-                np.random.shuffle(classMapp[j])
-                expIndices = np.append(expIndices, classMapp[j][:InstPerClass[j]])
-
-            ### Test and Evaluation part
-            ### For each experiment perform test and evaluation in the following way.
-
-            #shuffling indices of the chosen features for more randomness in selection of folds
-            np.random.shuffle(expIndices)
-
-            if (self.typeEval[1]==-1):
-                n_folds = expIndices.shape[0]
             else:
-                n_folds = self.typeEval[1]
+                pass
+                
 
-            if self.typeEval[0] =="kFoldCrossVal":
-                kfold = KFold(expIndices.shape[0], n_folds=n_folds, indices=True)
+            for fold_ind,(train_ind, test_ind) in enumerate(train_test_ind):
+                prediction = self.performTrainTest(self.featuresSelected[expIndices[train_ind],:],self.classLabelsInt[expIndices[train_ind]], self.featuresSelected[expIndices[test_ind],:])
+                resultPFold = np.where(prediction==self.classLabelsInt[expIndices[test_ind]])[0]
 
-                for fold_ind,(train_ind, test_ind) in enumerate(kfold):
-                    prediction = self.performTrainTest(self.featuresSelected[expIndices[train_ind],:],self.classLabelsInt[expIndices[train_ind]], self.featuresSelected[expIndices[test_ind],:])
-                    resultPFold = np.where(prediction==self.classLabelsInt[expIndices[test_ind]])[0]
+                for k,ind in enumerate(test_ind):
+                    self.decArray[expIndices[ind]].append(prediction[k])
 
-                    for k,ind in enumerate(test_ind):
-                        self.decArray[expIndices[ind]].append(prediction[k])
-
-                    self.accuracy[exp_cnt].append(float(resultPFold.shape[0])/float(test_ind.shape[0]))
-                    cnfMTX = self.genConfMTX(self.classLabelsInt[expIndices[test_ind]],prediction)
-                    self.cMTXExp[exp_cnt] = self.cMTXExp[exp_cnt] + cnfMTX
-                    self.cMTXWhole = self.cMTXWhole + cnfMTX
+                self.accuracy[exp_cnt].append(float(resultPFold.shape[0])/float(test_ind.shape[0]))
+                cnfMTX = self.genConfMTX(self.classLabelsInt[expIndices[test_ind]],prediction)
+                self.cMTXExp[exp_cnt] = self.cMTXExp[exp_cnt] + cnfMTX
+                self.cMTXWhole = self.cMTXWhole + cnfMTX
 
 
             ### TODO: DO this for many type of evaluation methods
@@ -458,6 +489,8 @@ class experimenter(classifiers):
             self.overallAccuracy.append(np.mean(m))
 
         self.overallAccuracy = np.mean(self.overallAccuracy)
+        
+        
 
     def featureSelection(self,features2Use=-1):
 
@@ -472,17 +505,38 @@ class experimenter(classifiers):
             print "Features2Use should be either list of features or -1"
 
     def normalizeFeatures(self):
-
-        # perform feature normalization and other procesing only when classifier is not mYkNN
-        if not (self.classifierName == "mYkNN"):
-            #normalization of the features
+        """
+        This function performs feature normalization depending upon the kind of classifier that has to be used
+        """
+        normType = 'Null'
+        
+        if self.classifierName == "tree":
+            normType = 'AllPositive'
+        if self.classifierName == "nbMulti":
+            normType = 'AllPositive'
+        if self.classifierName == "svm":
+            normType = 'ZeroMean1Var'
+        if self.classifierName == "kNN":
+            normType = 'ZeroMean1Var'
+        if self.classifierName == "logReg":
+            normType = 'ZeroMean1Var'
+        if self.classifierName == "mYkNN":#this function is a hack function, see description before making judgements
+            pass
+        
+        self.normFactors = []
+        if normType == 'ZeroMean1Var':
             for i in range(self.featuresSelected.shape[1]):
-                self.featuresSelected[:,i] = self.normFeatures(self.featuresSelected[:,i])
+                 mean = np.mean(self.featuresSelected[:,i])
+                 std = np.std(self.featuresSelected[:,i])
+                 self.normFactors.append((i,mean,std))
+                 self.featuresSelected[:,i] = (self.featuresSelected[:,i]-mean)/std
+        elif  normType == 'AllPositive':
+            for i in range(self.featuresSelected.shape[1]):
+                    min_val = np.min(self.featuresSelected[:,i])
+                    self.normFactors.append((i,min_val,0))
+                    self.featuresSelected[:,i] = self.featuresSelected[:,i] -min_val
 
-            #making every feature non negative by giving DC offset
-            if not self.requireNormFeatures(self.classifierName):
-                for i in range(self.featuresSelected.shape[1]):
-                    self.featuresSelected[:,i] = self.featuresSelected[:,i] + -1*np.min(self.featuresSelected[:,i])
+                
 
 
 
