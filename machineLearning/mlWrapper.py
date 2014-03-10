@@ -346,7 +346,7 @@ class experimenter(classifiers):
     
     ############################ MAIN FUNCTION FOR RUNNING EXPERIMENTS ###########################
     
-    def runExperiment(self, features = -1, classLabels = -1, features2Use=-1, filterArray = -1, verbose=1):
+    def runExperiment(self, features = -1, classLabels = -1, features2Use=-1, verbose=1):
         """
         This is the main function to run experiments. There are two option to load data, either pass them as ndarray or use arff file (in which case use readArff function).
         
@@ -379,6 +379,12 @@ class experimenter(classifiers):
         if len(self.classifierName) ==0:
             print "Before proceeding setExperimentParams()"
             return -1
+        
+        
+        if self.typeEval[0] =='leaveOneID':
+            if isinstance(self.filterArray,int):
+                print "In case of leaveOneID evaluation please provide filterArray containing ID mapping <use a function in this class to generate this array>"
+                return -1
         ### TODO <Put additional checks here for other necessary parameters needed to run the experiment>
         
         
@@ -421,7 +427,7 @@ class experimenter(classifiers):
         for exp_cnt in range(0,self.nExp):
             
             train_test_ind=[]
-            if isinstance(filterArray, int):
+            if self.typeEval[0] =='kFoldCrossVal':
                 
                 if self.balanceClasses:
                     classMapp = []
@@ -448,6 +454,7 @@ class experimenter(classifiers):
                         kfold = crossVal.StratifiedKFold(self.classLabelsInt[expIndices], n_folds=n_folds, indices=True)
                         for train, test in kfold:
                             train_test_ind.append((train,test))
+                        
                             
                     
                 else:
@@ -464,9 +471,35 @@ class experimenter(classifiers):
                         for train, test in kfold:
                             train_test_ind.append((train,test))
 
-            else:
-                pass
+            elif self.typeEval[0] =='leaveOneID':
                 
+                expIndices = np.arange(self.featuresSelected.shape[0])
+                #counting unique ids
+                idsArray = np.unique(self.filterArray)
+                for idfile in idsArray:
+                    testInd = np.where(self.filterArray==idfile)[0]
+                    restInd = np.setdiff1d(expIndices, testInd)
+                    
+                    if self.balanceClasses:
+                        classMapp = []
+                        minInstPerClass = sys.float_info.max
+                        for i in range(0,len(self.cNames)):
+                            classMapp.append(np.where(self.classLabelsInt[restInd] == i)[0])
+                            if(len(classMapp[i])<minInstPerClass):
+                                minInstPerClass = len(classMapp[i])
+                        if self.nInstPerClass==-1:
+                            self.nInstPerClass = minInstPerClass
+                        
+                        trainInd = np.array([], dtype = int)  # this array will contain indices of instances which are to be used in one experiment
+                        for j in range(0,len(self.cNames)):     #reshuffling the order in every experiment before selecting the samples for each experiment
+                            np.random.shuffle(classMapp[j])
+                            trainInd = np.append(trainInd, classMapp[j][:self.nInstPerClass])
+                    else:
+                        trainInd = restInd
+                
+                    train_test_ind.append((trainInd,testInd))
+            else:
+                print "Please provide a valid evaluation type"
 
             for fold_ind,(train_ind, test_ind) in enumerate(train_test_ind):
                 prediction = self.performTrainTest(self.featuresSelected[expIndices[train_ind],:],self.classLabelsInt[expIndices[train_ind]], self.featuresSelected[expIndices[test_ind],:])
@@ -490,7 +523,26 @@ class experimenter(classifiers):
 
         self.overallAccuracy = np.mean(self.overallAccuracy)
         
+    def generateFilterArrayFromMappFile(self, mappFile):
         
+        lines = open(mappFile,'r').readlines()
+        nFeatArray = np.array([])
+        for line in lines:
+            nFeatures = line.split('\t')[-1].strip()
+            nFeatArray = np.append(nFeatArray, nFeatures)
+        
+        nFeatArray = nFeatArray.astype(np.int)
+        
+        filterArray = np.ones(np.sum(nFeatArray))
+        last_ind = 0
+        for ii,increment in enumerate(nFeatArray):
+            filterArray[last_ind:last_ind+increment]=ii
+            last_ind = last_ind+increment
+            
+        
+        self.filterArray = filterArray
+        
+        return filterArray
 
     def featureSelection(self,features2Use=-1):
 
@@ -533,7 +585,7 @@ class experimenter(classifiers):
         elif  normType == 'AllPositive':
             for i in range(self.featuresSelected.shape[1]):
                     min_val = np.min(self.featuresSelected[:,i])
-                    self.normFactors.append((i,min_val,0))
+                    self.normFactors.append((i,min_val,1))
                     self.featuresSelected[:,i] = self.featuresSelected[:,i] -min_val
 
                 
@@ -543,11 +595,14 @@ class experimenter(classifiers):
 
 class advanceExperimenter(experimenter):
 
-    def __init__(self, features=-1, labels=1, arffFile = -1):
+    def __init__(self, features=-1, labels=1, arffFile = -1, mappFile=-1):
         if isinstance(arffFile,str):
             self.readArffFile(arffFile)
         elif isinstance(features,np.ndarray):
             self.setFeaturesAndClassLabels(features, labels)
+        
+        if isinstance(mappFile, str):
+            self.generateFilterArrayFromMappFile(mappFile)
 
     def runCompoundExperiment(self, featureSets, classifierSets, experimentParams, resultDir, logFile):
         """
@@ -556,7 +611,7 @@ class advanceExperimenter(experimenter):
         """
 
         #create directories and file for dumping results and log of compund experiment
-        out_dir = resultDir + '/' + (os.path.basename(logFile)).split('.')[0]+ "_outputs"
+        out_dir = resultDir
         if os.path.exists(out_dir):
             shutil.rmtree(out_dir)
         os.makedirs(out_dir)
