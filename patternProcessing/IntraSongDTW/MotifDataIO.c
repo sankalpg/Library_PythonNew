@@ -283,13 +283,64 @@ int removeSegments(char *segmentFile, segInfoInterp_t *tStamps, int *blacklist, 
     return 1;
 }
 
+void generateInterpolatedSequences(DATATYPE **data, segInfoInterp_t *tStamps, DATATYPE ***dataOut,  segInfo_t **timeOut, INDTYPE N, procParams_t *myProcParams)
+{
+    DATATYPE **dataInterp;
+    segInfo_t *tStampsInterp;
+    INDTYPE ii,jj;
+    float *indLow, *indHigh;
+    int lenMotifReal;
+    
+    lenMotifReal = myProcParams->lenMotifReal;
+    
+    dataInterp = (DATATYPE **)malloc(sizeof(DATATYPE *)*N*3);   //allocating memory also to have interpolated subsequences
+    tStampsInterp = (segInfo_t *)malloc(sizeof(segInfo_t)*(N)*3);         //allocating memory also to have interpolated subsequences
+    
+    //we do interpolation as well
+    indLow = (float *)malloc(sizeof(float)*lenMotifReal);
+    indHigh = (float *)malloc(sizeof(float)*lenMotifReal);
+    for (ii=0;ii<lenMotifReal; ii++)
+    {
+        indLow[ii] = myProcParams->factorLow*ii;
+        indHigh[ii] = myProcParams->factorHigh*ii;
+    }
+    jj=0;
+    for (ii=0;ii<N;ii++)
+    {
+            
+            //low stretched subsequence
+        dataInterp[jj] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
+        cubicInterpolate(data[ii], dataInterp[jj], indLow, lenMotifReal);
+        tStampsInterp[jj].str = tStamps[ii].str;
+        tStampsInterp[jj].end = tStamps[ii].endInterpL;
+        jj++;
+        
+        //normal
+        dataInterp[jj] = data[ii];
+        tStampsInterp[jj].str = tStamps[ii].str;
+        tStampsInterp[jj].end = tStamps[ii].end;
+        jj++;
+        
+        //compacted subsequence
+        dataInterp[jj] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
+        cubicInterpolate(data[ii], dataInterp[jj], indHigh, lenMotifReal);
+        tStampsInterp[jj].str = tStamps[ii].str;
+        tStampsInterp[jj].end = tStamps[ii].endInterpH;
+        jj++;
+            
+    }
+    
+    *dataOut = dataInterp;
+    *timeOut = tStampsInterp;
+}
+
 INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *baseName, fileExts_t *myFileExts, procParams_t *myProcParams, procLogs_t *myProcLogs, int verbos)
 {
      FILE *fp;
     char pitchFile[400]={'\0'}, tonicFile[400]={'\0'}, segmentFile[400]={'\0'};
     
     INDTYPE numLinesInFile, ind, ii, jj, ll, lenTS, N, blacklistCNT;
-    DATATYPE *pitchSamples, **data, **dataInterp;
+    DATATYPE *pitchSamples, **data, **data1, **dataInterp;
     
     float tonic, pHop, temp1, temp[4]={0}, t1, t2, ex, pitchTemp, timeTemp;
     float *timeSamples, *mean, *stdVec, *indLow, *indHigh;
@@ -300,7 +351,7 @@ INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *b
     INDTYPE nPitchSamples;
     
     
-    segInfoInterp_t *tStamps;
+    segInfoInterp_t *tStamps, *tStamps1;
     segInfo_t *taniSegs, *tStampsInterp;
     
     
@@ -399,59 +450,28 @@ INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *b
     //%%%%%%%%%%%%%%%% Removing blacklisted subsequences %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     t1 = clock();
     //finding number of non blacklisted subsequences
+    data1 = (DATATYPE**)malloc(sizeof(DATATYPE*)*lenTS);
+    tStamps1 = (segInfoInterp_t *)malloc(sizeof(segInfoInterp_t)*lenTS);
     N=0;
     for (ii=0;ii<lenTS; ii++)
     {
         if (blacklist[ii]==0)
-            N++;
-    }
-    blacklistCNT = lenTS-N;
-    myProcLogs->totalSubsBlacklisted += blacklistCNT;
-    dataInterp = (DATATYPE **)malloc(sizeof(DATATYPE *)*N*3);   //allocating memory also to have interpolated subsequences
-    tStampsInterp = (segInfo_t *)malloc(sizeof(segInfo_t)*(N)*3);         //allocating memory also to have interpolated subsequences
-    jj=0;
-    
-    //we do interpolation as well
-    indLow = (float *)malloc(sizeof(float)*lenMotifReal);
-    indHigh = (float *)malloc(sizeof(float)*lenMotifReal);
-    for (ii=0;ii<lenMotifReal; ii++)
-    {
-        indLow[ii] = myProcParams->factorLow*ii;
-        indHigh[ii] = myProcParams->factorHigh*ii;
-    }
-    
-    for (ii=0;ii<lenTS;ii++)
-    {
-        if (blacklist[ii]==0)
         {
-            
-            //low stretched subsequence
-            dataInterp[jj] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
-            cubicInterpolate(data[ii], dataInterp[jj], indLow, lenMotifReal);
-            tStampsInterp[jj].str = tStamps[ii].str;
-            tStampsInterp[jj].end = tStamps[ii].endInterpL;
-            jj++;
-            
-            //normal
-            dataInterp[jj] = data[ii];
-            tStampsInterp[jj].str = tStamps[ii].str;
-            tStampsInterp[jj].end = tStamps[ii].end;
-            jj++;
-            
-            //compacted subsequence
-            dataInterp[jj] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
-            cubicInterpolate(data[ii], dataInterp[jj], indHigh, lenMotifReal);
-            tStampsInterp[jj].str = tStamps[ii].str;
-            tStampsInterp[jj].end = tStamps[ii].endInterpH;
-            jj++;
-            
-            
+            data1[N] = data[ii];
+            tStamps1[N] = tStamps[ii];
+            N++;
         }
         else
         {
             free(data[ii]);
         }
+            
     }
+    blacklistCNT = lenTS-N;
+    myProcLogs->totalSubsBlacklisted += blacklistCNT;
+    
+    generateInterpolatedSequences(data1, tStamps1, &dataInterp,  &tStampsInterp, N, myProcParams);
+    
     lenTS = N*3; 
     free(data);
     free(tStamps);

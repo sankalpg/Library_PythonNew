@@ -8,7 +8,7 @@
 
 
 #include "DiscoverIntraDTW.h"
-#define DEBUG_GENERATION
+//#define DEBUG_GENERATION
 
 
 

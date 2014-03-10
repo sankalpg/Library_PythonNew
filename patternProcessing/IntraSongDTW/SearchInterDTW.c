@@ -150,7 +150,7 @@ int main( int argc , char *argv[])
     while(fscanf(fp, "%s\n",searchFile)!=EOF)
     {
         //generating subsequence database for file to be searched
-        lenTS = generateSubsequenceDB(&dataInterp, &tStampsInterp, &lenMotifReal, searchFile, &myFileExts, &myProcParams, &myProcLogs, verbos);
+        lenTS = readPreProcessGenDB(&dataInterp, &tStampsInterp, &lenMotifReal, searchFile, &myFileExts, &myProcParams, &myProcLogs, verbos);
         
         t1=clock();
         //computing envelops for the file to be searched
