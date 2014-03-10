@@ -8,7 +8,7 @@
 
 
 #include "SearchInterDTW.h"
-
+#define DEBUG_GENERATION
 
 
 
@@ -115,7 +115,22 @@ int main( int argc , char *argv[])
     
     
     // loading sequence corresponding to seed motifs
-    NSeed = loadSeedMotifSequence(&dataInterpSeed, &tStampsInterpSeed, &lenMotifReal, baseName, &myFileExts, &myProcParams, maxNMotifsPairs, verbos);
+    NSeed = loadSeedMotifSequence(&dataInterpSeed, &tStampsInterpSeed, &lenMotifReal, baseName, &myFileExts, &myProcParams, &myProcLogs, maxNMotifsPairs, verbos);
+    
+#ifdef DEBUG_GENERATION
+    fp = fopen("subsequences.bin","wb");
+    for(ii=0;ii<NSeed;ii++)
+    {
+        for(jj=0;jj<lenMotifReal;jj++)
+        {
+            fprintf(fp, "%f\t", dataInterpSeed[ii][jj]);
+        }
+        fprintf(fp, "\n");
+    }
+    fclose(fp);
+    //return 1;
+    
+#endif      
     
     // generating envelops for the seed motifs
     bandDTW = (int)floor(lenMotifReal*myProcParams.DTWBand);
