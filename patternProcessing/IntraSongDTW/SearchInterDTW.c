@@ -8,7 +8,6 @@
 
 
 #include "SearchInterDTW.h"
-#include "MotifDataIO.h"
 
 
 

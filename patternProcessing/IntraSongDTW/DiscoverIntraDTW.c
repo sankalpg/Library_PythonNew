@@ -8,14 +8,13 @@
 
 
 #include "DiscoverIntraDTW.h"
-#include "MotifDataIO.h"
-
+//#define DEBUG_GENERATION
 
 
 
 int main( int argc , char *argv[])
 {
-    FILE *fp, *fp_out;
+    FILE *fp;
     char *baseName, motifFile[400]={'\0'}, logFile[400]={'\0'};
     float t1,t2;
     int lenMotifReal, verbos=0, bandDTW; 
@@ -96,7 +95,16 @@ int main( int argc , char *argv[])
     
     lenTS = generateSubsequenceDB(&dataInterp, &tStampsInterp, &lenMotifReal, baseName, &myFileExts, &myProcParams, &myProcLogs, verbos);
     
+#ifdef DEBUG_GENERATION
+    fp = fopen("subsequences.bin","wb");
+    for(ii=0;ii<lenTS;ii++)
+    {
+        fwrite(dataInterp, sizeof(DATATYPE), lenMotifReal, fp);
+    }
+    fclose(fp);
+    return 1;
     
+#endif    
     //################# Precomputing envelope of each subsequence for the LB Keogh lower bound ###########################
     bandDTW = (int)floor(lenMotifReal*myProcParams.DTWBand);
     U = (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS);
