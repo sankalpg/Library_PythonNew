@@ -123,7 +123,53 @@ int readPreprocessPitchData(char *pitchFile, char *tonicFile, DATATYPE **pSample
     return 1;
 }
 
-
+/*
+ * This function computes a running variance of the input data
+ */
+void computeRunningStd(DATATYPE *pitchSamples, float **std, int varSam, INDTYPE nPitchSamples)
+{
+    float *mean, *stdVec, temp[2]={0};
+    INDTYPE ii, jj;
+    int N;
+    
+    
+    mean = (float *)malloc(sizeof(float)*nPitchSamples);
+    memset(mean,0,sizeof(float)*nPitchSamples);
+    stdVec = (float *)malloc(sizeof(float)*nPitchSamples);
+    memset(stdVec,0,sizeof(float)*nPitchSamples);
+    
+    N = 2*varSam+1 ;    
+    for(ii=0;ii<N;ii++)
+    {
+        mean[varSam] +=  pitchSamples[ii] ;
+    }    
+    for(ii=varSam+1;ii<nPitchSamples-varSam;ii++)
+    {
+        mean[ii] =  mean[ii-1] - pitchSamples[ii-(varSam+1)] + pitchSamples[ii+varSam] ;  //running mean
+    }
+    for(ii=0;ii<nPitchSamples;ii++)
+    {
+        mean[ii] =  mean[ii]/N;  //running mean
+    }
+    
+    //computing running variance
+    for(ii=0;ii<N;ii++)
+    {
+        temp[0] = (pitchSamples[ii]- mean[ii]);
+        stdVec[varSam] += temp[0]*temp[0];
+    } 
+    for(ii=varSam+1;ii<nPitchSamples-varSam;ii++)
+    {
+        temp[0] = pitchSamples[ii-(varSam+1)] -mean[ii-(varSam+1)];
+        stdVec[ii] =  stdVec[ii-1] - temp[0]*temp[0] ; 
+        temp[1] = (pitchSamples[ii+varSam] -mean[ii+varSam]);
+        stdVec[ii] += temp[1]*temp[1] ;
+    }
+    *std = stdVec;
+    free(mean);
+    
+    
+}
 
 
 INDTYPE generateSubsequenceDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *baseName, fileExts_t *myFileExts, procParams_t *myProcParams, procLogs_t *myProcLogs, int verbos)
@@ -168,118 +214,22 @@ INDTYPE generateSubsequenceDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     if (verbos)
     {printf("Time taken to load the pitch data :%f\n",(t2-t1)/CLOCKS_PER_SEC);}
 
-    blacklist = (int*)malloc(sizeof(int)*nPitchSamples);  //subsequences which we don't have to consider. Unfortunately we know them after we already stored them
+    blacklist = (int*)malloc(sizeof(int)*nPitchSamples);  
     memset(blacklist,0,sizeof(int)*nPitchSamples);
     
-    data = (DATATYPE **)malloc(sizeof(DATATYPE *)*nPitchSamples);         //since we don't know valid subsequences, we allocate max possible subsequences and later discard them and free the memory
+    data = (DATATYPE **)malloc(sizeof(DATATYPE *)*nPitchSamples);
     tStamps = (segInfoInterp_t *)malloc(sizeof(segInfoInterp_t)*nPitchSamples);                
     
-    mean = (float *)malloc(sizeof(float)*nPitchSamples);
-    memset(mean,0,sizeof(float)*nPitchSamples);
-    stdVec = (float *)malloc(sizeof(float)*nPitchSamples);
-    memset(stdVec,0,sizeof(float)*nPitchSamples);
-    
-    
+    //calculating relevant params
     lenMotifReal = (int)round(myProcParams->durMotif/pHop);
-    *motifLen = lenMotifReal;
+    
     lenMotifInterpH = (int)ceil((myProcParams->durMotif*myProcParams->factorHigh)/pHop)+1;  //adding one because we need one extra sample for cubic interpolation
     lenMotifInterpL = (int)round((myProcParams->durMotif*myProcParams->factorLow)/pHop);
     varSam = (int)round(myProcParams->varDur/pHop);
-    temp1 = ((float)myProcParams->binsPOct)/LOG2;
     lenMotifRealM1 = lenMotifReal-1;
     lenMotifInterpHM1 = lenMotifInterpH-1;
     lenMotifInterpLM1 = lenMotifInterpL-1;
-    
-    /*
-    //########################## READING PITCH DATA ##########################
-    // Reading number of lines in the pitch file
-    numLinesInFile = getNumLines(pitchFile);
-    myProcLogs->totalPitchSamples += numLinesInFile;
-    // after downsampling we will be left with these many points
-    numLinesInFile = floor(numLinesInFile/myProcParams->dsFactor) +1;
-    
-    //allocating memory for pitch and time samples
-    pitchSamples = (DATATYPE*)malloc(sizeof(DATATYPE)*numLinesInFile);     // since we don't know silence regions, allocate maximum possible number of samples
-    timeSamples = (float*)malloc(sizeof(float)*numLinesInFile);
-    
-    blacklist = (int*)malloc(sizeof(int)*numLinesInFile);  //subsequences which we don't have to consider. Unfortunately we know them after we already stored them
-    memset(blacklist,0,sizeof(int)*numLinesInFile);
-    
-    data = (DATATYPE **)malloc(sizeof(DATATYPE *)*numLinesInFile);         //since we don't know valid subsequences, we allocate max possible subsequences and later discard them and free the memory
-    tStamps = (segInfoInterp_t *)malloc(sizeof(segInfoInterp_t)*numLinesInFile);                
-    
-    mean = (float *)malloc(sizeof(float)*numLinesInFile);
-    memset(mean,0,sizeof(float)*numLinesInFile);
-    stdVec = (float *)malloc(sizeof(float)*numLinesInFile);
-    memset(stdVec,0,sizeof(float)*numLinesInFile);
-    
-    //opening pitch file JUST FOR OBTAINING HOP SIZE OF THE PITCH SEQUENCE
-    fp =fopen(pitchFile,"r");
-    if (fp==NULL)
-    {
-        printf("Error opening file %s\n", pitchFile);
-        return 0;
-    }
-    //reading just first two lines, in order to obtain hopsize//
-    nRead = fscanf(fp, "%f\t%f\n",&temp[0],&temp[1]);
-    nRead = fscanf(fp, "%f\t%f\n",&temp[2],&temp[3]);
-    fclose(fp);
-    pHop = (temp[2]-temp[0])*myProcParams->dsFactor;  //final hop size afte downsampling
-    lenMotifReal = (int)round(myProcParams->durMotif/pHop);
-    *motifLen = lenMotifReal;
-    lenMotifInterpH = (int)ceil((myProcParams->durMotif*myProcParams->factorHigh)/pHop)+1;  //adding one because we need one extra sample for cubic interpolation
-    lenMotifInterpL = (int)round((myProcParams->durMotif*myProcParams->factorLow)/pHop);
-    varSam = (int)round(myProcParams->varDur/pHop);
-    temp1 = ((float)myProcParams->binsPOct)/LOG2;
-    lenMotifRealM1 = lenMotifReal-1;
-    lenMotifInterpHM1 = lenMotifInterpH-1;
-    lenMotifInterpLM1 = lenMotifInterpL-1;
-    
-    //Opening the tonic file
-    fp =fopen(tonicFile,"r");
-    if (fp==NULL)
-    {
-        printf("Error opening file %s\n", tonicFile);
-        return 0;
-    }
-    nRead = fscanf(fp, "%f\n",&tonic);
-    fclose(fp);
-    
-    
-    //Finally opening the pitch file to read the data
-    fp =fopen(pitchFile,"r");
-    t1 = clock();
-    ind=0;
-    jj=0;
-    while (fscanf(fp, "%f\t%f\n",&timeTemp,&pitchTemp)!=EOF)    //read till the end of the file
-    {
-        
-        if (pitchTemp>myProcParams->minPossiblePitch) //only fill in meaningful pitch data, reject other pitch samples
-        {
-            pitchSamples[ind]= (DATATYPE)round(temp1*log((pitchTemp+EPS)/tonic));
-            timeSamples[ind] = timeTemp;
-            ind++;
-            jj++;
-        }
-        
-        for(ii=0;ii<myProcParams->dsFactor-1;ii++)
-        {
-            // just bypass other samples to downsample the pitch sequence
-            nRead = fscanf(fp, "%f\t%f\n",&timeTemp,&pitchTemp);
-            jj++;
-        }
-        
-              
-    }
-    fclose(fp);
-    t2 = clock();
-    myProcLogs->timeDataLoad += (t2-t1)/CLOCKS_PER_SEC;
-    myProcLogs->totalPitchNonSilSamples += ind;
-    nPitchSamples = ind;
-    if (verbos)
-    {printf("Time taken to load the pitch data :%f\n",(t2-t1)/CLOCKS_PER_SEC);}
-    */
-
+ 
     
     //########################## Subsequence generation + selection step ##########################
     // In subsequence selection our aim is to discard those subsequences which result into trivial matches, 
@@ -292,30 +242,8 @@ INDTYPE generateSubsequenceDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     // subsequence which belong to a flat region and filter the subsequence based on a myProcParams->threshold.
     t1 = clock();
     //computing local mean and variance
-    for(ii=0;ii<2*varSam+1;ii++)
-    {
-        mean[varSam] +=  pitchSamples[ii] ;
-    }    
-    for(ii=varSam+1;ii<nPitchSamples-varSam;ii++)
-    {
-        mean[ii] =  mean[ii-1] - pitchSamples[ii-varSam-1] + pitchSamples[ii+varSam] ;  //running mean
-    }
-    N = 2*varSam+1 ; 
-    
-    //computing running variance
-    for(ii=0;ii<2*varSam+1;ii++)
-    {
-        temp[0] = (pitchSamples[ii]- mean[ii]/N);
-        stdVec[varSam] += temp[0]*temp[0];
-    } 
-    for(ii=varSam+1;ii<nPitchSamples-varSam;ii++)
-    {
-        temp[0] = (pitchSamples[ii-varSam-1] -mean[ii-varSam-1]/N);
-        stdVec[ii] =  stdVec[ii-1] - temp[0]*temp[0] ; 
-        temp[1] = (pitchSamples[ii+varSam] -mean[ii+varSam]/N);
-        stdVec[ii] += temp[1]*temp[1] ;
-    }
-    // after computing running variance, applying a myProcParams->threshold and selecting the onces which are corresponsing to non flat regions
+        // after computing running variance, applying a myProcParams->threshold and selecting the onces which are corresponsing to non flat regions
+    computeRunningStd(pitchSamples, &stdVec, varSam, nPitchSamples);
     for(ii=varSam;ii<nPitchSamples-varSam;ii++)
     {
         if (stdVec[ii]>myProcParams->threshold)
@@ -379,7 +307,7 @@ INDTYPE generateSubsequenceDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     printf("Time taken to create subsequences:%f\n",(t2-t1)/CLOCKS_PER_SEC);
     
     //free memory which is not needed further
-    free(mean);
+    
     free(stdVec);
     free(pitchSamples);
     free(timeSamples);
@@ -494,6 +422,7 @@ INDTYPE generateSubsequenceDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
 
     *d = dataInterp;
     *t = tStampsInterp;
+    *motifLen = lenMotifReal;
     return lenTS;
 }
 
