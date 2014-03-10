@@ -93,7 +93,7 @@ int main( int argc , char *argv[])
     strcat(logFile,myFileExts.logExt);  
     
     
-    lenTS = generateSubsequenceDB(&dataInterp, &tStampsInterp, &lenMotifReal, baseName, &myFileExts, &myProcParams, &myProcLogs, verbos);
+    lenTS = readPreProcessGenDB(&dataInterp, &tStampsInterp, &lenMotifReal, baseName, &myFileExts, &myProcParams, &myProcLogs, verbos);
     
 #ifdef DEBUG_GENERATION
     fp = fopen("subsequences.bin","wb");

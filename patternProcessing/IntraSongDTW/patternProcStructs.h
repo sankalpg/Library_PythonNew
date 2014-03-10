@@ -49,6 +49,13 @@ typedef struct procParams
     float durMotif;
     float blackDur;
     float DTWBand;
+    int lenMotifReal;
+    int lenMotifRealM1;
+    int lenMotifInterpH;
+    int lenMotifInterpL;
+    int lenMotifInterpHM1;
+    int lenMotifInterpLM1;
+    INDTYPE nPitchSamples;
 }procParams_t;
 
 

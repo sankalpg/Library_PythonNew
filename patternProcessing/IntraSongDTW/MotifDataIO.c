@@ -171,8 +171,119 @@ void computeRunningStd(DATATYPE *pitchSamples, float **std, int varSam, INDTYPE 
     
 }
 
+void gen1SampleHopSubCands(DATATYPE *pitchSamples, float *timeSamples, float *stdVec, DATATYPE ***d, segInfoInterp_t **t, int **b, procParams_t *myProcParams)
+{
+    DATATYPE **data;
+    segInfoInterp_t *tStamps;
+    INDTYPE ind, nPitchSamples, ll;
+    float ex;
+    int lenMotifReal, lenMotifRealM1, lenMotifInterpH, lenMotifInterpL, lenMotifInterpHM1, lenMotifInterpLM1, *blacklist;
+    
+    nPitchSamples = myProcParams->nPitchSamples;
+    lenMotifReal = myProcParams->lenMotifReal;
+    lenMotifRealM1 = myProcParams->lenMotifRealM1;
+    lenMotifInterpH = myProcParams->lenMotifInterpH;
+    lenMotifInterpL = myProcParams->lenMotifInterpL;
+    lenMotifInterpHM1 = myProcParams->lenMotifInterpHM1;
+    lenMotifInterpLM1 = myProcParams->lenMotifInterpLM1;
+    
+    
+    data = (DATATYPE **)malloc(sizeof(DATATYPE *)*nPitchSamples);
+    tStamps = (segInfoInterp_t *)malloc(sizeof(segInfoInterp_t)*nPitchSamples);  
+    
+    blacklist = (int*)malloc(sizeof(int)*nPitchSamples);  
+    memset(blacklist,0,sizeof(int)*nPitchSamples);
+    
+    
+    //blackCnt=lenTS;
+    ind=0;
+    ex=0;
+    
+    //############################## generating subsequences ##########################################
+    while(ind<nPitchSamples)
+    {
+        tStamps[ind].str = timeSamples[ind];
+        
+        if (ind<nPitchSamples-lenMotifInterpHM1)
+        {
+            data[ind] = (DATATYPE *)malloc(sizeof(DATATYPE*)*lenMotifInterpH);
+            tStamps[ind].end = timeSamples[ind+lenMotifRealM1];
+            tStamps[ind].endInterpH = timeSamples[ind+lenMotifInterpHM1];
+            tStamps[ind].endInterpL = timeSamples[ind+lenMotifInterpLM1];
+            if (fabs(tStamps[ind].str - tStamps[ind].endInterpH) > myProcParams->durMotif*myProcParams->factorHigh + myProcParams->maxPauseDur)       //allow 200 ms pauses in total not more than that
+                {
+                    blacklist[ind]=1;
+                }
+        }
+        
+        for(ll = min(ind,nPitchSamples-lenMotifInterpHM1-1) ; ll >= max(0,ind-lenMotifInterpHM1) ; ll--)
+        {
+            data[ll][ind-ll] = pitchSamples[ind]; 
+        }
+        
+        ex+=stdVec[ind];
+        if (ind >= lenMotifInterpHM1)
+        {
+            if (blacklist[ind-lenMotifInterpHM1]==0)
+            {
+                if(ex < myProcParams->flatThreshold*(float)lenMotifInterpH)
+                {
+                    
+                    blacklist[ind-lenMotifInterpHM1]=1;
+                }
+                
+            }
+            
+            ex -= stdVec[ind-lenMotifInterpHM1];
+        }
+       ind++;        
+    }
+    
+    *d = data;
+    *t = tStamps;
+    *b = blacklist;
+    
+}
 
-INDTYPE generateSubsequenceDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *baseName, fileExts_t *myFileExts, procParams_t *myProcParams, procLogs_t *myProcLogs, int verbos)
+
+int removeSegments(char *segmentFile, segInfoInterp_t *tStamps, int *blacklist, INDTYPE lenTS)
+{
+    INDTYPE ii,jj,numLinesInFile;
+    FILE *fp;
+    float temp[4] = {0};
+    segInfo_t *taniSegs;
+    
+    numLinesInFile = getNumLines(segmentFile);
+    taniSegs = (segInfo_t *)malloc(sizeof(segInfo_t)*numLinesInFile);
+    fp =fopen(segmentFile,"r");
+    if (fp==NULL)
+    {
+        printf("Error opening file %s\n", segmentFile);
+        return 0;
+    }
+    //reading segments of the tani sections
+    ii=0;
+    while (fscanf(fp, "%f %f\n",&temp[0],&temp[1])!=EOF)
+    {
+        taniSegs[ii].str = temp[0];
+        taniSegs[ii].end = temp[1];
+        ii++;
+    }
+    fclose(fp);
+    //blacklisting the indexes whose time stamps lie between these segments
+    for(ii=0;ii<lenTS;ii++)
+    {
+        for(jj=0;jj<numLinesInFile;jj++)
+        {
+            if ((tStamps[ii].end >= taniSegs[jj].str)&&(tStamps[ii].str <= taniSegs[jj].end))
+                blacklist[ii]=1;
+        }
+        
+    }
+    return 1;
+}
+
+INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *baseName, fileExts_t *myFileExts, procParams_t *myProcParams, procLogs_t *myProcLogs, int verbos)
 {
      FILE *fp;
     char pitchFile[400]={'\0'}, tonicFile[400]={'\0'}, segmentFile[400]={'\0'};
@@ -214,11 +325,8 @@ INDTYPE generateSubsequenceDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     if (verbos)
     {printf("Time taken to load the pitch data :%f\n",(t2-t1)/CLOCKS_PER_SEC);}
 
-    blacklist = (int*)malloc(sizeof(int)*nPitchSamples);  
-    memset(blacklist,0,sizeof(int)*nPitchSamples);
     
-    data = (DATATYPE **)malloc(sizeof(DATATYPE *)*nPitchSamples);
-    tStamps = (segInfoInterp_t *)malloc(sizeof(segInfoInterp_t)*nPitchSamples);                
+           
     
     //calculating relevant params
     lenMotifReal = (int)round(myProcParams->durMotif/pHop);
@@ -229,7 +337,15 @@ INDTYPE generateSubsequenceDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     lenMotifRealM1 = lenMotifReal-1;
     lenMotifInterpHM1 = lenMotifInterpH-1;
     lenMotifInterpLM1 = lenMotifInterpL-1;
- 
+    
+    myProcParams->lenMotifReal = lenMotifReal;
+    myProcParams->lenMotifRealM1 = lenMotifRealM1;
+    myProcParams->lenMotifInterpH = lenMotifInterpH;
+    myProcParams->lenMotifInterpL = lenMotifInterpL;
+    myProcParams->lenMotifInterpHM1 = lenMotifInterpHM1;
+    myProcParams->lenMotifInterpLM1 = lenMotifInterpLM1;
+    myProcParams->nPitchSamples = nPitchSamples;
+    
     
     //########################## Subsequence generation + selection step ##########################
     // In subsequence selection our aim is to discard those subsequences which result into trivial matches, 
@@ -258,56 +374,15 @@ INDTYPE generateSubsequenceDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     }
     
     lenTS  = nPitchSamples;       //number of non trivial pitch samples, they might still carry number of subsequences which have to be discarded
-    //blackCnt=lenTS;
-    ind=0;
-    ex=0;
     
-    //############################## generating subsequences ##########################################
-    while(ind<lenTS)
-    {
-        tStamps[ind].str = timeSamples[ind];
-        
-        if (ind<lenTS-lenMotifInterpHM1)
-        {
-            data[ind] = (DATATYPE *)malloc(sizeof(DATATYPE*)*lenMotifInterpH);
-            tStamps[ind].end = timeSamples[ind+lenMotifRealM1];
-            tStamps[ind].endInterpH = timeSamples[ind+lenMotifInterpHM1];
-            tStamps[ind].endInterpL = timeSamples[ind+lenMotifInterpLM1];
-            if (fabs(tStamps[ind].str - tStamps[ind].endInterpH) > myProcParams->durMotif*myProcParams->factorHigh + myProcParams->maxPauseDur)       //allow 200 ms pauses in total not more than that
-                {
-                    blacklist[ind]=1;
-                }
-        }
-        
-        for(ll = min(ind,lenTS-lenMotifInterpHM1-1) ; ll >= max(0,ind-lenMotifInterpHM1) ; ll--)
-        {
-            data[ll][ind-ll] = pitchSamples[ind]; 
-        }
-        
-        ex+=stdVec[ind];
-        if (ind >= lenMotifInterpHM1)
-        {
-            if (blacklist[ind-lenMotifInterpHM1]==0)
-            {
-                if(ex < myProcParams->flatThreshold*(float)lenMotifInterpH)
-                {
-                    
-                    blacklist[ind-lenMotifInterpHM1]=1;
-                }
-                
-            }
-            
-            ex -= stdVec[ind-lenMotifInterpHM1];
-        }
-       ind++;        
-    }
+    gen1SampleHopSubCands(pitchSamples, timeSamples, stdVec, &data, &tStamps, &blacklist, myProcParams);
+    
     lenTS = lenTS-lenMotifInterpHM1;   //we only have lenMotifInterpHM1 samples less than original number lenTS. it still counts blacklisted candidates
     myProcLogs->totalSubsGenerated += lenTS;
     t2 = clock();
     printf("Time taken to create subsequences:%f\n",(t2-t1)/CLOCKS_PER_SEC);
     
-    //free memory which is not needed further
-    
+    //free memory which is not needed further    
     free(stdVec);
     free(pitchSamples);
     free(timeSamples);
@@ -315,33 +390,8 @@ INDTYPE generateSubsequenceDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     
     // Finding all the subsequences that should be blacklisted because they fall in TANI regions
     t1 = clock();
-    numLinesInFile = getNumLines(segmentFile);
-    taniSegs = (segInfo_t *)malloc(sizeof(segInfo_t)*numLinesInFile);
-    fp =fopen(segmentFile,"r");
-    if (fp==NULL)
-    {
-        printf("Error opening file %s\n", segmentFile);
-        return 0;
-    }
-    //reading segments of the tani sections
-    ii=0;
-    while (fscanf(fp, "%f %f\n",&temp[0],&temp[1])!=EOF)
-    {
-        taniSegs[ii].str = temp[0];
-        taniSegs[ii].end = temp[1];
-        ii++;
-    }
-    fclose(fp);
-    //blacklisting the indexes whose time stamps lie between these segments
-    for(ii=0;ii<lenTS;ii++)
-    {
-        for(jj=0;jj<numLinesInFile;jj++)
-        {
-            if ((tStamps[ii].end >= taniSegs[jj].str)&&(tStamps[ii].str <= taniSegs[jj].end))
-                blacklist[ii]=1;
-        }
-        
-    }
+    removeSegments(segmentFile, tStamps, blacklist, lenTS);
+    
     t2 = clock();
     if (verbos)
     {printf("Time taken to blacklist tani sections :%f\n",(t2-t1)/CLOCKS_PER_SEC);}
