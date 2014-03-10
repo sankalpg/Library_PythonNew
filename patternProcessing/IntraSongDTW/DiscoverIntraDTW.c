@@ -8,7 +8,7 @@
 
 
 #include "DiscoverIntraDTW.h"
-//#define DEBUG_GENERATION
+#define DEBUG_GENERATION
 
 
 
@@ -99,7 +99,11 @@ int main( int argc , char *argv[])
     fp = fopen("subsequences.bin","wb");
     for(ii=0;ii<lenTS;ii++)
     {
-        fwrite(dataInterp, sizeof(DATATYPE), lenMotifReal, fp);
+        for(jj=0;jj<lenMotifReal;jj++)
+        {
+            fprintf(fp, "%f\t", dataInterp[ii][jj]);
+        }
+        fprintf(fp, "\n");
     }
     fclose(fp);
     return 1;
