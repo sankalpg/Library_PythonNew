@@ -8,7 +8,7 @@
 
 
 #include "SearchInterDTW.h"
-#define DEBUG_GENERATION
+//#define DEBUG_GENERATION
 
 
 
@@ -53,7 +53,7 @@ int main( int argc , char *argv[])
     myProcLogs.totalPriorityUpdates=0;
     
     
-    if(argc < 16 || argc > 17)
+    if(argc < 17 || argc > 18)
     {
         printf("\nInvalid number of arguments!!!\n");
         exit(1);
@@ -77,8 +77,9 @@ int main( int argc , char *argv[])
     }
      myProcParams.dsFactor = atoi(argv[14]);
      maxNMotifsPairs = atoi(argv[15]);
+     myProcParams.nInterpFac=atoi(argv[16]);
     
-    if( argc == 17 ){verbos = atoi(argv[16]);}
+    if( argc == 18 ){verbos = atoi(argv[17]);}
     
     //############ CRUCIAL PARAMETERS ##################
     myProcParams.minPossiblePitch = 60.0;
@@ -92,6 +93,26 @@ int main( int argc , char *argv[])
     myProcParams.factorHigh = 1.1;
     myProcParams.DTWBand = 0.1;
     myProcParams.removeTaniSegs=1;
+    
+    
+    if (myProcParams.nInterpFac==1)
+    {
+        myProcParams.interpFac[0]=1.0;
+    }
+    else if (myProcParams.nInterpFac==3)
+    {
+        myProcParams.interpFac[0]=0.9;
+        myProcParams.interpFac[1]=1.0;
+        myProcParams.interpFac[2]=1.1;
+    }
+    else if (myProcParams.nInterpFac==5)
+    {
+        myProcParams.interpFac[0]=0.9;
+        myProcParams.interpFac[1]=0.95;
+        myProcParams.interpFac[2]=1.0;
+        myProcParams.interpFac[3]=1.05;
+        myProcParams.interpFac[4]=1.1;
+    }
     
     //####################################################
     //motif file name
@@ -128,7 +149,7 @@ int main( int argc , char *argv[])
         fprintf(fp, "\n");
     }
     fclose(fp);
-    //return 1;
+    return 1;
     
 #endif      
     

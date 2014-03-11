@@ -15,9 +15,7 @@ typedef struct segInfo
 typedef struct segInfoInterp
 {
     float str;
-    float end;
-    float endInterpH;
-    float endInterpL;
+    float end[MAXNTEMPOFACTORS];
     
 }segInfoInterp_t;
 
@@ -30,6 +28,8 @@ typedef struct motifInfo
     INDTYPE ind2;
     
 }motifInfo_t;
+
+
 
 
 
@@ -49,13 +49,22 @@ typedef struct procParams
     float durMotif;
     float blackDur;
     float DTWBand;
+    INDTYPE nPitchSamples;
+    float interpFac[MAXNTEMPOFACTORS];
+    int nInterpFac;
+    int motifLengths[MAXNTEMPOFACTORS];
+    int motifLengthsM1[MAXNTEMPOFACTORS];
+    int indexMotifLenReal;
+    int indexMotifLenLongest;
+    
     int lenMotifReal;
     int lenMotifRealM1;
     int lenMotifInterpH;
     int lenMotifInterpL;
     int lenMotifInterpHM1;
     int lenMotifInterpLM1;
-    INDTYPE nPitchSamples;
+    
+    
 }procParams_t;
 
 

@@ -47,7 +47,7 @@ int main( int argc , char *argv[])
     myProcLogs.totalDTWComputations=0;
     myProcLogs.totalPriorityUpdates=0;
     
-    if(argc < 12 || argc > 13)
+    if(argc < 13 || argc > 14)
     {
         printf("\nInvalid number of arguments!!!\n");
         exit(1);
@@ -67,8 +67,9 @@ int main( int argc , char *argv[])
         bsf = atof(argv[10]);
     }
      myProcParams.dsFactor = atoi(argv[11]);
+     myProcParams.nInterpFac=atoi(argv[12]);
     
-    if( argc == 13 ){verbos = atoi(argv[12]);}
+    if( argc == 14 ){verbos = atoi(argv[13]);}
     
     //############ CRUCIAL PARAMETERS ##################
     myProcParams.minPossiblePitch = 60.0;
@@ -82,6 +83,26 @@ int main( int argc , char *argv[])
     myProcParams.factorHigh = 1.1;
     myProcParams.DTWBand = 0.1;
     myProcParams.removeTaniSegs=1;
+    
+    if (myProcParams.nInterpFac==1)
+    {
+        myProcParams.interpFac[0]=1.0;
+    }
+    else if (myProcParams.nInterpFac==3)
+    {
+        myProcParams.interpFac[0]=0.9;
+        myProcParams.interpFac[1]=1.0;
+        myProcParams.interpFac[2]=1.1;
+    }
+    else if (myProcParams.nInterpFac==5)
+    {
+        myProcParams.interpFac[0]=0.9;
+        myProcParams.interpFac[1]=0.95;
+        myProcParams.interpFac[2]=1.0;
+        myProcParams.interpFac[3]=1.05;
+        myProcParams.interpFac[4]=1.1;
+    }
+    
     
     
     //####################################################

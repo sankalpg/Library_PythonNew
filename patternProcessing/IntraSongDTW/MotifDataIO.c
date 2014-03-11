@@ -175,17 +175,14 @@ void gen1SampleHopSubCands(DATATYPE *pitchSamples, float *timeSamples, float *st
 {
     DATATYPE **data;
     segInfoInterp_t *tStamps;
-    INDTYPE ind, nPitchSamples, ll;
+    INDTYPE ind, nPitchSamples, ll, ii;
     float ex;
-    int lenMotifReal, lenMotifRealM1, lenMotifInterpH, lenMotifInterpL, lenMotifInterpHM1, lenMotifInterpLM1, *blacklist;
+    int lenMotifRealM1, lenRawMotifData, lenRawMotifDataM1, *blacklist;
     
     nPitchSamples = myProcParams->nPitchSamples;
-    lenMotifReal = myProcParams->lenMotifReal;
-    lenMotifRealM1 = myProcParams->lenMotifRealM1;
-    lenMotifInterpH = myProcParams->lenMotifInterpH;
-    lenMotifInterpL = myProcParams->lenMotifInterpL;
-    lenMotifInterpHM1 = myProcParams->lenMotifInterpHM1;
-    lenMotifInterpLM1 = myProcParams->lenMotifInterpLM1;
+    
+    lenRawMotifData = myProcParams->motifLengths[myProcParams->indexMotifLenLongest];
+    lenRawMotifDataM1 = lenRawMotifData-1;
     
     
     data = (DATATYPE **)malloc(sizeof(DATATYPE *)*nPitchSamples);
@@ -204,37 +201,38 @@ void gen1SampleHopSubCands(DATATYPE *pitchSamples, float *timeSamples, float *st
     {
         tStamps[ind].str = timeSamples[ind];
         
-        if (ind<nPitchSamples-lenMotifInterpHM1)
+        if (ind<nPitchSamples-lenRawMotifDataM1)
         {
-            data[ind] = (DATATYPE *)malloc(sizeof(DATATYPE*)*lenMotifInterpH);
-            tStamps[ind].end = timeSamples[ind+lenMotifRealM1];
-            tStamps[ind].endInterpH = timeSamples[ind+lenMotifInterpHM1];
-            tStamps[ind].endInterpL = timeSamples[ind+lenMotifInterpLM1];
-            if (fabs(tStamps[ind].str - tStamps[ind].endInterpH) > myProcParams->durMotif*myProcParams->factorHigh + myProcParams->maxPauseDur)       //allow 200 ms pauses in total not more than that
+            data[ind] = (DATATYPE *)malloc(sizeof(DATATYPE*)*lenRawMotifData);
+            for(ii=0;ii<myProcParams->nInterpFac;ii++)
+            {
+                tStamps[ind].end[ii] = timeSamples[ind+myProcParams->motifLengths[ii]-1];
+            }
+            if (fabs(tStamps[ind].str - tStamps[ind].end[myProcParams->indexMotifLenLongest]) > (myProcParams->durMotif*myProcParams->interpFac[myProcParams->indexMotifLenLongest]) + myProcParams->maxPauseDur)       //allow 200 ms pauses in total not more than that
                 {
                     blacklist[ind]=1;
                 }
         }
         
-        for(ll = min(ind,nPitchSamples-lenMotifInterpHM1-1) ; ll >= max(0,ind-lenMotifInterpHM1) ; ll--)
+        for(ll = min(ind,nPitchSamples-lenRawMotifDataM1-1) ; ll >= max(0,ind-lenRawMotifDataM1) ; ll--)
         {
             data[ll][ind-ll] = pitchSamples[ind]; 
         }
         
         ex+=stdVec[ind];
-        if (ind >= lenMotifInterpHM1)
+        if (ind >= lenRawMotifDataM1)
         {
-            if (blacklist[ind-lenMotifInterpHM1]==0)
+            if (blacklist[ind-lenRawMotifDataM1]==0)
             {
-                if(ex < myProcParams->flatThreshold*(float)lenMotifInterpH)
+                if(ex < myProcParams->flatThreshold*(float)lenRawMotifData)
                 {
                     
-                    blacklist[ind-lenMotifInterpHM1]=1;
+                    blacklist[ind-lenRawMotifDataM1]=1;
                 }
                 
             }
             
-            ex -= stdVec[ind-lenMotifInterpHM1];
+            ex -= stdVec[ind-lenRawMotifDataM1];
         }
        ind++;        
     }
@@ -246,7 +244,7 @@ void gen1SampleHopSubCands(DATATYPE *pitchSamples, float *timeSamples, float *st
 }
 
 
-int removeSegments(char *segmentFile, segInfoInterp_t *tStamps, int *blacklist, INDTYPE lenTS)
+int removeSegments(char *segmentFile, segInfoInterp_t *tStamps, int *blacklist, INDTYPE lenTS, procParams_t *myProcParams)
 {
     INDTYPE ii,jj,numLinesInFile;
     FILE *fp;
@@ -275,11 +273,14 @@ int removeSegments(char *segmentFile, segInfoInterp_t *tStamps, int *blacklist, 
     {
         for(jj=0;jj<numLinesInFile;jj++)
         {
-            if ((tStamps[ii].end >= taniSegs[jj].str)&&(tStamps[ii].str <= taniSegs[jj].end))
+            if ((tStamps[ii].end[myProcParams->indexMotifLenReal] >= taniSegs[jj].str)&&(tStamps[ii].str <= taniSegs[jj].end))
                 blacklist[ii]=1;
         }
         
     }
+    
+    free(taniSegs);
+    
     return 1;
 }
 
@@ -287,51 +288,62 @@ void generateInterpolatedSequences(DATATYPE **data, segInfoInterp_t *tStamps, DA
 {
     DATATYPE **dataInterp;
     segInfo_t *tStampsInterp;
-    INDTYPE ii,jj;
-    float *indLow, *indHigh;
-    int lenMotifReal;
+    INDTYPE ii,jj, indData;
+    float **indInterp;
+    int lenMotifReal, nInterpFac;
     
-    lenMotifReal = myProcParams->lenMotifReal;
+    lenMotifReal = myProcParams->motifLengths[myProcParams->indexMotifLenReal];
+    nInterpFac = myProcParams->nInterpFac;
     
-    dataInterp = (DATATYPE **)malloc(sizeof(DATATYPE *)*N*3);   //allocating memory also to have interpolated subsequences
-    tStampsInterp = (segInfo_t *)malloc(sizeof(segInfo_t)*(N)*3);         //allocating memory also to have interpolated subsequences
+    dataInterp = (DATATYPE **)malloc(sizeof(DATATYPE *)*N*nInterpFac);   //allocating memory also to have interpolated subsequences
+    tStampsInterp = (segInfo_t *)malloc(sizeof(segInfo_t)*(N)*nInterpFac);         //allocating memory also to have interpolated subsequences
     
     //we do interpolation as well
-    indLow = (float *)malloc(sizeof(float)*lenMotifReal);
-    indHigh = (float *)malloc(sizeof(float)*lenMotifReal);
-    for (ii=0;ii<lenMotifReal; ii++)
+    indInterp = (float**)malloc(sizeof(float*)*nInterpFac);
+    for (jj=0;jj<nInterpFac;jj++)
     {
-        indLow[ii] = myProcParams->factorLow*ii;
-        indHigh[ii] = myProcParams->factorHigh*ii;
+        indInterp[jj] = (float *)malloc(sizeof(float)*lenMotifReal);
+        for (ii=0;ii<lenMotifReal; ii++)
+        {
+            indInterp[jj][ii] = myProcParams->interpFac[jj]*ii ;
+        }
+        
     }
-    jj=0;
+    
+    indData=0;
     for (ii=0;ii<N;ii++)
     {
+        for (jj=0;jj<nInterpFac;jj++)
+        {
+            if (myProcParams->interpFac[jj]==1)
+            {
+                dataInterp[indData] = data[ii];
+                tStampsInterp[indData].str = tStamps[ii].str;
+                tStampsInterp[indData].end = tStamps[ii].end[jj];
+                indData++;
+            }
+            else
+            {
+                dataInterp[indData] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
+                cubicInterpolate(data[ii], dataInterp[indData], indInterp[jj], lenMotifReal);
+                tStampsInterp[indData].str = tStamps[ii].str;
+                tStampsInterp[indData].end = tStamps[ii].end[jj];
+                indData++;
+                
+            }
             
-            //low stretched subsequence
-        dataInterp[jj] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
-        cubicInterpolate(data[ii], dataInterp[jj], indLow, lenMotifReal);
-        tStampsInterp[jj].str = tStamps[ii].str;
-        tStampsInterp[jj].end = tStamps[ii].endInterpL;
-        jj++;
-        
-        //normal
-        dataInterp[jj] = data[ii];
-        tStampsInterp[jj].str = tStamps[ii].str;
-        tStampsInterp[jj].end = tStamps[ii].end;
-        jj++;
-        
-        //compacted subsequence
-        dataInterp[jj] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
-        cubicInterpolate(data[ii], dataInterp[jj], indHigh, lenMotifReal);
-        tStampsInterp[jj].str = tStamps[ii].str;
-        tStampsInterp[jj].end = tStamps[ii].endInterpH;
-        jj++;
-            
+        }
     }
     
     *dataOut = dataInterp;
     *timeOut = tStampsInterp;
+    
+    for (jj=0;jj<nInterpFac;jj++)
+    {
+        free(indInterp[jj]);
+        
+    }
+    free(indInterp);
 }
 
 INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *baseName, fileExts_t *myFileExts, procParams_t *myProcParams, procLogs_t *myProcLogs, int verbos)
@@ -343,9 +355,9 @@ INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *b
     DATATYPE *pitchSamples, **data, **data1, **dataInterp;
     
     float tonic, pHop, temp1, temp[4]={0}, t1, t2, ex, pitchTemp, timeTemp;
-    float *timeSamples, *mean, *stdVec, *indLow, *indHigh;
+    float *timeSamples, *mean, *stdVec, *indLow, *indHigh, max_factor;
     
-    int lenMotifReal,lenMotifRealM1,lenMotifInterpHM1, lenMotifInterpLM1, lenMotifInterpH, lenMotifInterpL, nRead, varSam; 
+    int nRead, varSam; 
     int *blacklist;
     
     INDTYPE nPitchSamples;
@@ -380,23 +392,44 @@ INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *b
            
     
     //calculating relevant params
-    lenMotifReal = (int)round(myProcParams->durMotif/pHop);
-    
-    lenMotifInterpH = (int)ceil((myProcParams->durMotif*myProcParams->factorHigh)/pHop)+1;  //adding one because we need one extra sample for cubic interpolation
+    max_factor=0;
+    /*for (ii=0;ii<myProcParams->nInterpFac; ii++)
+    {
+        myProcParams->motifLengths[ii] = (int)ceil((myProcParams->durMotif*myProcParams->interpFac[ii])/pHop);
+        if (myProcParams->interpFac[ii]==1)
+        {
+            myProcParams->indexMotifLenReal = ii;
+        }
+        if (myProcParams->interpFac[ii]>max_factor)
+        {
+            max_factor = myProcParams->interpFac[ii];
+            myProcParams->indexMotifLenLongest = ii;
+        }
+    }*/
+    myProcParams->motifLengths[0] = (int)round((myProcParams->durMotif*myProcParams->interpFac[0])/pHop);
+    myProcParams->motifLengths[1] = (int)round((myProcParams->durMotif*myProcParams->interpFac[1])/pHop);
+    myProcParams->motifLengths[2] = (int)ceil((myProcParams->durMotif*myProcParams->interpFac[2])/pHop)+1;
+    myProcParams->indexMotifLenReal = 1;
+    myProcParams->indexMotifLenLongest = 2;
+     
+    /*lenMotifReal = (int)round(myProcParams->durMotif/pHop);
+    lenMotifInterpH = (int)ceil((myProcParams->durMotif*myProcParams->factorHigh)/pHop)+1;  
     lenMotifInterpL = (int)round((myProcParams->durMotif*myProcParams->factorLow)/pHop);
-    varSam = (int)round(myProcParams->varDur/pHop);
+    
     lenMotifRealM1 = lenMotifReal-1;
     lenMotifInterpHM1 = lenMotifInterpH-1;
-    lenMotifInterpLM1 = lenMotifInterpL-1;
+    lenMotifInterpLM1 = lenMotifInterpL-1;*/
     
-    myProcParams->lenMotifReal = lenMotifReal;
+    /*myProcParams->lenMotifReal = lenMotifReal;
     myProcParams->lenMotifRealM1 = lenMotifRealM1;
     myProcParams->lenMotifInterpH = lenMotifInterpH;
     myProcParams->lenMotifInterpL = lenMotifInterpL;
     myProcParams->lenMotifInterpHM1 = lenMotifInterpHM1;
-    myProcParams->lenMotifInterpLM1 = lenMotifInterpLM1;
+    myProcParams->lenMotifInterpLM1 = lenMotifInterpLM1;*/
+    
     myProcParams->nPitchSamples = nPitchSamples;
     
+    varSam = (int)round(myProcParams->varDur/pHop);
     
     //########################## Subsequence generation + selection step ##########################
     // In subsequence selection our aim is to discard those subsequences which result into trivial matches, 
@@ -428,7 +461,7 @@ INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *b
     
     gen1SampleHopSubCands(pitchSamples, timeSamples, stdVec, &data, &tStamps, &blacklist, myProcParams);
     
-    lenTS = lenTS-lenMotifInterpHM1;   //we only have lenMotifInterpHM1 samples less than original number lenTS. it still counts blacklisted candidates
+    lenTS = lenTS-(myProcParams->motifLengths[myProcParams->indexMotifLenLongest]-1);   //we only have lenMotifInterpHM1 samples less than original number lenTS. it still counts blacklisted candidates
     myProcLogs->totalSubsGenerated += lenTS;
     t2 = clock();
     printf("Time taken to create subsequences:%f\n",(t2-t1)/CLOCKS_PER_SEC);
@@ -441,7 +474,7 @@ INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *b
     
     // Finding all the subsequences that should be blacklisted because they fall in TANI regions
     t1 = clock();
-    removeSegments(segmentFile, tStamps, blacklist, lenTS);
+    removeSegments(segmentFile, tStamps, blacklist, lenTS, myProcParams);
     
     t2 = clock();
     if (verbos)
@@ -472,13 +505,10 @@ INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *b
     
     generateInterpolatedSequences(data1, tStamps1, &dataInterp,  &tStampsInterp, N, myProcParams);
     
-    lenTS = N*3; 
+    lenTS = N*myProcParams->nInterpFac; 
     free(data);
     free(tStamps);
     free(blacklist);
-    free(indLow);
-    free(indHigh);
-    free(taniSegs);
     
     t2 = clock();
     myProcLogs->timeRemBlacklist += (t2-t1)/CLOCKS_PER_SEC;
@@ -488,11 +518,11 @@ INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *b
     
     if( verbos == 1 )
         printf("Finally number of subsequences are: %lld\nNumber of subsequences removed are: %lld\n",lenTS,blacklistCNT);
-        printf("Length of Each Time Series : %d\n\n",lenMotifReal);
+        printf("Length of Each Time Series : %d\n\n",myProcParams->motifLengths[myProcParams->indexMotifLenReal]);
 
     *d = dataInterp;
     *t = tStampsInterp;
-    *motifLen = lenMotifReal;
+    *motifLen = myProcParams->motifLengths[myProcParams->indexMotifLenReal];
     return lenTS;
 }
 
@@ -545,14 +575,14 @@ INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
      FILE *fp;
     char pitchFile[400]={'\0'}, tonicFile[400]={'\0'}, motifFile[400]={'\0'};
     
-    INDTYPE numLinesInFile, ind, ii, jj, ll, lenTS, N, totalPitchNonSilSamples, *seedMotifInd;
+    INDTYPE numLinesInFile, ind, ii, jj, ll, lenTS, N, totalPitchNonSilSamples, *seedMotifInd, lenRawMotifData;
     DATATYPE *pitchSamples, **data, **dataInterp;
     
     float tonic, pHop, temp1, temp[10]={0}, ex, pitchTemp, timeTemp;
     float *timeSamples, *indLow, *indHigh, min_val;
     double temp4;
     
-    int lenMotifReal,lenMotifRealM1,lenMotifInterpHM1, lenMotifInterpLM1, lenMotifInterpH, lenMotifInterpL,dsFactor, nRead, NMotifs; 
+    int lenMotifReal,lenMotifRealM1,lenMotifInterpHM1, lenMotifInterpLM1, lenMotifInterpH, lenMotifInterpL,dsFactor, nRead, NMotifs, max_factor; 
     
     segInfoInterp_t *tStamps;
     segInfo_t *taniSegs, *tStampsInterp, *seedMotifs;
@@ -573,11 +603,9 @@ INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
 
     readPreprocessPitchData(pitchFile, tonicFile, &pitchSamples, &timeSamples, &nPitchSamples, &pHop, myProcParams, myProcLogs);
     
-    lenMotifReal = (int)round(myProcParams->durMotif/pHop);
-    *motifLen = lenMotifReal;
-    lenMotifInterpH = (int)ceil((myProcParams->durMotif*myProcParams->factorHigh)/pHop)+1;  //adding one because we need one extra sample for cubic interpolation
+    /*lenMotifReal = (int)round(myProcParams->durMotif/pHop);    
+    lenMotifInterpH = (int)ceil((myProcParams->durMotif*myProcParams->factorHigh)/pHop)+1;  
     lenMotifInterpL = (int)round((myProcParams->durMotif*myProcParams->factorLow)/pHop);
-    temp1 = ((float)myProcParams->binsPOct)/LOG2;
     lenMotifRealM1 = lenMotifReal-1;
     lenMotifInterpHM1 = lenMotifInterpH-1;
     lenMotifInterpLM1 = lenMotifInterpL-1;
@@ -587,12 +615,32 @@ INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     myProcParams->lenMotifInterpH = lenMotifInterpH;
     myProcParams->lenMotifInterpL = lenMotifInterpL;
     myProcParams->lenMotifInterpHM1 = lenMotifInterpHM1;
-    myProcParams->lenMotifInterpLM1 = lenMotifInterpLM1;
+    myProcParams->lenMotifInterpLM1 = lenMotifInterpLM1;*/
+    
     myProcParams->nPitchSamples = nPitchSamples;
     
+    max_factor=0;
+    /*for (ii=0;ii<myProcParams->nInterpFac; ii++)
+    {
+        myProcParams->motifLengths[ii] = (int)ceil((myProcParams->durMotif*myProcParams->interpFac[ii])/pHop);
+        if (myProcParams->interpFac[ii]==1)
+        {
+            myProcParams->indexMotifLenReal = ii;
+        }
+        if (myProcParams->interpFac[ii]>max_factor)
+        {
+            max_factor = myProcParams->interpFac[ii];
+            myProcParams->indexMotifLenLongest = ii;
+        }
+    }*/
+     myProcParams->motifLengths[0] = (int)round((myProcParams->durMotif*myProcParams->interpFac[0])/pHop);
+     myProcParams->motifLengths[1] = (int)round((myProcParams->durMotif*myProcParams->interpFac[1])/pHop);
+     myProcParams->motifLengths[2] = (int)ceil((myProcParams->durMotif*myProcParams->interpFac[2])/pHop)+1;
+     myProcParams->indexMotifLenReal = 1;
+     myProcParams->indexMotifLenLongest = 2;
     
-
     totalPitchNonSilSamples = nPitchSamples;
+    lenRawMotifData = myProcParams->motifLengths[myProcParams->indexMotifLenLongest];
     
     readSeedMotifDump(motifFile, &seedMotifs, maxNMotifsPairs, &NMotifs);
     
@@ -616,33 +664,34 @@ INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     
     for(ii=0;ii<NMotifs;ii++)
     {
-        data[ii] = (DATATYPE *)malloc(sizeof(DATATYPE*)*lenMotifInterpH);
+        data[ii] = (DATATYPE *)malloc(sizeof(DATATYPE*)*lenRawMotifData);
+        
         tStamps[ii].str = timeSamples[seedMotifInd[ii]];
-        tStamps[ii].end = timeSamples[seedMotifInd[ii]+lenMotifRealM1];
-        tStamps[ii].endInterpH = timeSamples[seedMotifInd[ii]+lenMotifInterpHM1];
-        tStamps[ii].endInterpL = timeSamples[seedMotifInd[ii]+lenMotifInterpLM1];
-        for(jj=0;jj<lenMotifInterpH;jj++)
+        for(jj=0;jj<myProcParams->nInterpFac;jj++)
+        {
+            tStamps[ii].end[jj] = timeSamples[seedMotifInd[ii]+myProcParams->motifLengths[jj]-1];
+        }
+        for(jj=0;jj<lenRawMotifData;jj++)
         {
             data[ii][jj]=pitchSamples[seedMotifInd[ii]+jj];
         }
-        
     }
     N = NMotifs;
     
     generateInterpolatedSequences(data, tStamps, &dataInterp,  &tStampsInterp, N, myProcParams);
     
-    lenTS = N*3; 
+    lenTS = N*myProcParams->nInterpFac; 
     free(data);
     free(tStamps);
     free(pitchSamples);
     free(timeSamples);
-    free(indLow);
-    free(indHigh);
     free(seedMotifs);
     free(seedMotifInd);
     
     *d = dataInterp;
     *t = tStampsInterp;
+    *motifLen = myProcParams->motifLengths[myProcParams->indexMotifLenReal];
+    
     return lenTS;
 }
 
