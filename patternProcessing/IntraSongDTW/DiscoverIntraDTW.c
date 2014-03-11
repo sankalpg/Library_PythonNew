@@ -14,16 +14,16 @@
 
 int main( int argc , char *argv[])
 {
-    FILE *fp;
     char *baseName, motifFile[400]={'\0'}, logFile[400]={'\0'}, paramOutFile[400]={'\0'};
     float t1,t2;
     int lenMotifReal, verbos=0, bandDTW; 
-    INDTYPE    lenTS, count_DTW=0, numLinesInFile, K,ii,jj;
     
+    INDTYPE    lenTS, K,ii,jj;
     DATATYPE **dataInterp, **U, **L, *accLB;
     DISTTYPE LB_Keogh_EQ, realDist,LB_Keogh_EC,bsf=INF,**costMTX, LB_kim_FL;
+    
     motifInfo *topKmotifs;
-    segInfo_t *taniSegs, *tStampsInterp;
+    segInfo_t *tStampsInterp;
     procLogs_t myProcLogs;
     procParams_t myProcParams;
     fileExts_t myFileExts;
@@ -47,12 +47,13 @@ int main( int argc , char *argv[])
     myProcLogs.totalDTWComputations=0;
     myProcLogs.totalPriorityUpdates=0;
     
+    //Checking if number of parameters are ok
     if(argc < 14 || argc > 15)
     {
         printf("\nInvalid number of arguments!!!\n");
         exit(1);
     }
-    
+    //reading commandline parameters
     baseName = argv[1];
     myFileExts.pitchExt = argv[2];
     myFileExts.tonicExt = argv[3];
@@ -72,6 +73,7 @@ int main( int argc , char *argv[])
     
     if( argc == 15 ){verbos = atoi(argv[14]);}
     
+        
     //############ CRUCIAL PARAMETERS ##################
     myProcParams.minPossiblePitch = 60.0;
     myProcParams.binsPOct = 120;
@@ -101,8 +103,6 @@ int main( int argc , char *argv[])
         myProcParams.interpFac[4]=1.1;
     }
     
-    
-    
     //####################################################
     //motif file name
     strcat(motifFile,baseName);
@@ -114,10 +114,12 @@ int main( int argc , char *argv[])
     strcat(paramOutFile,baseName);
     strcat(paramOutFile,myFileExts.paramOutExt); 
     
-    
+    //reading pitch data, pre-processing it and generating pattern candidates
     lenTS = readPreProcessGenDB(&dataInterp, &tStampsInterp, &lenMotifReal, baseName, &myFileExts, &myProcParams, &myProcLogs, verbos);
+
     
 #ifdef DEBUG_GENERATION
+    //This is a debug code, enable it to dump the data [Used while refactoring the code]
     fp = fopen("subsequences.bin","wb");
     for(ii=0;ii<lenTS;ii++)
     {
@@ -131,6 +133,8 @@ int main( int argc , char *argv[])
     return 1;
     
 #endif    
+    
+    
     //################# Precomputing envelope of each subsequence for the LB Keogh lower bound ###########################
     bandDTW = (int)floor(lenMotifReal*myProcParams.DTWBand);
     U = (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS);

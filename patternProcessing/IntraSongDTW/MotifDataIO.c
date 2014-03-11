@@ -62,6 +62,7 @@ int readPreprocessPitchData(char *pitchFile, char *tonicFile, DATATYPE **pSample
     float tonic, temp[10]={0},timeTemp,pitchTemp, temp1, *timeSamples;
     int nRead;
     
+    
     // Reading number of lines in the pitch file
     numLinesInFile = getNumLines(pitchFile);
     myProcLogs->totalPitchSamples += numLinesInFile;
@@ -129,7 +130,7 @@ int readPreprocessPitchData(char *pitchFile, char *tonicFile, DATATYPE **pSample
 void computeRunningStd(DATATYPE *pitchSamples, float **std, int varSam, INDTYPE nPitchSamples)
 {
     float *mean, *stdVec, temp[2]={0};
-    INDTYPE ii, jj;
+    INDTYPE ii;
     int N;
     
     
@@ -177,7 +178,7 @@ void gen1SampleHopSubCands(DATATYPE *pitchSamples, float *timeSamples, float *st
     segInfoInterp_t *tStamps;
     INDTYPE ind, nPitchSamples, ll, ii;
     float ex;
-    int lenMotifRealM1, lenRawMotifData, lenRawMotifDataM1, *blacklist;
+    int lenRawMotifDataM1, lenRawMotifData, *blacklist;
     
     nPitchSamples = myProcParams->nPitchSamples;
     
@@ -307,7 +308,6 @@ void generateInterpolatedSequences(DATATYPE **data, segInfoInterp_t *tStamps, DA
         {
             indInterp[jj][ii] = myProcParams->interpFac[jj]*ii ;
         }
-        
     }
     
     indData=0;
@@ -329,9 +329,7 @@ void generateInterpolatedSequences(DATATYPE **data, segInfoInterp_t *tStamps, DA
                 tStampsInterp[indData].str = tStamps[ii].str;
                 tStampsInterp[indData].end = tStamps[ii].end[jj];
                 indData++;
-                
             }
-            
         }
     }
     
@@ -341,30 +339,31 @@ void generateInterpolatedSequences(DATATYPE **data, segInfoInterp_t *tStamps, DA
     for (jj=0;jj<nInterpFac;jj++)
     {
         free(indInterp[jj]);
-        
     }
     free(indInterp);
 }
 
+/*
+ * This is the main function for reading pitch data, pre-processing sequence, filtering segments, generating pattern candidates and doing tempo compensation
+ */
 INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *baseName, fileExts_t *myFileExts, procParams_t *myProcParams, procLogs_t *myProcLogs, int verbos)
 {
-     FILE *fp;
     char pitchFile[400]={'\0'}, tonicFile[400]={'\0'}, segmentFile[400]={'\0'};
     
-    INDTYPE numLinesInFile, ind, ii, jj, ll, lenTS, N, blacklistCNT;
+    INDTYPE  ii, lenTS, N, blacklistCNT;
     DATATYPE *pitchSamples, **data, **data1, **dataInterp;
     
-    float tonic, pHop, temp1, temp[4]={0}, t1, t2, ex, pitchTemp, timeTemp;
-    float *timeSamples, *mean, *stdVec, *indLow, *indHigh, max_factor;
+    float pHop, t1, t2;
+    float *timeSamples, *stdVec, max_factor;
     
-    int nRead, varSam; 
+    int varSam; 
     int *blacklist;
     
     INDTYPE nPitchSamples;
     
     
     segInfoInterp_t *tStamps, *tStamps1;
-    segInfo_t *taniSegs, *tStampsInterp;
+    segInfo_t *tStampsInterp;
     
     
     //pitch file name
@@ -377,21 +376,18 @@ INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *b
     strcat(segmentFile,baseName);
     strcat(segmentFile,myFileExts->segExt);
     
-    //########################## READING PITCH DATA ##########################
-
-    t1 = clock();    
-    readPreprocessPitchData(pitchFile, tonicFile, &pitchSamples, &timeSamples, &nPitchSamples, &pHop, myProcParams, myProcLogs);
     
+    
+    //################ Reading pitch data, pre-processing it ##############
+    t1 = clock();  
+    readPreprocessPitchData(pitchFile, tonicFile, &pitchSamples, &timeSamples, &nPitchSamples, &pHop, myProcParams, myProcLogs);
     t2 = clock();
     myProcLogs->timeDataLoad += (t2-t1)/CLOCKS_PER_SEC;
     myProcLogs->totalPitchNonSilSamples += nPitchSamples;
     if (verbos)
     {printf("Time taken to load the pitch data :%f\n",(t2-t1)/CLOCKS_PER_SEC);}
 
-    
-           
-    
-    //calculating relevant params
+    //######### computing all the motif lengths for several interpolation factors ##############
     max_factor=0;
     /*for (ii=0;ii<myProcParams->nInterpFac; ii++)
     {
@@ -412,38 +408,14 @@ INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *b
     myProcParams->indexMotifLenReal = 1;
     myProcParams->indexMotifLenLongest = 2;
      
-    /*lenMotifReal = (int)round(myProcParams->durMotif/pHop);
-    lenMotifInterpH = (int)ceil((myProcParams->durMotif*myProcParams->factorHigh)/pHop)+1;  
-    lenMotifInterpL = (int)round((myProcParams->durMotif*myProcParams->factorLow)/pHop);
-    
-    lenMotifRealM1 = lenMotifReal-1;
-    lenMotifInterpHM1 = lenMotifInterpH-1;
-    lenMotifInterpLM1 = lenMotifInterpL-1;*/
-    
-    /*myProcParams->lenMotifReal = lenMotifReal;
-    myProcParams->lenMotifRealM1 = lenMotifRealM1;
-    myProcParams->lenMotifInterpH = lenMotifInterpH;
-    myProcParams->lenMotifInterpL = lenMotifInterpL;
-    myProcParams->lenMotifInterpHM1 = lenMotifInterpHM1;
-    myProcParams->lenMotifInterpLM1 = lenMotifInterpLM1;*/
-    
     myProcParams->nPitchSamples = nPitchSamples;
-    
     varSam = (int)round(myProcParams->varDur/pHop);
     
-    //########################## Subsequence generation + selection step ##########################
-    // In subsequence selection our aim is to discard those subsequences which result into trivial matches, 
-    // which are flat regions. For removing flat regions the obvious choice is to consider variance of a 
-    // subsequence and filter using a myProcParams->threshold. The problem here is large amounts of octave errors because
-    // of which the variance increases but affectively large chunk of data is still flat. 
     
-    // For solving problem mentioned above we resort to short duration variance for deciding wheather a 
-    // given sample belongs to a flat region or not. Later we accumulate total number of samples in a 
-    // subsequence which belong to a flat region and filter the subsequence based on a myProcParams->threshold.
-    t1 = clock();
-    //computing local mean and variance
-        // after computing running variance, applying a myProcParams->threshold and selecting the onces which are corresponsing to non flat regions
+    //#################### Computing running standard deviation for flatness estiamtion ################
+    t1 = clock();    
     computeRunningStd(pitchSamples, &stdVec, varSam, nPitchSamples);
+    // Assigning weather a point belongs to a flat region or non flar region based on a threhsold
     for(ii=varSam;ii<nPitchSamples-varSam;ii++)
     {
         if (stdVec[ii]>myProcParams->threshold)
@@ -457,8 +429,9 @@ INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *b
             
     }
     
-    lenTS  = nPitchSamples;       //number of non trivial pitch samples, they might still carry number of subsequences which have to be discarded
+    lenTS  = nPitchSamples; 
     
+    //############### Generating pattern candidates BRUTE FORCE WAY by hopping single sample ##############
     gen1SampleHopSubCands(pitchSamples, timeSamples, stdVec, &data, &tStamps, &blacklist, myProcParams);
     
     lenTS = lenTS-(myProcParams->motifLengths[myProcParams->indexMotifLenLongest]-1);   //we only have lenMotifInterpHM1 samples less than original number lenTS. it still counts blacklisted candidates
@@ -472,13 +445,13 @@ INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *b
     free(timeSamples);
     
     
-    // Finding all the subsequences that should be blacklisted because they fall in TANI regions
+    //######### finding which segments should be blacklisted which basically fall in solo percussion region ###############
     t1 = clock();
-    removeSegments(segmentFile, tStamps, blacklist, lenTS, myProcParams);
-    
+    removeSegments(segmentFile, tStamps, blacklist, lenTS, myProcParams);    
     t2 = clock();
     if (verbos)
     {printf("Time taken to blacklist tani sections :%f\n",(t2-t1)/CLOCKS_PER_SEC);}
+    
     
     //%%%%%%%%%%%%%%%% Removing blacklisted subsequences %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     t1 = clock();
@@ -503,16 +476,18 @@ INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *b
     blacklistCNT = lenTS-N;
     myProcLogs->totalSubsBlacklisted += blacklistCNT;
     
-    generateInterpolatedSequences(data1, tStamps1, &dataInterp,  &tStampsInterp, N, myProcParams);
-    
+    //############ Generating interpolated copies of the subsequences for tempo compensation ############
+    generateInterpolatedSequences(data1, tStamps1, &dataInterp,  &tStampsInterp, N, myProcParams);    
     lenTS = N*myProcParams->nInterpFac; 
-    free(data);
-    free(tStamps);
-    free(blacklist);
-    
     t2 = clock();
     myProcLogs->timeRemBlacklist += (t2-t1)/CLOCKS_PER_SEC;
     myProcLogs->totalSubsInterpolated += lenTS;
+    
+    free(data);
+    free(data1);
+    free(tStamps);
+    free(blacklist);
+    
     if (verbos)
     {printf("Time taken to remove blacklist subsequences :%f\n",(t2-t1)/CLOCKS_PER_SEC);}
     
@@ -523,8 +498,13 @@ INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *b
     *d = dataInterp;
     *t = tStampsInterp;
     *motifLen = myProcParams->motifLengths[myProcParams->indexMotifLenReal];
+    
     return lenTS;
 }
+
+/*
+ * This function read the seed motif information which was dumped during the discovery phase
+ */
 
 int readSeedMotifDump(char *motifFile, segInfo_t **sm, int maxNMotifsPairs, int *NMotifs)
 {
@@ -570,22 +550,25 @@ int readSeedMotifDump(char *motifFile, segInfo_t **sm, int maxNMotifsPairs, int 
     
 }
 
+
+/*
+ * This function read seed motif data, pre-process and generate interpolated pattenr candidates to be used for searching
+ */
+
 INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char *baseName, fileExts_t *myFileExts, procParams_t *myProcParams, procLogs_t *myProcLogs, int maxNMotifsPairs, int verbos)
 {
-     FILE *fp;
     char pitchFile[400]={'\0'}, tonicFile[400]={'\0'}, motifFile[400]={'\0'};
     
-    INDTYPE numLinesInFile, ind, ii, jj, ll, lenTS, N, totalPitchNonSilSamples, *seedMotifInd, lenRawMotifData;
+    INDTYPE ii, jj, lenTS, N, totalPitchNonSilSamples, *seedMotifInd, lenRawMotifData;
     DATATYPE *pitchSamples, **data, **dataInterp;
     
-    float tonic, pHop, temp1, temp[10]={0}, ex, pitchTemp, timeTemp;
-    float *timeSamples, *indLow, *indHigh, min_val;
-    double temp4;
+    float pHop;
+    float *timeSamples, min_val;
     
-    int lenMotifReal,lenMotifRealM1,lenMotifInterpHM1, lenMotifInterpLM1, lenMotifInterpH, lenMotifInterpL,dsFactor, nRead, NMotifs, max_factor; 
+    int NMotifs, max_factor; 
     
     segInfoInterp_t *tStamps;
-    segInfo_t *taniSegs, *tStampsInterp, *seedMotifs;
+    segInfo_t *tStampsInterp, *seedMotifs;
     INDTYPE nPitchSamples;
     
     
@@ -599,23 +582,9 @@ INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     strcat(motifFile,baseName);
     strcat(motifFile,myFileExts->seedMotifExt);
     
-    //########################## READING PITCH DATA ##########################
-
+    //################ Reading pitch data, pre-processing it ##############
     readPreprocessPitchData(pitchFile, tonicFile, &pitchSamples, &timeSamples, &nPitchSamples, &pHop, myProcParams, myProcLogs);
-    
-    /*lenMotifReal = (int)round(myProcParams->durMotif/pHop);    
-    lenMotifInterpH = (int)ceil((myProcParams->durMotif*myProcParams->factorHigh)/pHop)+1;  
-    lenMotifInterpL = (int)round((myProcParams->durMotif*myProcParams->factorLow)/pHop);
-    lenMotifRealM1 = lenMotifReal-1;
-    lenMotifInterpHM1 = lenMotifInterpH-1;
-    lenMotifInterpLM1 = lenMotifInterpL-1;
-    
-    myProcParams->lenMotifReal = lenMotifReal;
-    myProcParams->lenMotifRealM1 = lenMotifRealM1;
-    myProcParams->lenMotifInterpH = lenMotifInterpH;
-    myProcParams->lenMotifInterpL = lenMotifInterpL;
-    myProcParams->lenMotifInterpHM1 = lenMotifInterpHM1;
-    myProcParams->lenMotifInterpLM1 = lenMotifInterpLM1;*/
+
     
     myProcParams->nPitchSamples = nPitchSamples;
     
@@ -659,7 +628,7 @@ INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
         }
     }
     
-    data = (DATATYPE **)malloc(sizeof(DATATYPE *)*NMotifs);         //since we don't know valid subsequences, we allocate max possible subsequences and later discard them and free the memory
+    data = (DATATYPE **)malloc(sizeof(DATATYPE *)*NMotifs);
     tStamps = (segInfoInterp_t *)malloc(sizeof(segInfoInterp_t)*NMotifs); 
     
     for(ii=0;ii<NMotifs;ii++)
@@ -812,7 +781,6 @@ void dumpDiscoveryLogs(char *logFile, procLogs_t myProcLogs, int verbos)
 void dumpParameterValuesUsed(char *paramOutFile, procParams_t *myProcParams)
 {
     FILE *fp;
-    int ii;
     
     fp =fopen(paramOutFile,"w");
     fprintf(fp, "Bins per octave:\t%d\n", myProcParams->binsPOct);

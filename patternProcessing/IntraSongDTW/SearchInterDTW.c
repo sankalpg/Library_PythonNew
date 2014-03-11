@@ -14,16 +14,16 @@
 
 int main( int argc , char *argv[])
 {
-    FILE *fp, *fp_out;
+    FILE *fp;
     char *baseName, motifFile[400]={'\0'}, logFile[400]={'\0'}, searchFileList[400]={'\0'}, searchFile[400] = {'\0'}, mappFile[400] = {'\0'}, paramOutFile[400]={'\0'} ;
     float t1,t2, t3,t4;
     int lenMotifReal, verbos=0, bandDTW, maxNMotifsPairs; 
-    INDTYPE    NSeed, lenTS, count_DTW=0, numLinesInFile, K,ii,jj;
+    INDTYPE    NSeed, lenTS, K,ii,jj;
     
     DATATYPE **dataInterpSeed, **dataInterp, **U, **L, **USeed, **LSeed, *accLB;
     DISTTYPE LB_Keogh_EQ, realDist,LB_Keogh_EC,bsf=INF,**costMTX, LB_kim_FL;
     motifInfo **topKmotifs;
-    segInfo_t *taniSegs, *tStampsInterp, *tStampsInterpSeed;
+    segInfo_t *tStampsInterp, *tStampsInterpSeed;
     procLogs_t myProcLogs;
     procParams_t myProcParams;
     fileExts_t myFileExts;
