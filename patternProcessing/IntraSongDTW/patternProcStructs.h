@@ -39,13 +39,10 @@ typedef struct procParams
     int dsFactor;
     int removeTaniSegs;
     float minPossiblePitch;
-    float allowedSilDur;
     float varDur;
     float threshold;
     float flatThreshold;
     float maxPauseDur;
-    float factorLow;
-    float factorHigh;
     float durMotif;
     float blackDur;
     float DTWBand;
@@ -56,13 +53,6 @@ typedef struct procParams
     int motifLengthsM1[MAXNTEMPOFACTORS];
     int indexMotifLenReal;
     int indexMotifLenLongest;
-    
-    int lenMotifReal;
-    int lenMotifRealM1;
-    int lenMotifInterpH;
-    int lenMotifInterpL;
-    int lenMotifInterpHM1;
-    int lenMotifInterpLM1;
     
     
 }procParams_t;

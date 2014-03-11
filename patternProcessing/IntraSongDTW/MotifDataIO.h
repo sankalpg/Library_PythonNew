@@ -62,6 +62,7 @@ typedef struct fileExts
     char *searchExt;
     char *motifExt;
     char *mappExt;
+    char *paramOutExt;
 }fileExts_t;
 
 
@@ -80,6 +81,7 @@ INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
 void dumpSearchMotifInfo(char *motifFile, char *mappFile, char *searchFile, motifInfo** topKmotifs, segInfo_t *tStampsInterpSeed, segInfo_t *tStampsInterp, int NSeeds, INDTYPE K, mappInfo_t *mapp, int verbos);
 void dumpDiscoveryLogs(char *logFile, procLogs_t myProcLogs, int verbos);
 void dumpDiscoveredMotifInfo(char *motifFile, motifInfo *topKmotifs, segInfo_t *tStampsInterp, int K, int verbos);
+void dumpParameterValuesUsed(char *paramOutFile, procParams_t *myProcParams);
 
 #endif //MOTIFDATAIO_H
 

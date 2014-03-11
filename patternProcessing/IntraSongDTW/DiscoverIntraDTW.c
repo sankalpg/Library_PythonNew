@@ -15,7 +15,7 @@
 int main( int argc , char *argv[])
 {
     FILE *fp;
-    char *baseName, motifFile[400]={'\0'}, logFile[400]={'\0'};
+    char *baseName, motifFile[400]={'\0'}, logFile[400]={'\0'}, paramOutFile[400]={'\0'};
     float t1,t2;
     int lenMotifReal, verbos=0, bandDTW; 
     INDTYPE    lenTS, count_DTW=0, numLinesInFile, K,ii,jj;
@@ -47,7 +47,7 @@ int main( int argc , char *argv[])
     myProcLogs.totalDTWComputations=0;
     myProcLogs.totalPriorityUpdates=0;
     
-    if(argc < 13 || argc > 14)
+    if(argc < 14 || argc > 15)
     {
         printf("\nInvalid number of arguments!!!\n");
         exit(1);
@@ -59,28 +59,26 @@ int main( int argc , char *argv[])
     myFileExts.segExt = argv[4];
     myFileExts.motifExt = argv[5];
     myFileExts.logExt = argv[6];
-    myProcParams.durMotif = atof(argv[7]);
-    K = atoi(argv[8]);
-    myProcParams.blackDur = atof(argv[9]);
-    if (atof(argv[10])>0)
+    myFileExts.paramOutExt = argv[7];
+    myProcParams.durMotif = atof(argv[8]);
+    K = atoi(argv[9]);
+    myProcParams.blackDur = atof(argv[10]);
+    if (atof(argv[11])>0)
     {
-        bsf = atof(argv[10]);
+        bsf = atof(argv[11]);
     }
-     myProcParams.dsFactor = atoi(argv[11]);
-     myProcParams.nInterpFac=atoi(argv[12]);
+     myProcParams.dsFactor = atoi(argv[12]);
+     myProcParams.nInterpFac=atoi(argv[13]);
     
-    if( argc == 14 ){verbos = atoi(argv[13]);}
+    if( argc == 15 ){verbos = atoi(argv[14]);}
     
     //############ CRUCIAL PARAMETERS ##################
     myProcParams.minPossiblePitch = 60.0;
-    myProcParams.allowedSilDur = 0.15;
     myProcParams.binsPOct = 120;
     myProcParams.varDur = 0.1;
     myProcParams.threshold = 225;
     myProcParams.flatThreshold = 0.8;
     myProcParams.maxPauseDur = 0.5;
-    myProcParams.factorLow = 0.9;
-    myProcParams.factorHigh = 1.1;
     myProcParams.DTWBand = 0.1;
     myProcParams.removeTaniSegs=1;
     
@@ -112,6 +110,9 @@ int main( int argc , char *argv[])
     //log file name
     strcat(logFile,baseName);
     strcat(logFile,myFileExts.logExt);  
+    //paramOut file name
+    strcat(paramOutFile,baseName);
+    strcat(paramOutFile,myFileExts.paramOutExt); 
     
     
     lenTS = readPreProcessGenDB(&dataInterp, &tStampsInterp, &lenMotifReal, baseName, &myFileExts, &myProcParams, &myProcLogs, verbos);
@@ -219,6 +220,7 @@ int main( int argc , char *argv[])
 
     dumpDiscoveredMotifInfo(motifFile, topKmotifs, tStampsInterp, K, verbos);
     dumpDiscoveryLogs(logFile, myProcLogs, verbos);
+    dumpParameterValuesUsed(paramOutFile, &myProcParams);
     
     //Memory clearing
     for(ii=0;ii<lenTS;ii++)

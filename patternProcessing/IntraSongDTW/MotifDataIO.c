@@ -809,4 +809,24 @@ void dumpDiscoveryLogs(char *logFile, procLogs_t myProcLogs, int verbos)
     }
 }
 
+void dumpParameterValuesUsed(char *paramOutFile, procParams_t *myProcParams)
+{
+    FILE *fp;
+    int ii;
+    
+    fp =fopen(paramOutFile,"w");
+    fprintf(fp, "Bins per octave:\t%d\n", myProcParams->binsPOct);
+    fprintf(fp, "Downsampling factor:\t%d\n", myProcParams->dsFactor);
+    fprintf(fp, "Minimum possible pitch (Hz):\t%f\n", myProcParams->minPossiblePitch);
+    fprintf(fp, "Single sided duration of running std (s):\t%f\n", myProcParams->varDur);
+    fprintf(fp, "Flatness threshold to discard segment:\t%f\n", myProcParams->threshold);
+    fprintf(fp, "Threshold for flatness estimation (cents):\t%f\n", myProcParams->flatThreshold);
+    fprintf(fp, "Duration of short pause allowed (s):\t%f\n", myProcParams->maxPauseDur);
+    fprintf(fp, "Motif duration (s):\t%f\n", myProcParams->durMotif);
+    fprintf(fp, "Nonoverlapping duration (s):\t%f\n", myProcParams->blackDur);
+    fprintf(fp, "Global DTW constraint (percentage):\t%f\n", myProcParams->DTWBand);
+    fprintf(fp, "Number of interpolation factors:\t%d\n", myProcParams->nInterpFac);
+    fprintf(fp, "Number of the Motif samples :\t%d\n", myProcParams->motifLengths[myProcParams->indexMotifLenReal]);    
+    fclose(fp);
+}
 

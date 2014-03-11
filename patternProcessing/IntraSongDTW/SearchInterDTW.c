@@ -15,7 +15,7 @@
 int main( int argc , char *argv[])
 {
     FILE *fp, *fp_out;
-    char *baseName, motifFile[400]={'\0'}, logFile[400]={'\0'}, searchFileList[400]={'\0'}, searchFile[400] = {'\0'}, mappFile[400] = {'\0'} ;
+    char *baseName, motifFile[400]={'\0'}, logFile[400]={'\0'}, searchFileList[400]={'\0'}, searchFile[400] = {'\0'}, mappFile[400] = {'\0'}, paramOutFile[400]={'\0'} ;
     float t1,t2, t3,t4;
     int lenMotifReal, verbos=0, bandDTW, maxNMotifsPairs; 
     INDTYPE    NSeed, lenTS, count_DTW=0, numLinesInFile, K,ii,jj;
@@ -53,7 +53,7 @@ int main( int argc , char *argv[])
     myProcLogs.totalPriorityUpdates=0;
     
     
-    if(argc < 17 || argc > 18)
+    if(argc < 18 || argc > 19)
     {
         printf("\nInvalid number of arguments!!!\n");
         exit(1);
@@ -68,29 +68,27 @@ int main( int argc , char *argv[])
     myFileExts.motifExt = argv[7];
     myFileExts.mappExt = argv[8];
     myFileExts.logExt = argv[9];
-    myProcParams.durMotif = atof(argv[10]);
-    K = atoi(argv[11]);
-    myProcParams.blackDur = atof(argv[12]);
-    if (atof(argv[13])>0)
+    myFileExts.paramOutExt = argv[10];
+    myProcParams.durMotif = atof(argv[11]);
+    K = atoi(argv[12]);
+    myProcParams.blackDur = atof(argv[13]);
+    if (atof(argv[14])>0)
     {
-        bsf = atof(argv[13]);
+        bsf = atof(argv[14]);
     }
-     myProcParams.dsFactor = atoi(argv[14]);
-     maxNMotifsPairs = atoi(argv[15]);
-     myProcParams.nInterpFac=atoi(argv[16]);
+     myProcParams.dsFactor = atoi(argv[15]);
+     maxNMotifsPairs = atoi(argv[16]);
+     myProcParams.nInterpFac=atoi(argv[17]);
     
-    if( argc == 18 ){verbos = atoi(argv[17]);}
+    if( argc == 19 ){verbos = atoi(argv[18]);}
     
     //############ CRUCIAL PARAMETERS ##################
     myProcParams.minPossiblePitch = 60.0;
-    myProcParams.allowedSilDur = 0.15;
     myProcParams.binsPOct = 120;
     myProcParams.varDur = 0.1;
     myProcParams.threshold = 225;
     myProcParams.flatThreshold = 0.8;
     myProcParams.maxPauseDur = 0.5;
-    myProcParams.factorLow = 0.9;
-    myProcParams.factorHigh = 1.1;
     myProcParams.DTWBand = 0.1;
     myProcParams.removeTaniSegs=1;
     
@@ -127,6 +125,9 @@ int main( int argc , char *argv[])
     //search file name
     strcat(searchFileList,baseName);
     strcat(searchFileList,myFileExts.searchExt); 
+    //paramOut file name
+    strcat(paramOutFile,baseName);
+    strcat(paramOutFile,myFileExts.paramOutExt); 
     
     //erasing motif and mapp file
     fp = fopen(motifFile,"w");
@@ -340,6 +341,7 @@ int main( int argc , char *argv[])
     myProcLogs.timeTotal += (t4-t3)/CLOCKS_PER_SEC;
     
     dumpDiscoveryLogs(logFile, myProcLogs, verbos);
+    dumpParameterValuesUsed(paramOutFile, &myProcParams);
     
     return 1;
     
