@@ -74,8 +74,6 @@ double dtw1d_BandConst_LocalConst(double *x, double*y, int x_len, int y_len, dou
 
 double dtw1d_BandConst_LocalConst_Subsequence(double *x, double*y, int x_len, int y_len, double*cost, int dist_type, int bandwidth);
 
-double computeKeoghsLB(double *U, double *L, double * accLB, double *data,int lenMotif, double bsf);
-
 double dtw1dBandConst(double *x, double*y, int x_len, int y_len, double**cost, int dist_type, int bandwidth, double bsf, double *accLB);
 
 double dtw1dBandConst_subsequence(double *x, double*y, int x_len, int y_len, double**cost, int dist_type, int bandwidth, double bsf, double *accLB);
@@ -86,6 +84,8 @@ double dtw1dBandConst_subsequence_localConst(double *x, double*y, int x_len, int
 
 double dtw1dBandConst_old(double *x, double*y, int x_len, int y_len, double*cost, int dist_type, int bandwidth, double bsf, double *accLB);
 
-double computeLBkimFL(double a1, double a2, double b1, double b2);
 
+// LOWER BOUNDS
+double computeLBkimFL(double a1, double a2, double b1, double b2, int dist_type);
 
+double computeKeoghsLB(double *U, double *L, double * accLB, double *data,int lenMotif, double bsf, int dist_type);

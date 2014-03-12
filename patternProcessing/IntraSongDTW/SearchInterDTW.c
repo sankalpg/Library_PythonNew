@@ -228,23 +228,23 @@ int main( int argc , char *argv[])
                     }
                     
                     
-                    LB_kim_FL = computeLBkimFL(dataInterpSeed[ii][0], dataInterp[jj][0], dataInterpSeed[ii][lenMotifReal-1], dataInterp[jj][lenMotifReal-1]);
+                    LB_kim_FL = computeLBkimFL(dataInterpSeed[ii][0], dataInterp[jj][0], dataInterpSeed[ii][lenMotifReal-1], dataInterp[jj][lenMotifReal-1], SqEuclidean);
                     myProcLogs.totalFLDone++;
                     if (LB_kim_FL< bsf)
                     {
-                        LB_Keogh_EQ = computeKeoghsLB(USeed[ii],LSeed[ii], accLB, dataInterp[jj],lenMotifReal, bsf);
+                        LB_Keogh_EQ = computeKeoghsLB(USeed[ii],LSeed[ii], accLB, dataInterp[jj],lenMotifReal, bsf, SqEuclidean);
                         myProcLogs.totalLBKeoghEQ++;
                         if(LB_Keogh_EQ < bsf)
                         {
-                            LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB, dataInterpSeed[ii],lenMotifReal, bsf);
+                            LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB, dataInterpSeed[ii],lenMotifReal, bsf, SqEuclidean);
                             myProcLogs.totalLBKeoghEC++;
                             if(LB_Keogh_EC < bsf)
                             {
-                                realDist = dtw1dBandConst(dataInterpSeed[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, 0, bandDTW, bsf, accLB);
+                                realDist = dtw1dBandConst(dataInterpSeed[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, SqEuclidean, bandDTW, bsf, accLB);
                                 myProcLogs.totalDTWComputations++;
                                 if(realDist<bsf)
                                 {
-                                    realDist = dtw1dBandConst_localConst(dataInterpSeed[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, 0, bandDTW, bsf, accLB);
+                                    realDist = dtw1dBandConst_localConst(dataInterpSeed[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, SqEuclidean, bandDTW, bsf, accLB);
                                     manageTopKMotifs(topKmotifs[ii/3], tStampsInterpSeed, tStampsInterp, lenTS, ii, jj, realDist, myProcParams.blackDur);
                                     myProcLogs.totalPriorityUpdates++;
                                 }
@@ -264,23 +264,23 @@ int main( int argc , char *argv[])
                     if (((ii%3==0)&&(jj%3==0))||((ii%3==2)&&(jj%3==2))||((ii%3==0)&&(jj%3==1))||((ii%3==2)&&(jj%3==1)))
                         continue;
                 
-                    LB_kim_FL = computeLBkimFL(dataInterpSeed[ii][0], dataInterp[jj][0], dataInterpSeed[ii][lenMotifReal-1], dataInterp[jj][lenMotifReal-1]);
+                    LB_kim_FL = computeLBkimFL(dataInterpSeed[ii][0], dataInterp[jj][0], dataInterpSeed[ii][lenMotifReal-1], dataInterp[jj][lenMotifReal-1], SqEuclidean);
                     myProcLogs.totalFLDone++;
                     if (LB_kim_FL< bsf)
                     {
-                        LB_Keogh_EQ = computeKeoghsLB(USeed[ii],LSeed[ii], accLB, dataInterp[jj],lenMotifReal, bsf);
+                        LB_Keogh_EQ = computeKeoghsLB(USeed[ii],LSeed[ii], accLB, dataInterp[jj],lenMotifReal, bsf, SqEuclidean);
                         myProcLogs.totalLBKeoghEQ++;
                         if(LB_Keogh_EQ < bsf)
                         {
-                            LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB, dataInterpSeed[ii],lenMotifReal, bsf);
+                            LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB, dataInterpSeed[ii],lenMotifReal, bsf, SqEuclidean);
                             myProcLogs.totalLBKeoghEC++;
                             if(LB_Keogh_EC < bsf)
                             {
-                                realDist = dtw1dBandConst(dataInterpSeed[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, 0, bandDTW, bsf, accLB);
+                                realDist = dtw1dBandConst(dataInterpSeed[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, SqEuclidean, bandDTW, bsf, accLB);
                                 myProcLogs.totalDTWComputations++;
                                 if(realDist<bsf)
                                 {
-                                    realDist = dtw1dBandConst_localConst(dataInterpSeed[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, 0, bandDTW, bsf, accLB);
+                                    realDist = dtw1dBandConst_localConst(dataInterpSeed[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, SqEuclidean, bandDTW, bsf, accLB);
                                     manageTopKMotifs(topKmotifs[ii/3], tStampsInterpSeed, tStampsInterp, lenTS, ii, jj, realDist, myProcParams.blackDur);
                                     myProcLogs.totalPriorityUpdates++;
                                 }

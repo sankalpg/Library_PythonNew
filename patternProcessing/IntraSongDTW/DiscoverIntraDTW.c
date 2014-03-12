@@ -223,15 +223,15 @@ int main( int argc , char *argv[])
                 continue;
             }
             
-            LB_kim_FL = computeLBkimFL(dataInterp[ii][0], dataInterp[jj][0], dataInterp[ii][lenMotifReal-1], dataInterp[jj][lenMotifReal-1]);
+            LB_kim_FL = computeLBkimFL(dataInterp[ii][0], dataInterp[jj][0], dataInterp[ii][lenMotifReal-1], dataInterp[jj][lenMotifReal-1], SqEuclidean);
             myProcLogs.totalFLDone++;
             if (LB_kim_FL< bsf) 
             {
-                LB_Keogh_EQ = computeKeoghsLB(U[ii],L[ii],accLB, dataInterp[jj],lenMotifReal, bsf);
+                LB_Keogh_EQ = computeKeoghsLB(U[ii],L[ii],accLB, dataInterp[jj],lenMotifReal, bsf, SqEuclidean);
                 myProcLogs.totalLBKeoghEQ++;
                 if(LB_Keogh_EQ < bsf)
                 {
-                    LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB, dataInterp[ii],lenMotifReal, bsf);
+                    LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB, dataInterp[ii],lenMotifReal, bsf, SqEuclidean);
                     myProcLogs.totalLBKeoghEC++;
                     if(LB_Keogh_EC < bsf)
                     {

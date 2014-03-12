@@ -571,6 +571,8 @@ double dtw1dBandConst_old(double *x, double*y, int x_len, int y_len, double*cost
 }
 
 
+//######################################## NEW SET OF FUNCTIONS TO BE CALLED IN C FUNCTIONS #####################################
+
 double dtw1dBandConst(double *x, double*y, int x_len, int y_len, double**cost, int dist_type, int bandwidth, double bsf, double *accLB)
 {
         // declarations of variables
@@ -643,36 +645,34 @@ double dtw1dBandConst_localConst(double *x, double*y, int x_len, int y_len, doub
         // declarations of variables
         int i,j, ind, overflow; 
         double min_vals, leftLB, temp;
-        DistMethods myDistMethods[1]={NULL};
-        myDistMethods[0]  = &EucDist;
-
+        
 #ifdef ENABLE_EA
         temp = bsf - accLB[y_len-1] ;
 #endif        
         
         //Initializing the row and columns of cost matrix
-        cost[0][0]= myDistMethods[0](x[0],y[0]);
+        cost[0][0]= mySimMeasure[dist_type](x[0],y[0]);
 
         for (i=1;i<=bandwidth;i++)
         {
-        cost[i][0]=myDistMethods[0](x[i],y[0]) + cost[i-1][0];
+        cost[i][0]=mySimMeasure[dist_type](x[i],y[0]) + cost[i-1][0];
         }
         for (j=1;j<=bandwidth;j++)
         {
-        cost[0][j]=myDistMethods[0](x[0],y[j]) + cost[0][j-1];
+        cost[0][j]=mySimMeasure[dist_type](x[0],y[j]) + cost[0][j-1];
         }
         
         for (i=1;i<=bandwidth+1;i++)
         {
             j=1;
             min_vals = min3(cost[i-1][j], cost[i-1][j-1], cost[i][j-1]);
-            cost[i][j] = myDistMethods[0](x[i],y[j]) + min_vals;
+            cost[i][j] = mySimMeasure[dist_type](x[i],y[j]) + min_vals;
         }
         for (j=1;j<=bandwidth+1;j++)
         {
             i=1;
             min_vals = min3(cost[i-1][j], cost[i-1][j-1], cost[i][j-1]);
-            cost[i][j] = myDistMethods[0](x[i],y[j]) + min_vals;
+            cost[i][j] = mySimMeasure[dist_type](x[i],y[j]) + min_vals;
         }
         
         //filling in all the cumulative cost matrix
@@ -695,7 +695,7 @@ double dtw1dBandConst_localConst(double *x, double*y, int x_len, int y_len, doub
                 }
                 else
                 {
-                    cost[i][j] = myDistMethods[0](x[i],y[j]) + min_vals;
+                    cost[i][j] = mySimMeasure[dist_type](x[i],y[j]) + min_vals;
                 }
                 
                 if (cost[i][j] < leftLB)
@@ -704,7 +704,7 @@ double dtw1dBandConst_localConst(double *x, double*y, int x_len, int y_len, doub
                 }
 
 #else
-                cost[i][j] = myDistMethods[0](x[i],y[j]) + min_vals;
+                cost[i][j] = mySimMeasure[dist_type](x[i],y[j]) + min_vals;
 #endif 
 
             }
@@ -732,15 +732,15 @@ double dtw1dBandConst_subsequence(double *x, double*y, int x_len, int y_len, dou
 #endif        
         
         //Initializing the row and columns of cost matrix
-        cost[0][0]= EucDist(x[0],y[0]);
+        cost[0][0]= mySimMeasure[dist_type](x[0],y[0]);
 
         for (i=1;i<=bandwidth;i++)
         {
-            cost[i][0]=EucDist(x[i],y[0]);
+            cost[i][0]=mySimMeasure[dist_type](x[i],y[0]);
         }
         for (j=1;j<=bandwidth;j++)
         {
-            cost[0][j]=EucDist(x[0],y[j]);
+            cost[0][j]=mySimMeasure[dist_type](x[0],y[j]);
         }
         
         //filling in all the cumulative cost matrix
@@ -763,7 +763,7 @@ double dtw1dBandConst_subsequence(double *x, double*y, int x_len, int y_len, dou
                 }
                 else
                 {
-                    cost[i][j] = EucDist(x[i],y[j]) + min_vals;
+                    cost[i][j] = mySimMeasure[dist_type](x[i],y[j]) + min_vals;
                 }
                 
                 if (cost[i][j] < leftLB)
@@ -772,7 +772,7 @@ double dtw1dBandConst_subsequence(double *x, double*y, int x_len, int y_len, dou
                 }
 
 #else
-                cost[i][j] = EucDist(x[i],y[j]) + min_vals;
+                cost[i][j] = mySimMeasure[dist_type](x[i],y[j]) + min_vals;
 #endif 
 
             }
@@ -818,28 +818,28 @@ double dtw1dBandConst_subsequence_localConst(double *x, double*y, int x_len, int
 #endif        
         
         //Initializing the row and columns of cost matrix
-        cost[0][0]= EucDist(x[0],y[0]);
+        cost[0][0]= mySimMeasure[dist_type](x[0],y[0]);
 
         for (i=1;i<=bandwidth;i++)
         {
-            cost[i][0]=EucDist(x[i],y[0]);
+            cost[i][0]=mySimMeasure[dist_type](x[i],y[0]);
         }
         for (j=1;j<=bandwidth;j++)
         {
-            cost[0][j]=EucDist(x[0],y[j]);
+            cost[0][j]=mySimMeasure[dist_type](x[0],y[j]);
         }
         
         for (i=1;i<=bandwidth+1;i++)
         {
             j=1;
             min_vals = min3(cost[i-1][j], cost[i-1][j-1], cost[i][j-1]);
-            cost[i][j] = EucDist(x[i],y[j]) + min_vals;
+            cost[i][j] = mySimMeasure[dist_type](x[i],y[j]) + min_vals;
         }
         for (j=1;j<=bandwidth+1;j++)
         {
             i=1;
             min_vals = min3(cost[i-1][j], cost[i-1][j-1], cost[i][j-1]);
-            cost[i][j] = EucDist(x[i],y[j]) + min_vals;
+            cost[i][j] = mySimMeasure[dist_type](x[i],y[j]) + min_vals;
         }
         
         //filling in all the cumulative cost matrix
@@ -862,7 +862,7 @@ double dtw1dBandConst_subsequence_localConst(double *x, double*y, int x_len, int
                 }
                 else
                 {
-                    cost[i][j] = EucDist(x[i],y[j]) + min_vals;
+                    cost[i][j] = mySimMeasure[dist_type](x[i],y[j]) + min_vals;
                 }
                 
                 if (cost[i][j] < leftLB)
@@ -871,7 +871,7 @@ double dtw1dBandConst_subsequence_localConst(double *x, double*y, int x_len, int
                 }
 
 #else
-                cost[i][j] = EucDist(x[i],y[j]) + min_vals;
+                cost[i][j] = mySimMeasure[dist_type](x[i],y[j]) + min_vals;
 #endif 
 
             }
@@ -907,6 +907,19 @@ double dtw1dBandConst_subsequence_localConst(double *x, double*y, int x_len, int
 
 
 
+
+
+/*#####################################################################################################################
+################################################ LOWER BOUND FUNCTIONS ##############################################
+#####################################################################################################################*/
+double computeLBkimFL(double a1, double a2, double b1, double b2, int dist_type)
+{
+    double distF, distL;
+    distF = mySimMeasure[dist_type](a1, a2);
+    distL = mySimMeasure[dist_type](b1, b2);
+    return (distF + distL);
+}
+
 /*
  * This function computes Keogh lower bound of DTW distance,  as an input you have to precompute
  * U - running max of one of the subsequence
@@ -918,7 +931,7 @@ double dtw1dBandConst_subsequence_localConst(double *x, double*y, int x_len, int
  * 
  * Additionally this function also has a early abandoning step,  which is dependent on the preprocessor #define. Use 'ENABLE_EA' to enable it 
 */
-double computeKeoghsLB(double *U, double *L, double * accLB, double *data,int lenMotif, double bsf)
+double computeKeoghsLB(double *U, double *L, double * accLB, double *data,int lenMotif, double bsf, int dist_type)
 {
     int ii;
     double sum=0;
@@ -926,11 +939,11 @@ double computeKeoghsLB(double *U, double *L, double * accLB, double *data,int le
     {
         if (data[ii]>U[ii])
         {
-            sum+=EucDist(data[ii],U[ii]);
+            sum+=mySimMeasure[dist_type](data[ii],U[ii]);
         }
         else if (data[ii]<L[ii])
         {
-            sum+=EucDist(data[ii],L[ii]);
+            sum+=mySimMeasure[dist_type](data[ii],L[ii]);
         }
         accLB[ii] = sum;
 #ifdef ENABLE_EA             
@@ -943,17 +956,6 @@ double computeKeoghsLB(double *U, double *L, double * accLB, double *data,int le
     return sum;
     
 }
-double computeLBkimFL(double a1, double a2, double b1, double b2)
-{
-    double diff1, diff2;
-    diff1 = (a1-a2);
-    diff2 = (b1-b2);
-    return (diff1*diff1) + (diff2*diff2);
-}
-
-/*#####################################################################################################################
-################################################ LOWER BOUND FUNCTIONS ##############################################
-#####################################################################################################################*/
 
 
 //Probably not functinally correct functions but kept to just have as a backup
