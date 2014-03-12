@@ -181,7 +181,7 @@ int main( int argc , char *argv[])
     USeed = (DATATYPE **)malloc(sizeof(DATATYPE *)*NSeed);
     LSeed= (DATATYPE **)malloc(sizeof(DATATYPE *)*NSeed);
     accLB = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
-    topKmotifs = (motifInfo **)malloc(sizeof(motifInfo*)*NSeed/3);
+    topKmotifs = (motifInfo **)malloc(sizeof(motifInfo*)*NSeed/nInterFact);
     
     for (ii=0;ii<NSeed;ii++)
     {
@@ -227,8 +227,8 @@ int main( int argc , char *argv[])
         myProcLogs.timeGenEnvelops += (t2-t1)/CLOCKS_PER_SEC;
         for(jj=0;jj<NSeed/nInterFact;jj++)
         {
-            topKmotifs[jj] = (motifInfo *)malloc(sizeof(motifInfo)*lenTS);
-            for(ii=0;ii<lenTS;ii++)
+            topKmotifs[jj] = (motifInfo *)malloc(sizeof(motifInfo)*K);
+            for(ii=0;ii<K;ii++)
             {
                 topKmotifs[jj][ii].dist = INF;
                 topKmotifs[jj][ii].ind1 = 0;
@@ -267,7 +267,7 @@ int main( int argc , char *argv[])
                                 if(realDist<bsf)
                                 {
                                     realDist = dtw1dBandConst_localConst(dataInterpSeed[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, SqEuclidean, bandDTW, bsf, accLB);
-                                    manageTopKMotifs(topKmotifs[ii/nInterFact], tStampsInterpSeed, tStampsInterp, lenTS, ii, jj, realDist, myProcParams.blackDur);
+                                    bsf = manageTopKMotifs(topKmotifs[ii/nInterFact], tStampsInterpSeed, tStampsInterp, K, ii, jj, realDist, myProcParams.blackDur);
                                     myProcLogs.totalPriorityUpdates++;
                                 }
                             }
@@ -303,7 +303,7 @@ int main( int argc , char *argv[])
                                 if(realDist<bsf)
                                 {
                                     realDist = dtw1dBandConst_localConst(dataInterpSeed[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, SqEuclidean, bandDTW, bsf, accLB);
-                                    manageTopKMotifs(topKmotifs[ii/nInterFact], tStampsInterpSeed, tStampsInterp, lenTS, ii, jj, realDist, myProcParams.blackDur);
+                                    bsf = manageTopKMotifs(topKmotifs[ii/nInterFact], tStampsInterpSeed, tStampsInterp, K, ii, jj, realDist, myProcParams.blackDur);
                                     myProcLogs.totalPriorityUpdates++;
                                 }
                             }
@@ -315,7 +315,7 @@ int main( int argc , char *argv[])
     t2=clock();
     myProcLogs.timeDiscovery += (t2-t1)/CLOCKS_PER_SEC;
     t1=clock();
-    dumpSearchMotifInfo(motifFile, mappFile, searchFile, topKmotifs, tStampsInterpSeed, tStampsInterp, NSeed, lenTS, &mapp, verbos);
+    dumpSearchMotifInfo(motifFile, mappFile, searchFile, topKmotifs, tStampsInterpSeed, tStampsInterp, NSeed, K, &mapp, nInterFact, verbos);
     t2=clock();
     myProcLogs.timeWriteData += (t2-t1)/CLOCKS_PER_SEC;
     
@@ -395,7 +395,7 @@ DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, segInfo_t *tStamps1, segInfo_t 
     {
         return topKmotifs[K-1].dist;
     }
-    //There are three possibilities
+    //There are threbsfe possibilities
     //1) There is no match found in the existing top motifs, simplest
     if (matchInd==-1)
     {

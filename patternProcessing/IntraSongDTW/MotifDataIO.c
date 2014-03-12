@@ -655,7 +655,7 @@ INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     return lenTS;
 }
 
-void dumpSearchMotifInfo(char *motifFile, char *mappFile, char *searchFile, motifInfo** topKmotifs, segInfo_t *tStampsInterpSeed, segInfo_t *tStampsInterp, int NSeeds, INDTYPE K, mappInfo_t *mapp, int verbos)
+void dumpSearchMotifInfo(char *motifFile, char *mappFile, char *searchFile, motifInfo** topKmotifs, segInfo_t *tStampsInterpSeed, segInfo_t *tStampsInterp, int NSeeds, INDTYPE K, mappInfo_t *mapp, int nInterFact, int verbos)
 {
     FILE *fp;
     INDTYPE ii=0, lineWritten;
@@ -666,7 +666,7 @@ void dumpSearchMotifInfo(char *motifFile, char *mappFile, char *searchFile, moti
     for(ii=0;ii<K;ii++)
     {
         terminate=1;
-        for(jj=0;jj<NSeeds/3;jj++)
+        for(jj=0;jj<NSeeds/nInterFact;jj++)
         {
             if(topKmotifs[jj][ii].dist<INF)
             {
