@@ -389,7 +389,7 @@ INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *b
 
     //######### computing all the motif lengths for several interpolation factors ##############
     max_factor=0;
-    /*for (ii=0;ii<myProcParams->nInterpFac; ii++)
+    for (ii=0;ii<myProcParams->nInterpFac; ii++)
     {
         myProcParams->motifLengths[ii] = (int)ceil((myProcParams->durMotif*myProcParams->interpFac[ii])/pHop);
         if (myProcParams->interpFac[ii]==1)
@@ -401,12 +401,7 @@ INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *b
             max_factor = myProcParams->interpFac[ii];
             myProcParams->indexMotifLenLongest = ii;
         }
-    }*/
-    myProcParams->motifLengths[0] = (int)round((myProcParams->durMotif*myProcParams->interpFac[0])/pHop);
-    myProcParams->motifLengths[1] = (int)round((myProcParams->durMotif*myProcParams->interpFac[1])/pHop);
-    myProcParams->motifLengths[2] = (int)ceil((myProcParams->durMotif*myProcParams->interpFac[2])/pHop)+1;
-    myProcParams->indexMotifLenReal = 1;
-    myProcParams->indexMotifLenLongest = 2;
+    }
      
     myProcParams->nPitchSamples = nPitchSamples;
     varSam = (int)round(myProcParams->varDur/pHop);
@@ -590,7 +585,7 @@ INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     myProcParams->nPitchSamples = nPitchSamples;
     
     max_factor=0;
-    /*for (ii=0;ii<myProcParams->nInterpFac; ii++)
+    for (ii=0;ii<myProcParams->nInterpFac; ii++)
     {
         myProcParams->motifLengths[ii] = (int)ceil((myProcParams->durMotif*myProcParams->interpFac[ii])/pHop);
         if (myProcParams->interpFac[ii]==1)
@@ -602,12 +597,7 @@ INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
             max_factor = myProcParams->interpFac[ii];
             myProcParams->indexMotifLenLongest = ii;
         }
-    }*/
-     myProcParams->motifLengths[0] = (int)round((myProcParams->durMotif*myProcParams->interpFac[0])/pHop);
-     myProcParams->motifLengths[1] = (int)round((myProcParams->durMotif*myProcParams->interpFac[1])/pHop);
-     myProcParams->motifLengths[2] = (int)ceil((myProcParams->durMotif*myProcParams->interpFac[2])/pHop)+1;
-     myProcParams->indexMotifLenReal = 1;
-     myProcParams->indexMotifLenLongest = 2;
+    }
     
     totalPitchNonSilSamples = nPitchSamples;
     lenRawMotifData = myProcParams->motifLengths[myProcParams->indexMotifLenLongest];

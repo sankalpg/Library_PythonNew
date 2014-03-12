@@ -17,7 +17,7 @@ int main( int argc , char *argv[])
     FILE *fp;
     char *baseName, motifFile[400]={'\0'}, logFile[400]={'\0'}, searchFileList[400]={'\0'}, searchFile[400] = {'\0'}, mappFile[400] = {'\0'}, paramOutFile[400]={'\0'} ;
     float t1,t2, t3,t4;
-    int lenMotifReal, verbos=0, bandDTW, maxNMotifsPairs; 
+    int lenMotifReal, verbos=0, bandDTW, maxNMotifsPairs, nInterFact, **combMTX; 
     INDTYPE    NSeed, lenTS, K,ii,jj;
     
     DATATYPE **dataInterpSeed, **dataInterp, **U, **L, **USeed, **LSeed, *accLB;
@@ -102,6 +102,16 @@ int main( int argc , char *argv[])
         myProcParams.interpFac[0]=0.9;
         myProcParams.interpFac[1]=1.0;
         myProcParams.interpFac[2]=1.1;
+        
+        myProcParams.combMTX = (int **)malloc(sizeof(int*)*myProcParams.nInterpFac);
+        for(ii=0;ii<myProcParams.nInterpFac;ii++)
+        {
+            myProcParams.combMTX[ii] =  (int *)malloc(sizeof(int)*myProcParams.nInterpFac);
+            for(jj=0;jj<myProcParams.nInterpFac;jj++)
+            {
+                myProcParams.combMTX[ii][jj] = combAllwd_3[ii][jj];
+            }
+        }        
     }
     else if (myProcParams.nInterpFac==5)
     {
@@ -110,7 +120,19 @@ int main( int argc , char *argv[])
         myProcParams.interpFac[2]=1.0;
         myProcParams.interpFac[3]=1.05;
         myProcParams.interpFac[4]=1.1;
+        
+        myProcParams.combMTX = (int **)malloc(sizeof(int*)*myProcParams.nInterpFac);
+        for(ii=0;ii<myProcParams.nInterpFac;ii++)
+        {
+            myProcParams.combMTX[ii] =  (int *)malloc(sizeof(int)*myProcParams.nInterpFac);
+            for(jj=0;jj<myProcParams.nInterpFac;jj++)
+            {
+                myProcParams.combMTX[ii][jj] = combAllwd_5[ii][jj];
+            }
+        }        
     }
+    nInterFact = myProcParams.nInterpFac;
+    combMTX = myProcParams.combMTX;    
     
     //####################################################
     //motif file name
@@ -203,7 +225,7 @@ int main( int argc , char *argv[])
         }
         t2=clock();
         myProcLogs.timeGenEnvelops += (t2-t1)/CLOCKS_PER_SEC;
-        for(jj=0;jj<NSeed/3;jj++)
+        for(jj=0;jj<NSeed/nInterFact;jj++)
         {
             topKmotifs[jj] = (motifInfo *)malloc(sizeof(motifInfo)*lenTS);
             for(ii=0;ii<lenTS;ii++)
@@ -220,7 +242,7 @@ int main( int argc , char *argv[])
             {
                 for(jj=0;jj<lenTS;jj++)
                 {
-                    if (((ii%3==0)&&(jj%3==0))||((ii%3==2)&&(jj%3==2))||((ii%3==0)&&(jj%3==1))||((ii%3==2)&&(jj%3==1)))
+                    if (myProcParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
                         continue;
                     if (fabs(tStampsInterpSeed[ii].str-tStampsInterp[jj].str)< myProcParams.blackDur)
                     {
@@ -245,7 +267,7 @@ int main( int argc , char *argv[])
                                 if(realDist<bsf)
                                 {
                                     realDist = dtw1dBandConst_localConst(dataInterpSeed[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, SqEuclidean, bandDTW, bsf, accLB);
-                                    manageTopKMotifs(topKmotifs[ii/3], tStampsInterpSeed, tStampsInterp, lenTS, ii, jj, realDist, myProcParams.blackDur);
+                                    manageTopKMotifs(topKmotifs[ii/nInterFact], tStampsInterpSeed, tStampsInterp, lenTS, ii, jj, realDist, myProcParams.blackDur);
                                     myProcLogs.totalPriorityUpdates++;
                                 }
                             }
@@ -261,7 +283,7 @@ int main( int argc , char *argv[])
             {
                 for(jj=0;jj<lenTS;jj++)
                 {
-                    if (((ii%3==0)&&(jj%3==0))||((ii%3==2)&&(jj%3==2))||((ii%3==0)&&(jj%3==1))||((ii%3==2)&&(jj%3==1)))
+                    if (myProcParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
                         continue;
                 
                     LB_kim_FL = computeLBkimFL(dataInterpSeed[ii][0], dataInterp[jj][0], dataInterpSeed[ii][lenMotifReal-1], dataInterp[jj][lenMotifReal-1], SqEuclidean);
@@ -281,7 +303,7 @@ int main( int argc , char *argv[])
                                 if(realDist<bsf)
                                 {
                                     realDist = dtw1dBandConst_localConst(dataInterpSeed[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, SqEuclidean, bandDTW, bsf, accLB);
-                                    manageTopKMotifs(topKmotifs[ii/3], tStampsInterpSeed, tStampsInterp, lenTS, ii, jj, realDist, myProcParams.blackDur);
+                                    manageTopKMotifs(topKmotifs[ii/nInterFact], tStampsInterpSeed, tStampsInterp, lenTS, ii, jj, realDist, myProcParams.blackDur);
                                     myProcLogs.totalPriorityUpdates++;
                                 }
                             }
@@ -303,7 +325,7 @@ int main( int argc , char *argv[])
         free(U[ii]);
         free(L[ii]);
     }
-    for(jj=0;jj<NSeed/3;jj++)
+    for(jj=0;jj<NSeed/nInterFact;jj++)
         {
             free(topKmotifs[jj]);
         }

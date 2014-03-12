@@ -126,7 +126,8 @@ int main( int argc , char *argv[])
     
     nInterFact = myProcParams.nInterpFac;
     combMTX = myProcParams.combMTX;
-    
+
+#ifdef DEBUG_GENERATION    
     for(ii=0;ii<nInterFact;ii++)
     {
         for(jj=0;jj<nInterFact;jj++)
@@ -135,7 +136,7 @@ int main( int argc , char *argv[])
         }
         printf("\n");
     }
-    
+#endif    
     //####################################################
     //motif file name
     strcat(motifFile,baseName);
@@ -216,7 +217,7 @@ int main( int argc , char *argv[])
         for(jj=ii+1;jj<lenTS;jj++)
         {
             // So we have three subs for every original sub. Its low interp, normal and high interp (if we consider 2 original subs we have now 9 combinations of 3 variants of each). Based on some intuitions we remove combinations which repeat (approximately repeat) like low1-normal2 would be really be close to normal1-high2 and so on and so forth. We removed 4 such combinations out of 9. This saves us a lot of computations
-            if (((ii%3==0)&&(jj%3==0))||((ii%3==2)&&(jj%3==2))||((ii%3==0)&&(jj%3==1))||((ii%3==2)&&(jj%3==1)))
+            if (myProcParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
                 continue;
             if (fabs(tStampsInterp[ii].str-tStampsInterp[jj].str)< myProcParams.blackDur)
             {
