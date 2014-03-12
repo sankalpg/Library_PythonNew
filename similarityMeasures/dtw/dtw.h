@@ -17,12 +17,16 @@
 	#define min( a, b ) ( ((a) < (b)) ? (a) : (b) )
 #endif
 
+#define N_SIM_MEASURES 10
 
 enum 
 {
 Euclidean=0,
 SqEuclidean,
-OCTB2CITY
+CityBlock,
+ShiftCityBlock,
+TMM_CityBlock,
+ShiftLinExp
 };
 
 
@@ -49,6 +53,8 @@ typedef struct MatrixSize
 }MatrixSize;
 
 typedef double (*DistMethods)(double, double);
+
+typedef double (*simMeasure)(double, double);
 
 double octBy2WrappedCitiblock(double a, double b);
 

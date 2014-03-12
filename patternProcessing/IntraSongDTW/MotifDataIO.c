@@ -486,6 +486,7 @@ INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *b
     free(data);
     free(data1);
     free(tStamps);
+    free(tStamps1);
     free(blacklist);
     
     if (verbos)

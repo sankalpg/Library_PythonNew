@@ -11,12 +11,11 @@
 //#define DEBUG_GENERATION
 
 
-
 int main( int argc , char *argv[])
 {
     char *baseName, motifFile[400]={'\0'}, logFile[400]={'\0'}, paramOutFile[400]={'\0'};
     float t1,t2;
-    int lenMotifReal, verbos=0, bandDTW; 
+    int lenMotifReal, verbos=0, bandDTW, nInterFact, **combMTX; 
     
     INDTYPE    lenTS, K,ii,jj;
     DATATYPE **dataInterp, **U, **L, *accLB;
@@ -93,6 +92,18 @@ int main( int argc , char *argv[])
         myProcParams.interpFac[0]=0.9;
         myProcParams.interpFac[1]=1.0;
         myProcParams.interpFac[2]=1.1;
+        
+        myProcParams.combMTX = (int **)malloc(sizeof(int*)*myProcParams.nInterpFac);
+        for(ii=0;ii<myProcParams.nInterpFac;ii++)
+        {
+            myProcParams.combMTX[ii] =  (int *)malloc(sizeof(int)*myProcParams.nInterpFac);
+            for(jj=0;jj<myProcParams.nInterpFac;jj++)
+            {
+                myProcParams.combMTX[ii][jj] = combAllwd_3[ii][jj];
+            }
+        }
+        
+        
     }
     else if (myProcParams.nInterpFac==5)
     {
@@ -101,6 +112,28 @@ int main( int argc , char *argv[])
         myProcParams.interpFac[2]=1.0;
         myProcParams.interpFac[3]=1.05;
         myProcParams.interpFac[4]=1.1;
+        
+        myProcParams.combMTX = (int **)malloc(sizeof(int*)*myProcParams.nInterpFac);
+        for(ii=0;ii<myProcParams.nInterpFac;ii++)
+        {
+            myProcParams.combMTX[ii] =  (int *)malloc(sizeof(int)*myProcParams.nInterpFac);
+            for(jj=0;jj<myProcParams.nInterpFac;jj++)
+            {
+                myProcParams.combMTX[ii][jj] = combAllwd_5[ii][jj];
+            }
+        }
+    }
+    
+    nInterFact = myProcParams.nInterpFac;
+    combMTX = myProcParams.combMTX;
+    
+    for(ii=0;ii<nInterFact;ii++)
+    {
+        for(jj=0;jj<nInterFact;jj++)
+        {
+            printf("%d\t", combMTX[ii][jj]);
+        }
+        printf("\n");
     }
     
     //####################################################
@@ -202,7 +235,7 @@ int main( int argc , char *argv[])
                     myProcLogs.totalLBKeoghEC++;
                     if(LB_Keogh_EC < bsf)
                     {
-                        realDist = dtw1dBandConst(dataInterp[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, 0, bandDTW, bsf, accLB);
+                        realDist = dtw1dBandConst(dataInterp[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, SqEuclidean, bandDTW, bsf, accLB);
                         myProcLogs.totalDTWComputations++;
                         if(realDist<bsf)
                         {

@@ -15,28 +15,72 @@ License: to be decided !!!
 #include "tables.h"
 
 #define BINPOMAKAM 53.0
-#define DIST_TABLE_RESOLUTION 0.1
 #define BINSPOCTAVE 120
 #define TABLEFACTOR 1200/(BINSPOCTAVE*DIST_TABLE_RESOLUTION)
 #define THREE_OCTAVES 3*BINSPOCTAVE
 
+
+#define N_PER_CENT 10   //number of rows for one cent
+#define CENT_PER_BIN 10
+#define MULT_FACTOR_TABLE 100   //N_PER_CENT*CENT_PER_BIN
+
+
+
 #define ENABLE_EA
 
-double customDist1(double a, double b)
+
+//########################################## Similarity Measures #####################################
+double distEuclidean(double a, double b)
 {
     double diff;
-    diff = fabs(a-b);
-    
-    if (diff<THREE_OCTAVES)
-    {
-        return customDist_25_100___1_25[(int)(diff*TABLEFACTOR)];
-    }
-    else
-    {
-        return FLT_MAX;
-    }
+    diff = a-b;
+    return sqrt(diff*diff);
 }
 
+double distSqEuclidean(double a, double b)
+{
+    double diff;
+    diff = a-b;
+    return (diff*diff);
+}
+
+double distCityBlock(double a, double b)
+{
+    return fabs(a-b);
+}
+
+double distShiftCityBlock(double a, double b)
+{
+    int index;
+    index = int(fabs(a-b)*MULT_FACTOR_TABLE);
+    return simShifCB[min(SIM_TB_SIZE, index)];
+}
+
+double distTMM_CityBlock(double a, double b)
+{
+    double diff1, diff2;
+    diff1 = fabs(a-b);
+    diff2 = fmod(diff1, BINPOMAKAM);
+    return min(diff2, BINPOMAKAM-diff2);
+}
+
+double distShiftLinExp(double a, double b)
+{
+    int index;
+    index = int(fabs(a-b)*MULT_FACTOR_TABLE);
+    return simShifCBExp[min(SIM_TB_SIZE, index)];
+}
+
+simMeasure mySimMeasure[N_SIM_MEASURES] = {distEuclidean, distSqEuclidean, distCityBlock, distShiftCityBlock, distTMM_CityBlock, distShiftLinExp};
+/*
+mySimMeasure[Euclidean] = &distEuclidean;
+mySimMeasure[SqEuclidean] = &distSqEuclidean;
+mySimMeasure[CityBlock] = &distCityBlock;
+mySimMeasure[ShiftCityBlock] = &distShiftCityBlock;
+mySimMeasure[TMM_CityBlock] = &distTMM_CityBlock;
+mySimMeasure[ShiftLinExp] = &distShiftLinExp;
+*/
+//////////////////////////////// TO BE REMOVE AFTER SOME TIME TEMP ONES \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 // euclidean distance
 double EucDist(double a, double b)
 {
@@ -223,7 +267,7 @@ double dtw1d_std(double *x, double*y, int x_len, int y_len, double*cost, int dis
         
         //setting up types of methods availale for measuring point to point distance
         myDistMethods[Euclidean]=&EucDist;
-        myDistMethods[OCTB2CITY]=&octBy2WrappedCitiblock;
+        myDistMethods[TMM_CityBlock]=&octBy2WrappedCitiblock;
         
         //Initializing the row and columns of cost matrix
         cost[0]= (*myDistMethods[dist_type])(x[0],y[0]);
@@ -323,7 +367,7 @@ double dtw1d_BandConst_LocalConst(double *x, double*y, int x_len, int y_len, dou
         
         //setting up types of methods availale for measuring point to point distance
         myDistMethods[Euclidean]=&EucDist;
-        myDistMethods[OCTB2CITY]=&octBy2WrappedCitiblock;
+        myDistMethods[TMM_CityBlock]=&octBy2WrappedCitiblock;
         
         //Initializing the row and columns of cost matrix
         cost[0]= (*myDistMethods[dist_type])(x[0],y[0]);
@@ -386,7 +430,7 @@ double dtw1d_BandConst_LocalConst_Subsequence(double *x, double*y, int x_len, in
         
         //setting up types of methods availale for measuring point to point distance
         myDistMethods[Euclidean]=&EucDist;
-        myDistMethods[OCTB2CITY]=&octBy2WrappedCitiblock;
+        myDistMethods[TMM_CityBlock]=&octBy2WrappedCitiblock;
         
         //Initializing the row and columns of cost matrix
         cost[0]= (*myDistMethods[dist_type])(x[0],y[0]);
@@ -538,15 +582,15 @@ double dtw1dBandConst(double *x, double*y, int x_len, int y_len, double**cost, i
 #endif        
         
         //Initializing the row and columns of cost matrix
-        cost[0][0]= EucDist(x[0],y[0]);
+        cost[0][0]= mySimMeasure[dist_type](x[0],y[0]);
 
         for (i=1;i<=bandwidth;i++)
         {
-        cost[i][0]=EucDist(x[i],y[0]) + cost[i-1][0];
+        cost[i][0]=mySimMeasure[dist_type](x[i],y[0]) + cost[i-1][0];
         }
         for (j=1;j<=bandwidth;j++)
         {
-        cost[0][j]=EucDist(x[0],y[j]) + cost[0][j-1];
+        cost[0][j]=mySimMeasure[dist_type](x[0],y[j]) + cost[0][j-1];
         }
         
         //filling in all the cumulative cost matrix
@@ -569,7 +613,7 @@ double dtw1dBandConst(double *x, double*y, int x_len, int y_len, double**cost, i
                 }
                 else
                 {
-                    cost[i][j] = EucDist(x[i],y[j]) + min_vals;
+                    cost[i][j] = mySimMeasure[dist_type](x[i],y[j]) + min_vals;
                 }
                 
                 if (cost[i][j] < leftLB)
@@ -578,7 +622,7 @@ double dtw1dBandConst(double *x, double*y, int x_len, int y_len, double**cost, i
                 }
 
 #else
-                cost[i][j] = EucDist(x[i],y[j]) + min_vals;
+                cost[i][j] = mySimMeasure[dist_type](x[i],y[j]) + min_vals;
 #endif 
 
             }
@@ -600,7 +644,7 @@ double dtw1dBandConst_localConst(double *x, double*y, int x_len, int y_len, doub
         int i,j, ind, overflow; 
         double min_vals, leftLB, temp;
         DistMethods myDistMethods[1]={NULL};
-        myDistMethods[0]  = &customDist1;
+        myDistMethods[0]  = &EucDist;
 
 #ifdef ENABLE_EA
         temp = bsf - accLB[y_len-1] ;
@@ -906,6 +950,16 @@ double computeLBkimFL(double a1, double a2, double b1, double b2)
     diff2 = (b1-b2);
     return (diff1*diff1) + (diff2*diff2);
 }
+
+/*#####################################################################################################################
+################################################ LOWER BOUND FUNCTIONS ##############################################
+#####################################################################################################################*/
+
+
+//Probably not functinally correct functions but kept to just have as a backup
+
+
+/*
 double computeLBkimFL_extended(double *U1, double *L1, double *data1, double *U2, double *L2, double *data2, int lenMotif)
 {
     double sum1=0, sum2=0;
@@ -956,5 +1010,5 @@ double computeLBkimFL_extended(double *U1, double *L1, double *data1, double *U2
     return max(sum1,sum2);
 }
 
-
+*/
 
