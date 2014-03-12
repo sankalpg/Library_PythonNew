@@ -53,6 +53,7 @@ typedef struct procParams
     int motifLengthsM1[MAXNTEMPOFACTORS];
     int indexMotifLenReal;
     int indexMotifLenLongest;
+    int **combMTX;
     
     
 }procParams_t;

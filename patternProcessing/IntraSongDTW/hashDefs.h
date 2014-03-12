@@ -19,6 +19,11 @@
 
 // inlined functions
 //#define computeLBkimFL(a,b,c,d) ((a-b)*(a-b)) + ((c-d)*(c-d))
+//#define oneDtwoD(i,j,N) (i*N + j)
+
+//Extern declarations
+extern const int combAllwd_5[5][5];
+extern const int combAllwd_3[3][3];
 
 
 #endif //HASHDEFS_H
