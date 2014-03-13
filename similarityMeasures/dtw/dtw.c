@@ -15,14 +15,12 @@ License: to be decided !!!
 #include "tables.h"
 
 #define BINPOMAKAM 53.0
-#define BINSPOCTAVE 120
-#define TABLEFACTOR 1200/(BINSPOCTAVE*DIST_TABLE_RESOLUTION)
-#define THREE_OCTAVES 3*BINSPOCTAVE
+
 
 
 #define N_PER_CENT 10   //number of rows for one cent
-#define CENT_PER_BIN 10
-#define MULT_FACTOR_TABLE 100   //N_PER_CENT*CENT_PER_BIN
+#define CENT_PER_BIN 1
+#define MULT_FACTOR_TABLE 10   //N_PER_CENT*CENT_PER_BIN
 
 
 

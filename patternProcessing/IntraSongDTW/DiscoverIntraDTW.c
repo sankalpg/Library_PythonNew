@@ -75,9 +75,9 @@ int main( int argc , char *argv[])
         
     //############ CRUCIAL PARAMETERS ##################
     myProcParams.minPossiblePitch = 60.0;
-    myProcParams.binsPOct = 120;
+    myProcParams.binsPOct = 1200;
     myProcParams.varDur = 0.1;
-    myProcParams.threshold = 225;
+    myProcParams.threshold = 45.2267016866645;
     myProcParams.flatThreshold = 0.8;
     myProcParams.maxPauseDur = 0.5;
     myProcParams.DTWBand = 0.1;

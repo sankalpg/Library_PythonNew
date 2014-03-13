@@ -105,7 +105,7 @@ int readPreprocessPitchData(char *pitchFile, char *tonicFile, DATATYPE **pSample
         
         if (pitchTemp > myProcParams->minPossiblePitch) //only fill in meaningful pitch data, reject other pitch samples
         {
-            pitchSamples[ind]= (DATATYPE)round(temp1*log((pitchTemp+EPS)/tonic));
+            pitchSamples[ind]= (DATATYPE)(temp1*log((pitchTemp+EPS)/tonic));
             timeSamples[ind] = timeTemp;
             ind++;
         }
@@ -166,6 +166,11 @@ void computeRunningStd(DATATYPE *pitchSamples, float **std, int varSam, INDTYPE 
         temp[1] = (pitchSamples[ii+varSam] -mean[ii+varSam]);
         stdVec[ii] += temp[1]*temp[1] ;
     }
+    for(ii=0;ii<nPitchSamples;ii++)
+    {
+        stdVec[ii] =  sqrt(stdVec[ii]/N);
+    }    
+    
     *std = stdVec;
     free(mean);
     
