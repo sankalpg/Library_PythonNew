@@ -86,6 +86,16 @@ int main( int argc , char *argv[])
     if (myProcParams.nInterpFac==1)
     {
         myProcParams.interpFac[0]=1.0;
+        
+        myProcParams.combMTX = (int **)malloc(sizeof(int*)*myProcParams.nInterpFac);
+        for(ii=0;ii<myProcParams.nInterpFac;ii++)
+        {
+            myProcParams.combMTX[ii] =  (int *)malloc(sizeof(int)*myProcParams.nInterpFac);
+            for(jj=0;jj<myProcParams.nInterpFac;jj++)
+            {
+                myProcParams.combMTX[ii][jj] = 1;
+            }
+        }
     }
     else if (myProcParams.nInterpFac==3)
     {
