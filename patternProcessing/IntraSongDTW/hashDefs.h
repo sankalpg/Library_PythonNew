@@ -10,7 +10,7 @@
 
 
 // other Constants
-#define INF 999999999999.0
+#define INF FLT_MAX
 #define LOG2  0.693147180559945
 #define EPS 0.0000000000000001
 #define MAXNTEMPOFACTORS 10

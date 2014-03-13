@@ -10,6 +10,18 @@
 #include "SearchInterDTW.h"
 //#define DEBUG_GENERATION
 
+int compareMotifInfo(const void *a, const void *b)
+{
+    if (((motifInfo*)a)->dist > ((motifInfo*)b)->dist)
+    {
+        return 1;
+    }
+    else if (((motifInfo*)a)->dist < ((motifInfo*)b)->dist)
+    {
+        return -1;
+    }
+    return 0;
+}
 
 
 int main( int argc , char *argv[])
@@ -19,6 +31,7 @@ int main( int argc , char *argv[])
     float t1,t2, t3,t4;
     int lenMotifReal, verbos=0, bandDTW, maxNMotifsPairs, nInterFact, **combMTX; 
     INDTYPE    NSeed, lenTS, K,ii,jj;
+    bool sameFile;
     
     DATATYPE **dataInterpSeed, **dataInterp, **U, **L, **USeed, **LSeed, *accLB;
     DISTTYPE LB_Keogh_EQ, realDist,LB_Keogh_EC,bsf=INF,**costMTX, LB_kim_FL;
@@ -235,105 +248,87 @@ int main( int argc , char *argv[])
                 topKmotifs[jj][ii].ind2 = 0;
             }
         }
-        t1=clock();
-        if (strcmp(baseName, searchFile))
-        {
-            for(ii=0;ii<NSeed;ii++)
-            {
-                for(jj=0;jj<lenTS;jj++)
-                {
-                    if (myProcParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
-                        continue;
-                    if (fabs(tStampsInterpSeed[ii].str-tStampsInterp[jj].str)< myProcParams.blackDur)
-                    {
-                        continue;
-                    }
-                    
-                    
-                    LB_kim_FL = computeLBkimFL(dataInterpSeed[ii][0], dataInterp[jj][0], dataInterpSeed[ii][lenMotifReal-1], dataInterp[jj][lenMotifReal-1], SqEuclidean);
-                    myProcLogs.totalFLDone++;
-                    if (LB_kim_FL< bsf)
-                    {
-                        LB_Keogh_EQ = computeKeoghsLB(USeed[ii],LSeed[ii], accLB, dataInterp[jj],lenMotifReal, bsf, SqEuclidean);
-                        myProcLogs.totalLBKeoghEQ++;
-                        if(LB_Keogh_EQ < bsf)
-                        {
-                            LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB, dataInterpSeed[ii],lenMotifReal, bsf, SqEuclidean);
-                            myProcLogs.totalLBKeoghEC++;
-                            if(LB_Keogh_EC < bsf)
-                            {
-                                realDist = dtw1dBandConst(dataInterpSeed[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, SqEuclidean, bandDTW, bsf, accLB);
-                                myProcLogs.totalDTWComputations++;
-                                if(realDist<bsf)
-                                {
-                                    realDist = dtw1dBandConst_localConst(dataInterpSeed[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, SqEuclidean, bandDTW, bsf, accLB);
-                                    bsf = manageTopKMotifs(topKmotifs[ii/nInterFact], tStampsInterpSeed, tStampsInterp, K, ii, jj, realDist, myProcParams.blackDur);
-                                    myProcLogs.totalPriorityUpdates++;
-                                }
-                            }
-                        }
-                    }
-                }
-            } 
-            
-        }
-        else
-        {
-            for(ii=0;ii<NSeed;ii++)
-            {
-                for(jj=0;jj<lenTS;jj++)
-                {
-                    if (myProcParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
-                        continue;
-                
-                    LB_kim_FL = computeLBkimFL(dataInterpSeed[ii][0], dataInterp[jj][0], dataInterpSeed[ii][lenMotifReal-1], dataInterp[jj][lenMotifReal-1], SqEuclidean);
-                    myProcLogs.totalFLDone++;
-                    if (LB_kim_FL< bsf)
-                    {
-                        LB_Keogh_EQ = computeKeoghsLB(USeed[ii],LSeed[ii], accLB, dataInterp[jj],lenMotifReal, bsf, SqEuclidean);
-                        myProcLogs.totalLBKeoghEQ++;
-                        if(LB_Keogh_EQ < bsf)
-                        {
-                            LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB, dataInterpSeed[ii],lenMotifReal, bsf, SqEuclidean);
-                            myProcLogs.totalLBKeoghEC++;
-                            if(LB_Keogh_EC < bsf)
-                            {
-                                realDist = dtw1dBandConst(dataInterpSeed[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, SqEuclidean, bandDTW, bsf, accLB);
-                                myProcLogs.totalDTWComputations++;
-                                if(realDist<bsf)
-                                {
-                                    realDist = dtw1dBandConst_localConst(dataInterpSeed[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, SqEuclidean, bandDTW, bsf, accLB);
-                                    bsf = manageTopKMotifs(topKmotifs[ii/nInterFact], tStampsInterpSeed, tStampsInterp, K, ii, jj, realDist, myProcParams.blackDur);
-                                    myProcLogs.totalPriorityUpdates++;
-                                }
-                            }
-                        }
-                    }
-                }
-            }            
-        }
-    t2=clock();
-    myProcLogs.timeDiscovery += (t2-t1)/CLOCKS_PER_SEC;
-    t1=clock();
-    dumpSearchMotifInfo(motifFile, mappFile, searchFile, topKmotifs, tStampsInterpSeed, tStampsInterp, NSeed, K, &mapp, nInterFact, verbos);
-    t2=clock();
-    myProcLogs.timeWriteData += (t2-t1)/CLOCKS_PER_SEC;
-    
-    for(ii=0;ii<lenTS;ii++)
-    {
-        free(dataInterp[ii]);
-        free(U[ii]);
-        free(L[ii]);
-    }
-    for(jj=0;jj<NSeed/nInterFact;jj++)
-        {
-            free(topKmotifs[jj]);
-        }
-    free(U);
-    free(L);
-    free(dataInterp);
-    free(tStampsInterp);
         
+        //############## Performing a search using basic DTW ########################
+        t1=clock();
+        sameFile = strcmp(baseName, searchFile);
+        for(ii=0;ii<NSeed;ii++)
+        {
+            for(jj=0;jj<lenTS;jj++)
+            {
+                if (myProcParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
+                {
+                    continue;
+                }
+                if ((sameFile)&&(fabs(tStampsInterpSeed[ii].str-tStampsInterp[jj].str)< myProcParams.blackDur))
+                {
+                    continue;
+                }
+                
+                LB_kim_FL = computeLBkimFL(dataInterpSeed[ii][0], dataInterp[jj][0], dataInterpSeed[ii][lenMotifReal-1], dataInterp[jj][lenMotifReal-1], SqEuclidean);
+                myProcLogs.totalFLDone++;
+                if (LB_kim_FL< bsf)
+                {
+                    LB_Keogh_EQ = computeKeoghsLB(USeed[ii],LSeed[ii], accLB, dataInterp[jj],lenMotifReal, bsf, SqEuclidean);
+                    myProcLogs.totalLBKeoghEQ++;
+                    if(LB_Keogh_EQ < bsf)
+                    {
+                        LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB, dataInterpSeed[ii],lenMotifReal, bsf, SqEuclidean);
+                        myProcLogs.totalLBKeoghEC++;
+                        if(LB_Keogh_EC < bsf)
+                        {
+                            realDist = dtw1dBandConst(dataInterpSeed[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, SqEuclidean, bandDTW, bsf, accLB);
+                            myProcLogs.totalDTWComputations++;
+                            if(realDist<bsf)
+                            {
+                                bsf = manageTopKMotifs(topKmotifs[ii/nInterFact], tStampsInterpSeed, tStampsInterp, K, ii, jj, realDist, myProcParams.blackDur);
+                                myProcLogs.totalPriorityUpdates++;
+                            }
+                        }
+                    }
+                }
+            }
+        } 
+
+        //############## Rank Refinement using sophisticated DTW ########################
+        
+        //recomputing the distance
+        for(ii=0;ii<NSeed/nInterFact;ii++)
+        {
+            for(jj=0;jj<K;jj++)
+            {
+                topKmotifs[ii][jj].dist = dtw1dBandConst_localConst(dataInterpSeed[topKmotifs[ii][jj].ind1], dataInterp[topKmotifs[ii][jj].ind2], lenMotifReal, lenMotifReal, costMTX, SqEuclidean, bandDTW, INF, accLB);
+            }
+            //sorting the priority list
+            qsort (topKmotifs[ii], K, sizeof(motifInfo), compareMotifInfo);
+        }
+
+        
+            
+            
+            
+        t2=clock();
+        myProcLogs.timeDiscovery += (t2-t1)/CLOCKS_PER_SEC;
+        t1=clock();
+        dumpSearchMotifInfo(motifFile, mappFile, searchFile, topKmotifs, tStampsInterpSeed, tStampsInterp, NSeed, K, &mapp, nInterFact, verbos);
+        t2=clock();
+        myProcLogs.timeWriteData += (t2-t1)/CLOCKS_PER_SEC;
+        
+        for(ii=0;ii<lenTS;ii++)
+        {
+            free(dataInterp[ii]);
+            free(U[ii]);
+            free(L[ii]);
+        }
+        for(jj=0;jj<NSeed/nInterFact;jj++)
+            {
+                free(topKmotifs[jj]);
+            }
+        free(U);
+        free(L);
+        free(dataInterp);
+        free(tStampsInterp);
+            
         
     }
     
@@ -368,8 +363,6 @@ int main( int argc , char *argv[])
     return 1;
     
 }
-
-
 
 DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, segInfo_t *tStamps1, segInfo_t *tStamps2, int K, INDTYPE ind1 , INDTYPE ind2, DISTTYPE dist, float blackDur)
 {
