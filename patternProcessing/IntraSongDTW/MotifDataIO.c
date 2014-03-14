@@ -407,6 +407,9 @@ INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *b
             myProcParams->indexMotifLenLongest = ii;
         }
     }
+    
+    //CRUCIAL POINT !!! since cubic interpolation needs 4 points (2 ahead) just store 
+    myProcParams->motifLengths[myProcParams->indexMotifLenLongest]+=1;
      
     myProcParams->nPitchSamples = nPitchSamples;
     varSam = (int)round(myProcParams->varDur/pHop);

@@ -35,6 +35,8 @@ int main( int argc , char *argv[])
     myProcLogs.timeRemBlacklist=0; 
     myProcLogs.timeGenEnvelops=0;
     myProcLogs.timeDiscovery=0;
+    myProcLogs.timeWriteData=0;
+    myProcLogs.timeTotal=0;
     myProcLogs.totalPitchSamples=0;
     myProcLogs.totalPitchNonSilSamples=0;
     myProcLogs.totalSubsGenerated=0;
@@ -77,7 +79,7 @@ int main( int argc , char *argv[])
     myProcParams.minPossiblePitch = 60.0;
     myProcParams.binsPOct = 1200;
     myProcParams.varDur = 0.1;
-    myProcParams.threshold = 45.2267016866645;
+    myProcParams.threshold = 45.0;
     myProcParams.flatThreshold = 0.8;
     myProcParams.maxPauseDur = 0.5;
     myProcParams.DTWBand = 0.1;
@@ -289,6 +291,11 @@ int main( int argc , char *argv[])
         free(costMTX[ii]);
     }
     free(costMTX);
+    for(ii=0;ii<nInterFact;ii++)
+    {
+        free(combMTX[ii]);
+    }
+    free(combMTX);
     
     
     return 1;
