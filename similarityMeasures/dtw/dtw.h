@@ -29,6 +29,7 @@ TMM_CityBlock,
 ShiftLinExp
 };
 
+extern const char*SimMeasureNames[N_SIM_MEASURES];
 
 
 typedef struct DTW_path

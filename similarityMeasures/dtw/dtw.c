@@ -70,6 +70,8 @@ double distShiftLinExp(double a, double b)
 }
 
 simMeasure mySimMeasure[N_SIM_MEASURES] = {distEuclidean, distSqEuclidean, distCityBlock, distShiftCityBlock, distTMM_CityBlock, distShiftLinExp};
+const char*SimMeasureNames[N_SIM_MEASURES] = {"Euclidean", "SqEuclidean", "CityBlock", "ShiftCityBlock", "TMM_CityBlock", "ShiftLinExp"};
+
 /*
 mySimMeasure[Euclidean] = &distEuclidean;
 mySimMeasure[SqEuclidean] = &distSqEuclidean;
