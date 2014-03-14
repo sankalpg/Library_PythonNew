@@ -1,5 +1,5 @@
 import essentia as ess
-import yaml
+import yaml, shutil
 import essentia.standard as es
 import sys, os, copy
 import numpy as np
@@ -22,22 +22,26 @@ def feature_extractor_standard(audio_in, frameSize, hopSize, aggLen):
     centroid = es.Centroid()
     flatness = es.Flatness()
     mfcc=es.MFCC(lowFrequencyBound=40)
+    pitchYin = es.PitchYinFFT()
     
     #Compute features frame by frame
     mfcc_ftrsArray = []
     sCentroidArray = []
     sFlatnessArray = []
+    pConfArray = []
     
     for frame in es.FrameGenerator(audio_in, frameSize = frameSize, hopSize = hopSize):
         spectrum = spec(win(frame))
         band_eneg, mfcc_ftrs=mfcc(spectrum)
         sCentroid = centroid(spectrum)
         sFlatness = flatness(spectrum)
+        pitch, pitchConf = pitchYin(spectrum)
         #sFlux = flux(spectrum)
         
         mfcc_ftrsArray.append(mfcc_ftrs)
         sCentroidArray.append(sCentroid)
         sFlatnessArray.append(sFlatness)
+        pConfArray.append(pitchConf)
 
     meanMFCC = []
     varMFCC = []
@@ -45,6 +49,8 @@ def feature_extractor_standard(audio_in, frameSize, hopSize, aggLen):
     varCent = []
     meanFlat = []
     varFlat = []
+    meanPConf = []
+    varPConf = []
     for ii in xrange(0, len(mfcc_ftrsArray)-aggLen,aggLen):
         meanMFCC.append(np.mean(mfcc_ftrsArray[ii:ii+aggLen],axis=0))
         varMFCC.append(np.var(mfcc_ftrsArray[ii:ii+aggLen],axis=0))
@@ -52,14 +58,16 @@ def feature_extractor_standard(audio_in, frameSize, hopSize, aggLen):
         varCent.append(np.var(sCentroidArray[ii:ii+aggLen]))
         meanFlat.append(np.mean(sFlatnessArray[ii:ii+aggLen]))
         varFlat.append(np.var(sFlatnessArray[ii:ii+aggLen]))
+        meanPConf.append(np.mean(pConfArray[ii:ii+aggLen]))
+        varPConf.append(np.var(pConfArray[ii:ii+aggLen]))
 
-    return np.concatenate((np.array(meanMFCC), np.array(varMFCC), np.transpose(np.array(meanCent, ndmin=2)), np.transpose(np.array(varCent, ndmin=2)), np.transpose(np.array(meanFlat,ndmin=2)), np.transpose(np.array(varFlat,ndmin=2))),axis=1)
+    return np.concatenate((np.array(meanMFCC), np.array(varMFCC), np.transpose(np.array(meanCent, ndmin=2)), np.transpose(np.array(varCent, ndmin=2)), np.transpose(np.array(meanFlat,ndmin=2)), np.transpose(np.array(varFlat,ndmin=2)), np.transpose(np.array(meanPConf,ndmin=2)), np.transpose(np.array(varPConf,ndmin=2))),axis=1)
 
 def featuresUsed():    
-    return ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm12', 'm13', 'v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v11', 'v12', 'v13', 'mCent','vCent','mFlat', 'vFlat']
+    return ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm12', 'm13', 'v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v11', 'v12', 'v13', 'mCent','vCent','mFlat', 'vFlat', 'mPConf', 'vPConf']
 
 def featuresExtracted():
-    return ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm12', 'm13', 'v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v11', 'v12', 'v13', 'mCent','vCent','mFlat', 'vFlat']
+    return ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm12', 'm13', 'v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10', 'v11', 'v12', 'v13', 'mCent','vCent','mFlat', 'vFlat', 'mPConf', 'vPConf']
 
 
 def generateBinaryAggMFCCARFF(class1Folder, class2Folder, class1, class2, arffFile, frameDur, hopDur, aggDur):
@@ -160,13 +168,20 @@ def generateBinaryAggMFCCARFF(class1Folder, class2Folder, class1, class2, arffFi
         fid.close()
         fidMapp.close()
 
+def generateExportModel(arffFile, modelFolder, classifier, classifierParams='default'):
     
+    if os.path.exists(modelFolder):
+        shutil.rmtree(modelFolder)
+    os.makedirs(modelFolder)
     
-def exportTREEModel(arffFile, modelFile, normFile):
+    fname, ext = os.path.splitext(arffFile)
+    modelFile = modelFolder + '/' + fname + '.model_'+classifier
+    normFile = modelFolder + '/' + fname + '.normFactors_'+classifier
     
     objML = mlw.experimenter()
     objML.readArffFile(arffFile)
-    objML.exportTREEModel(objML.features, objML.classLabelsInt, modelFile, normFile)
+    objML.exportModel(classifier, classifierParams, modelFile, normFile)
+    
     
     
 def extractSoloPercussion(audiofile, segFile, modelFile, normFile, frameDur, hopDur, aggDur, medianDur=20):
@@ -188,10 +203,14 @@ def extractSoloPercussion(audiofile, segFile, modelFile, normFile, frameDur, hop
             framesize=framesize+1
     hopsize = int(np.round(fs*hopDur))
     aggLen = int(np.round(aggDur*fs/hopsize))
-        
+    
+    #loading the audio file into an array
+    ML =es.MonoLoader()
+    ML.configure(filename = audiofile)
+    audio_in = ML()
     #computing features
-    meanMFCC, varMFCC, meanCent, varCent, meanFlat, varFlat  = feature_extractor_standard(audiofile, framesize, hopsize, aggLen)
-    features = np.concatenate((meanMFCC, varMFCC, meanCent, varCent, meanFlat, varFlat),axis=1)[:,ind_features]
+    featuresAll = feature_extractor_standard(audio_in, framesize, hopsize, aggLen)
+    features = featuresAll[:,ind_features]
     
     #normalization step, read the values used to normalize features while building the model
     fid=file(normFile,'r')
@@ -243,7 +262,7 @@ def extractSoloPercussion(audiofile, segFile, modelFile, normFile, frameDur, hop
     
     return 1
 
-def extractSoloPercussionBATCHPROC(root_dir, modelFile, normFile, frameDur, hopDur, aggDur, medianDur=20):
+def extractSoloPercussionBATCHPROC(root_dir, segExt, modelFile, normFile, frameDur, hopDur, aggDur, medianDur=20):
     
     
     audiofiles = BP.GetFileNamesInDir(root_dir,'mp3')
@@ -252,7 +271,7 @@ def extractSoloPercussionBATCHPROC(root_dir, modelFile, normFile, frameDur, hopD
         print "pricessing %d of %d files"%(ii+1, len(audiofiles))
         print "File being processed %s\n"%audiofile
         fname, ext = os.path.splitext(audiofile)
-        segFile = fname + '.taniSeg'
+        segFile = fname + segExt
         extractSoloPercussion(audiofile, segFile, modelFile, normFile, frameDur, hopDur, aggDur, medianDur)
 
 
