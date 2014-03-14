@@ -170,55 +170,53 @@ class classifiers():
 
         return evalClassLabels
     
-    def exportTREEModel(self, trainFeatures, trainClassLabels, modelFile, normFile):
-        """
-        this function exports a model built on trainingset
-        output is stored in a pickle
-        """
-        #normalization of features, extracting mean variance of every dimension and saving
-        norm = []
-        for ii in np.arange(trainFeatures.shape[1]):
-            norm.append({})
-            norm[ii]['mean'] = float(np.mean(trainFeatures[:,ii]))
-            norm[ii]['var'] = float(np.var(trainFeatures[:,ii]))
-            trainFeatures[:,ii] = trainFeatures[:,ii]-norm[ii]['mean']
-            trainFeatures[:,ii] = trainFeatures[:,ii]/norm[ii]['var']
+    def exportClassifierModelHandle(self, trainFeatures, trainClassLabels, classifier, params):
         
         
-        treeParams = self.defaultClassifierSettings("tree")
-        treeParams['criterion']='entropy'
-        treeHandle = tree.DecisionTreeClassifier(**treeParams)
-        treeHandle.fit(trainFeatures, trainClassLabels)
-        joblib.dump(treeHandle, modelFile)
+        classDefaultParams = self.defaultClassifierSettings(classifier)
+        if isinstance(params,dict):
+            for key in params.keys():
+                classDefaultParams[key]=params[key]
         
-        fid = file(normFile,'w')
-        yaml.dump(norm,fid)
-        fid.close()
-        
-    def predicByModel(self, modelFile, inpFeatures):
-        
-        model = joblib.load(modelFile)
-        predictClassLabels = model.predict(inpFeatures)
-        
-        return predictClassLabels
-        
+        if classifier=="kNN":
+            classHandle = KNeighborsClassifier(**classDefaultParams)
+        elif classifier=="tree":
+            classHandle = tree.DecisionTreeClassifier(**classDefaultParams)
+        elif classifier=="svm":
+            classHandle = SVC(**classDefaultParams)
+        elif classifier=="logReg":
+            classHandle = LogisticRegression(**classDefaultParams)
+        elif classifier=="nbMulti":
+            classHandle = MultinomialNB(**classDefaultParams)
+        else:
+            print "Please provide a valid classifier"
+            return -1
 
+        classHandle.fit(trainFeatures, trainClassLabels)
+        
+        return classHandle
+    
+ 
     def defaultClassifierSettings(self, classifier):
 
         if classifier == "svm":
             return {"C":1.0, "cache_size":200, "class_weight": None, "coef0":0.0, "degree":3, "gamma":0.0, "kernel":'rbf', "max_iter":-1, "probability": False, "shrinking": True, "tol":0.001, "verbose":False}
 
-        if classifier == "tree":
+        elif classifier == "tree":
             return {"criterion":'gini', "max_depth": None, "min_samples_split": 2, "min_samples_leaf": 1, "min_density": 0.1, "max_features": None, "compute_importances":False, "random_state": None}
 
-        if classifier == "kNN":
+        elif classifier == "kNN":
             return {"n_neighbors":5, "weights":'uniform', "algorithm":'auto', "leaf_size":30, "p":2, "metric":'minkowski'}
 
-        if classifier == "nbMulti":
+        elif classifier == "nbMulti":
             return {"alpha":1.0, "fit_prior":True, "class_prior":None}
 
-        if classifier == "logReg":
+        elif classifier == "logReg":
             return {"penalty":'l2', "dual":False, "tol":0.0001, "C":1.0, "fit_intercept":True, "intercept_scaling":1, "class_weight":None, "random_state":None}
+        
+        else:
+            print "Please provide a valid classifier"
+            return -1
 
 
     def setClassifierName(self, classifierName):
@@ -328,6 +326,8 @@ class experimenter(classifiers):
         self.cNames = list(set(classLabels))
         self.fNames = range(0,features.shape[1])
         self.convertClassLabels2Int()
+        
+    
 
     def genConfMTX(self, origClass, predClass):
         origClass = np.array(origClass)
@@ -588,7 +588,43 @@ class experimenter(classifiers):
                     self.normFactors.append((i,min_val,1))
                     self.featuresSelected[:,i] = self.featuresSelected[:,i] -min_val
 
-                
+        
+    def exportModel(self, classifier, classifierParams, modelFile, normFile):
+        """
+        this function exports a model built on trainingset
+        output is stored in a pickle
+        """
+        self.setClassifierName(classifier)
+        self.setClassifierParams(classifierParams)
+        self.featureSelection()
+        self.normalizeFeatures()
+        
+        classHandle = self.exportClassifierModelHandle(self.featuresSelected, self.classLabelsInt, self.classifierName, self.classifierParams)
+        if isinstance(classHandle, int):
+            if classHandle ==-1:
+                print "Model couldn't be exported"
+                return -1
+            
+        joblib.dump(classHandle, modelFile)
+        
+        norm = []
+        for ii in np.arange(self.featuresSelected.shape[1]):
+            norm.append({})
+            norm[ii]['mean'] = self.normFactors[ii][1]
+            norm[ii]['var'] = self.normFactors[ii][2]
+            
+        fid = file(normFile,'w')
+        yaml.dump(norm,fid)
+        fid.close()
+        
+        
+    def predicByModel(self, modelFile, inpFeatures):
+        
+        model = joblib.load(modelFile)
+        predictClassLabels = model.predict(inpFeatures)
+        
+        return predictClassLabels
+                        
 
 
 
