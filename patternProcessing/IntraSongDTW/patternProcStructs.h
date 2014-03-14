@@ -54,6 +54,8 @@ typedef struct procParams
     int indexMotifLenReal;
     int indexMotifLenLongest;
     int **combMTX;
+    int *simMeasureRankRefinement;
+    int nSimMeasuresUsed;
     
     
 }procParams_t;

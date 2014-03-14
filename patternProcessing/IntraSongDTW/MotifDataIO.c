@@ -665,7 +665,7 @@ INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     return lenTS;
 }
 
-void dumpSearchMotifInfo(char *motifFile, char *mappFile, char *searchFile, motifInfo** topKmotifs, segInfo_t *tStampsInterpSeed, segInfo_t *tStampsInterp, int NSeeds, INDTYPE K, mappInfo_t *mapp, int nInterFact, int verbos)
+void dumpSearchMotifInfo(char *motifFile, char *mappFile, char *searchFile, motifInfo** topKmotifs, segInfo_t *tStampsInterpSeed, segInfo_t *tStampsInterp, int NSeeds, INDTYPE K, mappInfo_t *mapp, int nInterFact, int MappUpdate, int verbos)
 {
     FILE *fp;
     INDTYPE ii=0, lineWritten;
@@ -696,11 +696,14 @@ void dumpSearchMotifInfo(char *motifFile, char *mappFile, char *searchFile, moti
             break;
     }
     fclose(fp);
-    
-    fp = fopen(mappFile, "ab");
-    fprintf(fp, "%s\t%lld\t%lld\n", searchFile, mapp->last_line, mapp->last_line+lineWritten-1);
-    mapp->last_line+=lineWritten;
-    fclose(fp);
+    if (MappUpdate==1)
+    {
+        fp = fopen(mappFile, "ab");
+        fprintf(fp, "%s\t%lld\t%lld\n", searchFile, mapp->last_line, mapp->last_line+lineWritten-1);
+        mapp->last_line+=lineWritten;
+        fclose(fp);
+    }
+
     
 }
 

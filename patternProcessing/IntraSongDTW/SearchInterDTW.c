@@ -27,9 +27,9 @@ int compareMotifInfo(const void *a, const void *b)
 int main( int argc , char *argv[])
 {
     FILE *fp;
-    char *baseName, motifFile[400]={'\0'}, logFile[400]={'\0'}, searchFileList[400]={'\0'}, searchFile[400] = {'\0'}, mappFile[400] = {'\0'}, paramOutFile[400]={'\0'} ;
+    char *baseName, motifFile[N_SIM_MEASURES][400]={'\0'}, logFile[400]={'\0'}, searchFileList[400]={'\0'}, searchFile[400] = {'\0'}, mappFile[400] = {'\0'}, paramOutFile[400]={'\0'} ;
     float t1,t2, t3,t4;
-    int lenMotifReal, verbos=0, bandDTW, maxNMotifsPairs, nInterFact, **combMTX; 
+    int lenMotifReal, verbos=0, bandDTW, maxNMotifsPairs, nInterFact, **combMTX, mm; 
     INDTYPE    NSeed, lenTS, K,ii,jj;
     bool sameFile;
     
@@ -66,7 +66,7 @@ int main( int argc , char *argv[])
     myProcLogs.totalPriorityUpdates=0;
     
     
-    if(argc < 18 || argc > 19)
+    if(argc < 19 || argc > 20)
     {
         printf("\nInvalid number of arguments!!!\n");
         exit(1);
@@ -92,8 +92,23 @@ int main( int argc , char *argv[])
      myProcParams.dsFactor = atoi(argv[15]);
      maxNMotifsPairs = atoi(argv[16]);
      myProcParams.nInterpFac=atoi(argv[17]);
-    
-    if( argc == 19 ){verbos = atoi(argv[18]);}
+     if (atoi(argv[18])>0)
+    {
+        myProcParams.simMeasureRankRefinement = (int*)malloc(sizeof(int)*1);
+        myProcParams.simMeasureRankRefinement[0] = atoi(argv[18]);
+        myProcParams.nSimMeasuresUsed =1;
+    }
+    else    //In such case use 4 different similarity measures needed for experimentation
+    {
+        myProcParams.simMeasureRankRefinement = (int*)malloc(sizeof(int)*4);
+        myProcParams.simMeasureRankRefinement[0] = SqEuclidean;
+        myProcParams.simMeasureRankRefinement[1] = CityBlock;
+        myProcParams.simMeasureRankRefinement[2] = ShiftCityBlock;
+        myProcParams.simMeasureRankRefinement[3] = ShiftLinExp;
+        myProcParams.nSimMeasuresUsed =4;
+    }
+     
+    if( argc == 20 ){verbos = atoi(argv[19]);}
     
     //############ CRUCIAL PARAMETERS ##################
     myProcParams.minPossiblePitch = 60.0;
@@ -159,8 +174,13 @@ int main( int argc , char *argv[])
     
     //####################################################
     //motif file name
-    strcat(motifFile,baseName);
-    strcat(motifFile,myFileExts.motifExt);
+    for(ii=0;ii<myProcParams.nSimMeasuresUsed;ii++)
+    {
+        strcat(motifFile[ii],baseName);
+        strcat(motifFile[ii],myFileExts.motifExt);
+        strcat(motifFile[ii],SimMeasureNames[myProcParams.simMeasureRankRefinement[ii]]);
+    }
+
     //motif file name
     strcat(mappFile,baseName);
     strcat(mappFile,myFileExts.mappExt);
@@ -175,8 +195,11 @@ int main( int argc , char *argv[])
     strcat(paramOutFile,myFileExts.paramOutExt); 
     
     //erasing motif and mapp file
-    fp = fopen(motifFile,"w");
-    fclose(fp);
+    for(ii=0;ii<myProcParams.nSimMeasuresUsed;ii++)
+    {
+            fp = fopen(motifFile[ii],"w");
+            fclose(fp);
+    }
     fp = fopen(mappFile,"w");
     fclose(fp);
     
@@ -301,24 +324,38 @@ int main( int argc , char *argv[])
         } 
 
         //############## Rank Refinement using sophisticated DTW ########################
-        
-        //recomputing the distance
-        for(ii=0;ii<NSeed/nInterFact;ii++)
+        for (mm=0;mm<myProcParams.nSimMeasuresUsed;mm++)
         {
-            for(jj=0;jj<K;jj++)
-            {
-                topKmotifs[ii][jj].dist = dtw1dBandConst_localConst(dataInterpSeed[topKmotifs[ii][jj].ind1], dataInterp[topKmotifs[ii][jj].ind2], lenMotifReal, lenMotifReal, costMTX, SqEuclidean, bandDTW, INF, accLB);
-            }
-            //sorting the priority list
-            qsort (topKmotifs[ii], K, sizeof(motifInfo), compareMotifInfo);
-        }   
+            // Since there can be multiple similarity measure used for rank refinement (mainly during experiment phase) this rank refinement step should be in loop, no need to loop rest of the steps
             
-        t2=clock();
-        myProcLogs.timeDiscovery += (t2-t1)/CLOCKS_PER_SEC;
-        t1=clock();
-        dumpSearchMotifInfo(motifFile, mappFile, searchFile, topKmotifs, tStampsInterpSeed, tStampsInterp, NSeed, K, &mapp, nInterFact, verbos);
-        t2=clock();
-        myProcLogs.timeWriteData += (t2-t1)/CLOCKS_PER_SEC;
+            //recomputing the distance
+            for(ii=0;ii<NSeed/nInterFact;ii++)
+            {
+                for(jj=0;jj<K;jj++)
+                {
+                    topKmotifs[ii][jj].dist = dtw1dBandConst_localConst(dataInterpSeed[topKmotifs[ii][jj].ind1], dataInterp[topKmotifs[ii][jj].ind2], lenMotifReal, lenMotifReal, costMTX, myProcParams.simMeasureRankRefinement[mm], bandDTW, INF, accLB);
+                }
+                //sorting the priority list
+                qsort (topKmotifs[ii], K, sizeof(motifInfo), compareMotifInfo);
+            }   
+                
+            t2=clock();
+            myProcLogs.timeDiscovery += (t2-t1)/CLOCKS_PER_SEC;
+            t1=clock();
+            if (mm==0)
+            {
+                //only for once update the mapp file, flat (1) in this function call does that 
+                dumpSearchMotifInfo(motifFile[mm], mappFile, searchFile, topKmotifs, tStampsInterpSeed, tStampsInterp, NSeed, K, &mapp, nInterFact, 1, verbos);
+            }
+            else
+            {
+                // since we can always have multiple search dumps with different similarity measures, we just need one mapp file for all of them since K in top K motifs is constant for all similarity measures and so mapping would remain the same.
+                dumpSearchMotifInfo(motifFile[mm], mappFile, searchFile, topKmotifs, tStampsInterpSeed, tStampsInterp, NSeed, K, &mapp, nInterFact, 0, verbos);
+            }
+            t2=clock();
+            myProcLogs.timeWriteData += (t2-t1)/CLOCKS_PER_SEC;
+        }
+
         
         for(ii=0;ii<lenTS;ii++)
         {
@@ -365,6 +402,7 @@ int main( int argc , char *argv[])
         free(combMTX[ii]);
     }
     free(combMTX);
+    free(myProcParams.simMeasureRankRefinement);
     
     t4=clock();
     myProcLogs.timeTotal += (t4-t3)/CLOCKS_PER_SEC;
