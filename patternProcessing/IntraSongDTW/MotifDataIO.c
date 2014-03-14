@@ -606,6 +606,8 @@ INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
             myProcParams->indexMotifLenLongest = ii;
         }
     }
+    //CRUCIAL POINT !!! since cubic interpolation needs 4 points (2 ahead) just store 
+    myProcParams->motifLengths[myProcParams->indexMotifLenLongest]+=1;
     
     totalPitchNonSilSamples = nPitchSamples;
     lenRawMotifData = myProcParams->motifLengths[myProcParams->indexMotifLenLongest];
