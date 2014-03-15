@@ -665,46 +665,21 @@ INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char 
     return lenTS;
 }
 
-void dumpSearchMotifInfo(char *motifFile, char *mappFile, char *searchFile, motifInfo** topKmotifs, segInfo_t *tStampsInterpSeed, segInfo_t *tStampsInterp, int NSeeds, INDTYPE K, mappInfo_t *mapp, int nInterFact, int MappUpdate, int verbos)
+void dumpSearchMotifInfo(char *motifFile, motifInfo** topKmotifs, segInfo_t *tStampsInterpSeed, segInfo_t *tStampsInterp, int NSeeds, INDTYPE K, int nInterFact, int verbos)
 {
     FILE *fp;
-    INDTYPE ii=0, lineWritten;
+    INDTYPE ii=0;
     int jj=0;
-    int terminate=1;
-    fp = fopen(motifFile, "ab");
-    lineWritten=0;
+    fp = fopen(motifFile, "w");
     for(ii=0;ii<K;ii++)
     {
-        terminate=1;
         for(jj=0;jj<NSeeds/nInterFact;jj++)
         {
-            if(topKmotifs[jj][ii].dist<INF)
-            {
-                fprintf(fp, "%f\t%f\t%f\t%f\t%f\t", tStampsInterpSeed[topKmotifs[jj][ii].ind1].str, tStampsInterpSeed[topKmotifs[jj][ii].ind1].end, tStampsInterp[topKmotifs[jj][ii].ind2].str, tStampsInterp[topKmotifs[jj][ii].ind2].end, topKmotifs[jj][ii].dist);
-                terminate=0;
-                
-            }
-            else
-            {
-                fprintf(fp, "%f\t%f\t%f\t%f\t%f\t", -1.0, -1.0, -1.0, -1.0,-1.0);
-                
-            }
+            fprintf(fp, "%f\t%f\t%f\t%f\t%f\t%d\t", tStampsInterpSeed[topKmotifs[jj][ii].ind1].str, tStampsInterpSeed[topKmotifs[jj][ii].ind1].end, tStampsInterp[topKmotifs[jj][ii].ind2].str, tStampsInterp[topKmotifs[jj][ii].ind2].end, topKmotifs[jj][ii].dist, topKmotifs[jj][ii].searchFileID);
         }
         fprintf(fp, "\n");
-        lineWritten++;
-        if (terminate)
-            break;
     }
     fclose(fp);
-    if (MappUpdate==1)
-    {
-        fp = fopen(mappFile, "ab");
-        fprintf(fp, "%s\t%lld\t%lld\n", searchFile, mapp->last_line, mapp->last_line+lineWritten-1);
-        mapp->last_line+=lineWritten;
-        fclose(fp);
-    }
-
-    
 }
 
 void dumpDiscoveredMotifInfo(char *motifFile, motifInfo *topKmotifs, segInfo_t *tStampsInterp, int K, int verbos)

@@ -26,11 +26,11 @@ int compareMotifInfo(const void *a, const void *b)
 
 int main( int argc , char *argv[])
 {
-    FILE *fp;
+    FILE *fp, *fp2;
     char *baseName, motifFile[N_SIM_MEASURES][400]={'\0'}, logFile[400]={'\0'}, searchFileList[400]={'\0'}, searchFile[400] = {'\0'}, mappFile[400] = {'\0'}, paramOutFile[400]={'\0'} ;
     float t1,t2, t3,t4;
-    int lenMotifReal, verbos=0, bandDTW, maxNMotifsPairs, nInterFact, **combMTX, mm; 
-    INDTYPE    NSeed, lenTS, K,ii,jj;
+    int lenMotifReal, verbos=0, bandDTW, maxNMotifsPairs, nInterFact, **combMTX, mm, searchFileID, *emptySpaceInd, emptySpaceCnt, priorityListInd, *emptySpacePtr; 
+    INDTYPE    NSeed, lenTS, K,ii,jj, pp, ss;
     bool sameFile;
     
     DATATYPE **dataInterpSeed, **dataInterp, **U, **L, **USeed, **LSeed, *accLB;
@@ -40,13 +40,13 @@ int main( int argc , char *argv[])
     procLogs_t myProcLogs;
     procParams_t myProcParams;
     fileExts_t myFileExts;
-    mappInfo_t mapp;
-    mapp.last_line =1;
+    longTermDataStorage_t **longTermDataStorage;
+    INDTYPE patternID;
     
     t3=clock();
     
     char commitID[] = "6f58f1c6eba3b863ba7945e4bc0a8cd997e84f97";
-    myProcLogs.commitID = commitID;
+    myProcLogs.commitID = commitID; 
     myProcLogs.timeDataLoad=0;
     myProcLogs.timeGenSubs=0;
     myProcLogs.timeRemBlacklist=0; 
@@ -194,15 +194,6 @@ int main( int argc , char *argv[])
     strcat(paramOutFile,baseName);
     strcat(paramOutFile,myFileExts.paramOutExt); 
     
-    //erasing motif and mapp file
-    for(ii=0;ii<myProcParams.nSimMeasuresUsed;ii++)
-    {
-            fp = fopen(motifFile[ii],"w");
-            fclose(fp);
-    }
-    fp = fopen(mappFile,"w");
-    fclose(fp);
-    
     
     // loading sequence corresponding to seed motifs
     NSeed = loadSeedMotifSequence(&dataInterpSeed, &tStampsInterpSeed, &lenMotifReal, baseName, &myFileExts, &myProcParams, &myProcLogs, maxNMotifsPairs, verbos);
@@ -248,12 +239,46 @@ int main( int argc , char *argv[])
         }
         
     }
+
+    for(jj=0;jj<NSeed/nInterFact;jj++)
+    {
+        topKmotifs[jj] = (motifInfo *)malloc(sizeof(motifInfo)*K);
+        for(ii=0;ii<K;ii++)
+        {
+            topKmotifs[jj][ii].dist = INF;
+            topKmotifs[jj][ii].ind1 = 0;
+            topKmotifs[jj][ii].ind2 = 0;
+        }
+    }
     
+    longTermDataStorage = (longTermDataStorage_t **)malloc(sizeof(longTermDataStorage_t*)*(int)(NSeed/nInterFact));
+    for(jj=0;jj<NSeed/nInterFact;jj++)
+    {
+        longTermDataStorage[jj] = (longTermDataStorage_t *)malloc(sizeof(longTermDataStorage_t)*K);
+        
+        for(ii=0;ii<K;ii++)
+        {
+            longTermDataStorage[jj][ii].data = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
+            longTermDataStorage[jj][ii].patternID = -1;
+        }
+        
+    }
+    emptySpaceInd = (int *)malloc(sizeof(int*)*K);
+    emptySpaceCnt=0;
     
     // iterating over all files 
+    fp2 = fopen(mappFile,"w");
+    searchFileID=0;
+    
     fp = fopen(searchFileList, "r");
+     patternID = 0;
     while(fscanf(fp, "%s\n",searchFile)!=EOF)
     {
+        //in the mapp file make a mapping of searchFileID and its name
+        fprintf(fp2,"%d\t%s\n", searchFileID, searchFile);
+        
+        printf("%d\n",emptySpaceCnt);
+        
         //generating subsequence database for file to be searched
         lenTS = readPreProcessGenDB(&dataInterp, &tStampsInterp, &lenMotifReal, searchFile, &myFileExts, &myProcParams, &myProcLogs, verbos);
         
@@ -271,23 +296,15 @@ int main( int argc , char *argv[])
         }
         t2=clock();
         myProcLogs.timeGenEnvelops += (t2-t1)/CLOCKS_PER_SEC;
-        for(jj=0;jj<NSeed/nInterFact;jj++)
-        {
-            topKmotifs[jj] = (motifInfo *)malloc(sizeof(motifInfo)*K);
-            for(ii=0;ii<K;ii++)
-            {
-                topKmotifs[jj][ii].dist = INF;
-                topKmotifs[jj][ii].ind1 = 0;
-                topKmotifs[jj][ii].ind2 = 0;
-            }
-        }
         
         //############## Performing a search using basic DTW ########################
         t1=clock();
         sameFile = strcmp(baseName, searchFile);
         for(ii=0;ii<NSeed;ii++)
         {
-            for(jj=0;jj<lenTS;jj++)
+           priorityListInd = (int)(ii/nInterFact);
+           
+           for(jj=0;jj<lenTS;jj++)
             {
                 if (myProcParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
                 {
@@ -314,59 +331,71 @@ int main( int argc , char *argv[])
                             myProcLogs.totalDTWComputations++;
                             if(realDist<bsf)
                             {
-                                bsf = manageTopKMotifs(topKmotifs[ii/nInterFact], tStampsInterpSeed, tStampsInterp, K, ii, jj, realDist, myProcParams.blackDur);
+                                bsf = manageTopKMotifs(topKmotifs[priorityListInd], tStampsInterpSeed, tStampsInterp, K, ii, jj, realDist, myProcParams.blackDur, searchFileID);
                                 myProcLogs.totalPriorityUpdates++;
                             }
                         }
                     }
                 }
             }
-        } 
-
-        //############## Rank Refinement using sophisticated DTW ########################
-        for (mm=0;mm<myProcParams.nSimMeasuresUsed;mm++)
-        {
-            // Since there can be multiple similarity measure used for rank refinement (mainly during experiment phase) this rank refinement step should be in loop, no need to loop rest of the steps
             
-            //recomputing the distance
-            for(ii=0;ii<NSeed/nInterFact;ii++)
+            
+            //Lets find out what patterns are removed from the priority list after processing one seed over entire search file
+            for(pp=0;pp<K;pp++)
             {
-                for(jj=0;jj<K;jj++)
+                for (ss=0;ss<K;ss++)
                 {
-                    topKmotifs[ii][jj].dist = dtw1dBandConst_localConst(dataInterpSeed[topKmotifs[ii][jj].ind1], dataInterp[topKmotifs[ii][jj].ind2], lenMotifReal, lenMotifReal, costMTX, myProcParams.simMeasureRankRefinement[mm], bandDTW, INF, accLB);
+                    if (longTermDataStorage[priorityListInd][pp].patternID == topKmotifs[priorityListInd][ss].patternID)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        emptySpaceInd[emptySpaceCnt] = pp;
+                        emptySpaceCnt++;
+                    }
                 }
-                //sorting the priority list
-                qsort (topKmotifs[ii], K, sizeof(motifInfo), compareMotifInfo);
-            }   
-                
-            t2=clock();
-            myProcLogs.timeDiscovery += (t2-t1)/CLOCKS_PER_SEC;
-            t1=clock();
-            if (mm==0)
-            {
-                //only for once update the mapp file, flat (1) in this function call does that 
-                dumpSearchMotifInfo(motifFile[mm], mappFile, searchFile, topKmotifs, tStampsInterpSeed, tStampsInterp, NSeed, K, &mapp, nInterFact, 1, verbos);
             }
-            else
+            
+            emptySpacePtr = emptySpaceInd;
+            //After processing every seed motif over a file, check what are the new patterns added in the priority list and store data corresponding to them
+            for(pp=0;pp<K;pp++)
             {
-                // since we can always have multiple search dumps with different similarity measures, we just need one mapp file for all of them since K in top K motifs is constant for all similarity measures and so mapping would remain the same.
-                dumpSearchMotifInfo(motifFile[mm], mappFile, searchFile, topKmotifs, tStampsInterpSeed, tStampsInterp, NSeed, K, &mapp, nInterFact, 0, verbos);
+                if (topKmotifs[priorityListInd][pp].searchFileID = searchFileID)
+                {
+                    topKmotifs[priorityListInd][pp].patternID = patternID;
+                    patternID++;
+                    
+                    //Also in such case add data to the long term storage;
+                    if(emptySpaceCnt>0)
+                    {
+                        memcpy(longTermDataStorage[priorityListInd][emptySpacePtr[0]].data, &dataInterp[topKmotifs[priorityListInd][pp].ind2], sizeof(DATATYPE)*lenMotifReal);
+                        longTermDataStorage[priorityListInd][emptySpacePtr[0]].patternID = topKmotifs[priorityListInd][pp].patternID;
+                        longTermDataStorage[priorityListInd][emptySpacePtr[0]].strTime = tStampsInterp[topKmotifs[priorityListInd][pp].ind2].str;
+                        longTermDataStorage[priorityListInd][emptySpacePtr[0]].endTime = tStampsInterp[topKmotifs[priorityListInd][pp].ind2].end;
+                        topKmotifs[priorityListInd][pp].storagePtr = &longTermDataStorage[priorityListInd][emptySpacePtr[0]];
+                        emptySpacePtr++;
+                        emptySpaceCnt--;
+                    }
+                    else
+                    {
+                        printf("SOMETHING TERRIBLE HAPPENED");
+                        return -1;
+                    }
+                }
             }
-            t2=clock();
-            myProcLogs.timeWriteData += (t2-t1)/CLOCKS_PER_SEC;
-        }
+            
+        } 
+        t2=clock();
+        myProcLogs.timeDiscovery += (t2-t1)/CLOCKS_PER_SEC;
 
-        
         for(ii=0;ii<lenTS;ii++)
         {
             free(dataInterp[ii]);
             free(U[ii]);
             free(L[ii]);
         }
-        for(jj=0;jj<NSeed/nInterFact;jj++)
-            {
-                free(topKmotifs[jj]);
-            }
+
         free(U);
         free(L);
         free(dataInterp);
@@ -374,8 +403,32 @@ int main( int argc , char *argv[])
             
         
     }
-    
     fclose(fp);
+    fclose(fp2);
+    
+    //############## Rank Refinement using sophisticated DTW ########################
+    for (mm=0;mm<myProcParams.nSimMeasuresUsed;mm++)
+    {
+            // Since there can be multiple similarity measure used for rank refinement (mainly during experiment phase) this rank refinement step should be in loop, no need to loop rest of the steps
+            
+            //recomputing the distance
+            for(ii=0;ii<NSeed/nInterFact;ii++)
+            {
+                for(jj=0;jj<K;jj++)
+                {
+                    topKmotifs[ii][jj].dist = dtw1dBandConst_localConst(dataInterpSeed[topKmotifs[ii][jj].ind1], topKmotifs[ii][jj].storagePtr->data, lenMotifReal, lenMotifReal, costMTX, myProcParams.simMeasureRankRefinement[mm], bandDTW, INF, accLB);
+                }
+                //sorting the priority list
+                qsort (topKmotifs[ii], K, sizeof(motifInfo), compareMotifInfo);
+            }   
+                
+            
+            t1=clock();
+            //dumpSearchMotifInfo(motifFile[mm], topKmotifs, tStampsInterpSeed, tStampsInterp, NSeed, K, nInterFact, verbos);
+            t2=clock();
+            myProcLogs.timeWriteData += (t2-t1)/CLOCKS_PER_SEC;
+    }
+
     
     //Memory clearing
     for(ii=0;ii<NSeed;ii++)
@@ -384,6 +437,10 @@ int main( int argc , char *argv[])
         free(USeed[ii]);
         free(LSeed[ii]);
         
+    }
+    for(jj=0;jj<NSeed/nInterFact;jj++)
+    {
+        free(topKmotifs[jj]);
     }
     free(dataInterpSeed);
     free(USeed);
@@ -414,7 +471,7 @@ int main( int argc , char *argv[])
     
 }
 
-DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, segInfo_t *tStamps1, segInfo_t *tStamps2, int K, INDTYPE ind1 , INDTYPE ind2, DISTTYPE dist, float blackDur)
+DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, segInfo_t *tStamps1, segInfo_t *tStamps2, int K, INDTYPE ind1 , INDTYPE ind2, DISTTYPE dist, float blackDur, int searchFileID)
 {
     int ii=0;
     int sortInd = -1;
@@ -446,12 +503,14 @@ DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, segInfo_t *tStamps1, segInfo_t 
         topKmotifs[sortInd].dist = dist;
         topKmotifs[sortInd].ind1 = ind1;
         topKmotifs[sortInd].ind2 = ind2;
+        topKmotifs[sortInd].searchFileID = searchFileID;
     }
     else if (sortInd == matchInd)
     {
         topKmotifs[sortInd].dist = dist;
         topKmotifs[sortInd].ind1 = ind1;
         topKmotifs[sortInd].ind2 = ind2;
+        topKmotifs[sortInd].searchFileID = searchFileID;
     }
     else if (sortInd < matchInd)
     {
@@ -459,6 +518,7 @@ DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, segInfo_t *tStamps1, segInfo_t 
         topKmotifs[sortInd].dist = dist;
         topKmotifs[sortInd].ind1 = ind1;
         topKmotifs[sortInd].ind2 = ind2;
+        topKmotifs[sortInd].searchFileID = searchFileID;
     }
     
     return topKmotifs[K-1].dist;

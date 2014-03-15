@@ -19,6 +19,17 @@ typedef struct segInfoInterp
     
 }segInfoInterp_t;
 
+typedef struct longTermDataStorage
+{
+  
+    INDTYPE patternID;
+    DATATYPE *data;
+    float strTime;
+    float endTime;
+    
+    
+    
+}longTermDataStorage_t;
 
 typedef struct motifInfo
 {
@@ -26,8 +37,14 @@ typedef struct motifInfo
     DISTTYPE dist;
     INDTYPE ind1;
     INDTYPE ind2;
+    int searchFileID;
+    INDTYPE patternID;
+    longTermDataStorage_t *storagePtr;
+
     
 }motifInfo_t;
+
+
 
 
 
