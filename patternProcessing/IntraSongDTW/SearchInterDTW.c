@@ -266,18 +266,15 @@ int main( int argc , char *argv[])
         
     }
     emptySpaceInd = (int *)malloc(sizeof(int*)*K);
-    emptySpaceCnt=0;
     
     // iterating over all files 
     fp2 = fopen(mappFile,"w");
     searchFileID=0;
     
     fp = fopen(searchFileList, "r");
-     patternID = 0;
+    patternID = 0;
     while(fscanf(fp, "%s\n",searchFile)!=EOF)
     {
-        printf("%d\n",emptySpaceCnt);
-        
         //generating subsequence database for file to be searched
         lenTS = readPreProcessGenDB(&dataInterp, &tStampsInterp, &lenMotifReal, searchFile, &myFileExts, &myProcParams, &myProcLogs, verbos);
         
@@ -339,54 +336,7 @@ int main( int argc , char *argv[])
             }
             
             
-            //Lets find out what patterns are removed from the priority list after processing one seed over entire search file. if patterns are removed, store there location is emptySapceInd buffer which we later use to copy new data (data which is newly added to priority list)
-            match_found=0;
-            for(pp=0;pp<K;pp++)
-            {
-                match_found=0;
-                for (ss=0;ss<K;ss++)
-                {
-                    if (longTermDataStorage[priorityListInd][pp].patternID == topKmotifs[priorityListInd][ss].patternID)
-                    {
-                        match_found=1;
-                        break;
-                    }
-                }
-                if(match_found==0)
-                {
-                    emptySpaceInd[emptySpaceCnt] = pp;
-                    emptySpaceCnt++;
-                }
-            }
-            
-            emptySpacePtr = emptySpaceInd;
-            //After processing every seed motif over a file, check what are the new patterns added in the priority list and store data corresponding to them in the longTermStorage structure
-            for(pp=0;pp<K;pp++)
-            {
-                //newly added patterns will be the ones added from the current search file so just search only in that domain
-                if ((topKmotifs[priorityListInd][pp].searchFileID == searchFileID)&&(topKmotifs[priorityListInd][pp].patternID==-3))
-                {
-                    topKmotifs[priorityListInd][pp].patternID = patternID;
-                    patternID++;
-                    
-                    //Also in such case add data to the long term storage;
-                    if(emptySpaceCnt>0)
-                    {
-                        memcpy(longTermDataStorage[priorityListInd][emptySpacePtr[0]].data, dataInterp[topKmotifs[priorityListInd][pp].ind2], sizeof(DATATYPE)*lenMotifReal);
-                        longTermDataStorage[priorityListInd][emptySpacePtr[0]].patternID = topKmotifs[priorityListInd][pp].patternID;
-                        longTermDataStorage[priorityListInd][emptySpacePtr[0]].strTime = tStampsInterp[topKmotifs[priorityListInd][pp].ind2].str;
-                        longTermDataStorage[priorityListInd][emptySpacePtr[0]].endTime = tStampsInterp[topKmotifs[priorityListInd][pp].ind2].end;
-                        topKmotifs[priorityListInd][pp].storagePtr = &longTermDataStorage[priorityListInd][emptySpacePtr[0]];
-                        emptySpacePtr++;
-                        emptySpaceCnt--;
-                    }
-                    else
-                    {
-                        printf("SOMETHING TERRIBLE HAPPENED");
-                        return -1;
-                    }
-                }
-            }
+        manageTopKMotifsData(topKmotifs[priorityListInd], longTermDataStorage[priorityListInd], dataInterp, tStampsInterp, &patternID, priorityListInd, emptySpaceInd, lenMotifReal, K, searchFileID);
             
         }
         
@@ -466,6 +416,18 @@ int main( int argc , char *argv[])
     {
         free(combMTX[ii]);
     }
+    for(jj=0;jj<NSeed/nInterFact;jj++)
+    {
+        for(ii=0;ii<K;ii++)
+        {
+            free(longTermDataStorage[jj][ii].data);
+        }
+        
+        free(longTermDataStorage[jj]);
+        
+    }
+    free(longTermDataStorage);
+    free(emptySpaceInd);
     free(combMTX);
     free(myProcParams.simMeasureRankRefinement);
     
@@ -478,6 +440,68 @@ int main( int argc , char *argv[])
     return 1;
     
 }
+
+/*
+ * This function manages the data for top K motifs so that we can perform rank refinement at the end. The logic is simple but steps may seesm a bit complex.
+ */
+int manageTopKMotifsData(motifInfo *topKmotifs, longTermDataStorage_t *longTermDataStorage, DATATYPE** dataInterp, segInfo_t *tStampsInterp, INDTYPE *patternID, int priorityListInd, int *emptySpaceInd, int lenMotifReal, int K, int searchFileID)
+{
+    int match_found, *emptySpacePtr;
+    int emptySpaceCnt=0;
+    int pp,ss;
+    
+    //Lets find out what patterns are removed from the priority list after processing one seed over entire search file. if patterns are removed, store there location is emptySapceInd buffer which we later use to copy new data (data which is newly added to priority list)
+    match_found=0;
+    for(pp=0;pp<K;pp++)
+    {
+        match_found=0;
+        for (ss=0;ss<K;ss++)
+        {
+            if (longTermDataStorage[pp].patternID == topKmotifs[ss].patternID)
+            {
+                match_found=1;
+                break;
+            }
+        }
+        if(match_found==0)
+        {
+            emptySpaceInd[emptySpaceCnt] = pp;
+            emptySpaceCnt++;
+        }
+    }
+    
+    emptySpacePtr = emptySpaceInd;
+    //After processing every seed motif over a file, check what are the new patterns added in the priority list and store data corresponding to them in the longTermStorage structure and assign them pattern ID so that we can track these patterns in the future
+    for(pp=0;pp<K;pp++)
+    {
+        //newly added patterns will be the ones added from the current search file so just search only in that domain
+        if ((topKmotifs[pp].searchFileID == searchFileID)&&(topKmotifs[pp].patternID==-3))
+        {
+            topKmotifs[pp].patternID = *patternID;
+            (*patternID)++;
+            
+            //Also in such case add data to the long term storage;
+            if(emptySpaceCnt>0)
+            {
+                memcpy(longTermDataStorage[emptySpacePtr[0]].data, dataInterp[topKmotifs[pp].ind2], sizeof(DATATYPE)*lenMotifReal);
+                longTermDataStorage[emptySpacePtr[0]].patternID = topKmotifs[pp].patternID;
+                longTermDataStorage[emptySpacePtr[0]].strTime = tStampsInterp[topKmotifs[pp].ind2].str;
+                longTermDataStorage[emptySpacePtr[0]].endTime = tStampsInterp[topKmotifs[pp].ind2].end;
+                topKmotifs[pp].storagePtr = &longTermDataStorage[emptySpacePtr[0]];
+                emptySpacePtr++;
+                emptySpaceCnt--;
+            }
+            else
+            {
+                printf("SOMETHING TERRIBLE HAPPENED");
+                return -1;
+            }
+        }
+    }
+    return 1;
+}
+
+
 
 DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, segInfo_t *tStamps1, segInfo_t *tStamps2, int K, INDTYPE ind1 , INDTYPE ind2, DISTTYPE dist, float blackDur, int searchFileID)
 {
