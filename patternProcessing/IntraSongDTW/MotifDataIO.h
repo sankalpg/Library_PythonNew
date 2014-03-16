@@ -78,7 +78,7 @@ INDTYPE getNumLines(const char *file);
 INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *baseName, fileExts_t *myFileExts, procParams_t *myProcParams, procLogs_t *myProcLogs, int verbos);
 INDTYPE loadSeedMotifSequence(DATATYPE ***d, segInfo_t **t, int *motifLen, char *baseName, fileExts_t *myFileExts, procParams_t *myProcParams, procLogs_t *myProcLogs, int maxNMotifsPairs, int verbos);
 
-void dumpSearchMotifInfo(char *motifFile, motifInfo** topKmotifs, segInfo_t *tStampsInterpSeed, segInfo_t *tStampsInterp, int NSeeds, INDTYPE K, int nInterFact, int verbos);
+void dumpSearchMotifInfo(char *motifFile, motifInfo** topKmotifs, segInfo_t *tStampsInterpSeed, int NSeeds, INDTYPE K, int nInterFact, int verbos);
 void dumpDiscoveryLogs(char *logFile, procLogs_t myProcLogs, int verbos);
 void dumpDiscoveredMotifInfo(char *motifFile, motifInfo *topKmotifs, segInfo_t *tStampsInterp, int K, int verbos);
 

@@ -29,7 +29,7 @@ int main( int argc , char *argv[])
     FILE *fp, *fp2;
     char *baseName, motifFile[N_SIM_MEASURES][400]={'\0'}, logFile[400]={'\0'}, searchFileList[400]={'\0'}, searchFile[400] = {'\0'}, mappFile[400] = {'\0'}, paramOutFile[400]={'\0'} ;
     float t1,t2, t3,t4;
-    int lenMotifReal, verbos=0, bandDTW, maxNMotifsPairs, nInterFact, **combMTX, mm, searchFileID, *emptySpaceInd, emptySpaceCnt, priorityListInd, *emptySpacePtr; 
+    int lenMotifReal, verbos=0, bandDTW, maxNMotifsPairs, nInterFact, **combMTX, mm, searchFileID, *emptySpaceInd, emptySpaceCnt, priorityListInd, *emptySpacePtr, match_found; 
     INDTYPE    NSeed, lenTS, K,ii,jj, pp, ss;
     bool sameFile;
     
@@ -248,6 +248,8 @@ int main( int argc , char *argv[])
             topKmotifs[jj][ii].dist = INF;
             topKmotifs[jj][ii].ind1 = 0;
             topKmotifs[jj][ii].ind2 = 0;
+            topKmotifs[jj][ii].patternID = -2;
+            
         }
     }
     
@@ -274,9 +276,6 @@ int main( int argc , char *argv[])
      patternID = 0;
     while(fscanf(fp, "%s\n",searchFile)!=EOF)
     {
-        //in the mapp file make a mapping of searchFileID and its name
-        fprintf(fp2,"%d\t%s\n", searchFileID, searchFile);
-        
         printf("%d\n",emptySpaceCnt);
         
         //generating subsequence database for file to be searched
@@ -340,28 +339,32 @@ int main( int argc , char *argv[])
             }
             
             
-            //Lets find out what patterns are removed from the priority list after processing one seed over entire search file
+            //Lets find out what patterns are removed from the priority list after processing one seed over entire search file. if patterns are removed, store there location is emptySapceInd buffer which we later use to copy new data (data which is newly added to priority list)
+            match_found=0;
             for(pp=0;pp<K;pp++)
             {
+                match_found=0;
                 for (ss=0;ss<K;ss++)
                 {
                     if (longTermDataStorage[priorityListInd][pp].patternID == topKmotifs[priorityListInd][ss].patternID)
                     {
+                        match_found=1;
                         break;
                     }
-                    else
-                    {
-                        emptySpaceInd[emptySpaceCnt] = pp;
-                        emptySpaceCnt++;
-                    }
+                }
+                if(match_found==0)
+                {
+                    emptySpaceInd[emptySpaceCnt] = pp;
+                    emptySpaceCnt++;
                 }
             }
             
             emptySpacePtr = emptySpaceInd;
-            //After processing every seed motif over a file, check what are the new patterns added in the priority list and store data corresponding to them
+            //After processing every seed motif over a file, check what are the new patterns added in the priority list and store data corresponding to them in the longTermStorage structure
             for(pp=0;pp<K;pp++)
             {
-                if (topKmotifs[priorityListInd][pp].searchFileID = searchFileID)
+                //newly added patterns will be the ones added from the current search file so just search only in that domain
+                if ((topKmotifs[priorityListInd][pp].searchFileID == searchFileID)&&(topKmotifs[priorityListInd][pp].patternID==-3))
                 {
                     topKmotifs[priorityListInd][pp].patternID = patternID;
                     patternID++;
@@ -369,7 +372,7 @@ int main( int argc , char *argv[])
                     //Also in such case add data to the long term storage;
                     if(emptySpaceCnt>0)
                     {
-                        memcpy(longTermDataStorage[priorityListInd][emptySpacePtr[0]].data, &dataInterp[topKmotifs[priorityListInd][pp].ind2], sizeof(DATATYPE)*lenMotifReal);
+                        memcpy(longTermDataStorage[priorityListInd][emptySpacePtr[0]].data, dataInterp[topKmotifs[priorityListInd][pp].ind2], sizeof(DATATYPE)*lenMotifReal);
                         longTermDataStorage[priorityListInd][emptySpacePtr[0]].patternID = topKmotifs[priorityListInd][pp].patternID;
                         longTermDataStorage[priorityListInd][emptySpacePtr[0]].strTime = tStampsInterp[topKmotifs[priorityListInd][pp].ind2].str;
                         longTermDataStorage[priorityListInd][emptySpacePtr[0]].endTime = tStampsInterp[topKmotifs[priorityListInd][pp].ind2].end;
@@ -385,7 +388,8 @@ int main( int argc , char *argv[])
                 }
             }
             
-        } 
+        }
+        
         t2=clock();
         myProcLogs.timeDiscovery += (t2-t1)/CLOCKS_PER_SEC;
 
@@ -400,6 +404,10 @@ int main( int argc , char *argv[])
         free(L);
         free(dataInterp);
         free(tStampsInterp);
+        
+        //in the mapp file make a mapping of searchFileID and its name
+        fprintf(fp2,"%d\t%s\n", searchFileID, searchFile);
+        searchFileID++;
             
         
     }
@@ -424,7 +432,7 @@ int main( int argc , char *argv[])
                 
             
             t1=clock();
-            //dumpSearchMotifInfo(motifFile[mm], topKmotifs, tStampsInterpSeed, tStampsInterp, NSeed, K, nInterFact, verbos);
+            dumpSearchMotifInfo(motifFile[mm], topKmotifs, tStampsInterpSeed, NSeed, K, nInterFact, verbos);
             t2=clock();
             myProcLogs.timeWriteData += (t2-t1)/CLOCKS_PER_SEC;
     }
@@ -504,6 +512,7 @@ DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, segInfo_t *tStamps1, segInfo_t 
         topKmotifs[sortInd].ind1 = ind1;
         topKmotifs[sortInd].ind2 = ind2;
         topKmotifs[sortInd].searchFileID = searchFileID;
+        topKmotifs[sortInd].patternID = -3;
     }
     else if (sortInd == matchInd)
     {
@@ -511,6 +520,7 @@ DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, segInfo_t *tStamps1, segInfo_t 
         topKmotifs[sortInd].ind1 = ind1;
         topKmotifs[sortInd].ind2 = ind2;
         topKmotifs[sortInd].searchFileID = searchFileID;
+        topKmotifs[sortInd].patternID = -3;
     }
     else if (sortInd < matchInd)
     {
@@ -519,6 +529,7 @@ DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, segInfo_t *tStamps1, segInfo_t 
         topKmotifs[sortInd].ind1 = ind1;
         topKmotifs[sortInd].ind2 = ind2;
         topKmotifs[sortInd].searchFileID = searchFileID;
+        topKmotifs[sortInd].patternID = -3;
     }
     
     return topKmotifs[K-1].dist;
