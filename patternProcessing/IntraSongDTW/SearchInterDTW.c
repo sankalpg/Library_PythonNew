@@ -248,7 +248,7 @@ int main( int argc , char *argv[])
             topKmotifs[jj][ii].dist = INF;
             topKmotifs[jj][ii].ind1 = 0;
             topKmotifs[jj][ii].ind2 = 0;
-            topKmotifs[jj][ii].patternID = -2;
+            topKmotifs[jj][ii].patternID = PID_DEFAULT2;
             
         }
     }
@@ -261,7 +261,7 @@ int main( int argc , char *argv[])
         for(ii=0;ii<K;ii++)
         {
             longTermDataStorage[jj][ii].data = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
-            longTermDataStorage[jj][ii].patternID = -1;
+            longTermDataStorage[jj][ii].patternID = PID_DEFAULT1;
         }
         
     }
@@ -536,7 +536,7 @@ DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, segInfo_t *tStamps1, segInfo_t 
         topKmotifs[sortInd].ind1 = ind1;
         topKmotifs[sortInd].ind2 = ind2;
         topKmotifs[sortInd].searchFileID = searchFileID;
-        topKmotifs[sortInd].patternID = -3;
+        topKmotifs[sortInd].patternID = PID_DEFAULT3;
     }
     else if (sortInd == matchInd)
     {
@@ -544,7 +544,7 @@ DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, segInfo_t *tStamps1, segInfo_t 
         topKmotifs[sortInd].ind1 = ind1;
         topKmotifs[sortInd].ind2 = ind2;
         topKmotifs[sortInd].searchFileID = searchFileID;
-        topKmotifs[sortInd].patternID = -3;
+        topKmotifs[sortInd].patternID = PID_DEFAULT3;
     }
     else if (sortInd < matchInd)
     {
@@ -553,7 +553,7 @@ DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, segInfo_t *tStamps1, segInfo_t 
         topKmotifs[sortInd].ind1 = ind1;
         topKmotifs[sortInd].ind2 = ind2;
         topKmotifs[sortInd].searchFileID = searchFileID;
-        topKmotifs[sortInd].patternID = -3;
+        topKmotifs[sortInd].patternID = PID_DEFAULT3;
     }
     
     return topKmotifs[K-1].dist;
