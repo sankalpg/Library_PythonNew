@@ -22,3 +22,4 @@ void quadraticInterpolate(double *dataInp, double *dataOut, float *indInt, int N
 
 
 #endif //BASICDSPFUNC_H
+

@@ -11,3 +11,4 @@ DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, segInfo *tStamps, int K, INDTYP
 #endif //#ifndef DiscoverIntraDTW_H
 
 
+

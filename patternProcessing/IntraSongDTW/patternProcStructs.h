@@ -80,3 +80,4 @@ typedef struct procParams
 
 
 #endif //PATTERNPROCSTRUCTURES_H
+

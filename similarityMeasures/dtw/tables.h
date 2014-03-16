@@ -12,3 +12,5 @@ extern const float simShifCB[SIM_TB_SIZE];
 extern const float simShifCBExp[SIM_TB_SIZE];
 
 #endif //TABLES_H
+
+

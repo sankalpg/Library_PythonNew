@@ -30,3 +30,4 @@ extern const int combAllwd_3[3][3];
 
 
 #endif //HASHDEFS_H
+
