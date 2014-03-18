@@ -384,7 +384,18 @@ int main( int argc , char *argv[])
             {
                 for(jj=0;jj<K;jj++)
                 {
-                    topKmotifs[ii][jj].dist = dtw1dBandConst_localConst(dataInterpSeed[topKmotifs[ii][jj].ind1], topKmotifs[ii][jj].storagePtr->data, lenMotifReal, lenMotifReal, costMTX, myProcParams.simMeasureRankRefinement[mm], bandDTW, INF, accLB);
+                    if (topKmotifs[ii][jj].dist <INF)   //do refinement only for a valid top entry, leave the infinites!!
+                    {
+                        topKmotifs[ii][jj].dist = dtw1dBandConst_localConst(dataInterpSeed[topKmotifs[ii][jj].ind1], topKmotifs[ii][jj].storagePtr->data, lenMotifReal, lenMotifReal, costMTX, myProcParams.simMeasureRankRefinement[mm], bandDTW, INF, accLB);
+                    }
+                    else
+                    {
+                        if (verbos)
+                        {
+                            printf("There is some serious problem in rank refinement step %lld,%lld",jj,ii);
+                        }
+                    }
+                    
                 }
                 //sorting the priority list
                 qsort (topKmotifs[ii], K, sizeof(motifInfo), compareMotifInfo);

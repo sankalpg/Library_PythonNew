@@ -675,7 +675,15 @@ void dumpSearchMotifInfo(char *motifFile, motifInfo** topKmotifs, segInfo_t *tSt
     {
         for(jj=0;jj<NSeeds/nInterFact;jj++)
         {
-            fprintf(fp, "%f\t%f\t%f\t%f\t%f\t%d\t", tStampsInterpSeed[topKmotifs[jj][ii].ind1].str, tStampsInterpSeed[topKmotifs[jj][ii].ind1].end, topKmotifs[jj][ii].storagePtr->strTime, topKmotifs[jj][ii].storagePtr->endTime, topKmotifs[jj][ii].dist, topKmotifs[jj][ii].searchFileID);
+            if ( topKmotifs[jj][ii].dist < INF)
+            {
+                fprintf(fp, "%f\t%f\t%f\t%f\t%f\t%d\t", tStampsInterpSeed[topKmotifs[jj][ii].ind1].str, tStampsInterpSeed[topKmotifs[jj][ii].ind1].end, topKmotifs[jj][ii].storagePtr->strTime, topKmotifs[jj][ii].storagePtr->endTime, topKmotifs[jj][ii].dist, topKmotifs[jj][ii].searchFileID);
+            }
+            else
+            {
+                fprintf(fp, "%f\t%f\t%f\t%f\t%f\t%d\t", -1.0,-1.0,-1.0,-1.0,-1.0,-1);
+            }
+            
         }
         fprintf(fp, "\n");
     }
