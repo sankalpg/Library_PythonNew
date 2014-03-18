@@ -10,6 +10,7 @@
 #define PID_DEFAULT1    -1
 #define PID_DEFAULT2    -2
 #define PID_DEFAULT3    -3
+#define FID_DEFAULT1    -1
 
 
 // other Constants

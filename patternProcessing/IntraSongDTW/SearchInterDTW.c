@@ -29,12 +29,12 @@ int main( int argc , char *argv[])
     FILE *fp, *fp2;
     char *baseName, motifFile[N_SIM_MEASURES][400]={'\0'}, logFile[400]={'\0'}, searchFileList[400]={'\0'}, searchFile[400] = {'\0'}, mappFile[400] = {'\0'}, paramOutFile[400]={'\0'} ;
     float t1,t2, t3,t4;
-    int lenMotifReal, verbos=0, bandDTW, maxNMotifsPairs, nInterFact, **combMTX, mm, searchFileID, *emptySpaceInd, emptySpaceCnt, priorityListInd, *emptySpacePtr, match_found; 
+    int lenMotifReal, verbos=0, bandDTW, maxNMotifsPairs, nInterFact, **combMTX, mm, searchFileID, *emptySpaceInd, emptySpaceCnt, priorityListInd, nPriorityList, *emptySpacePtr, match_found; 
     INDTYPE    NSeed, lenTS, K,ii,jj, pp, ss;
     bool sameFile;
     
     DATATYPE **dataInterpSeed, **dataInterp, **U, **L, **USeed, **LSeed, *accLB;
-    DISTTYPE LB_Keogh_EQ, realDist,LB_Keogh_EC,bsf=INF,**costMTX, LB_kim_FL;
+    DISTTYPE LB_Keogh_EQ, realDist,LB_Keogh_EC,bsf=INF,**costMTX, LB_kim_FL, *bsfArray;
     motifInfo **topKmotifs;
     segInfo_t *tStampsInterp, *tStampsInterpSeed;
     procLogs_t myProcLogs;
@@ -198,6 +198,8 @@ int main( int argc , char *argv[])
     // loading sequence corresponding to seed motifs
     NSeed = loadSeedMotifSequence(&dataInterpSeed, &tStampsInterpSeed, &lenMotifReal, baseName, &myFileExts, &myProcParams, &myProcLogs, maxNMotifsPairs, verbos);
     
+    nPriorityList = (int)floor(NSeed/nInterFact);
+    
 #ifdef DEBUG_GENERATION
     fp = fopen("subsequences.bin","wb");
     for(ii=0;ii<NSeed;ii++)
@@ -218,7 +220,7 @@ int main( int argc , char *argv[])
     USeed = (DATATYPE **)malloc(sizeof(DATATYPE *)*NSeed);
     LSeed= (DATATYPE **)malloc(sizeof(DATATYPE *)*NSeed);
     accLB = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
-    topKmotifs = (motifInfo **)malloc(sizeof(motifInfo*)*NSeed/nInterFact);
+    topKmotifs = (motifInfo **)malloc(sizeof(motifInfo*)*nPriorityList);
     
     for (ii=0;ii<NSeed;ii++)
     {
@@ -240,7 +242,7 @@ int main( int argc , char *argv[])
         
     }
 
-    for(jj=0;jj<NSeed/nInterFact;jj++)
+    for(jj=0;jj<nPriorityList;jj++)
     {
         topKmotifs[jj] = (motifInfo *)malloc(sizeof(motifInfo)*K);
         for(ii=0;ii<K;ii++)
@@ -249,12 +251,19 @@ int main( int argc , char *argv[])
             topKmotifs[jj][ii].ind1 = 0;
             topKmotifs[jj][ii].ind2 = 0;
             topKmotifs[jj][ii].patternID = PID_DEFAULT2;
+            topKmotifs[jj][ii].searchFileID = FID_DEFAULT1;
+            
             
         }
     }
+    bsfArray = (DISTTYPE*)malloc(sizeof(DISTTYPE)*nPriorityList);
+    for(ii=0;ii<nPriorityList;ii++)
+    {
+        bsfArray[ii] = bsf;
+    }
     
-    longTermDataStorage = (longTermDataStorage_t **)malloc(sizeof(longTermDataStorage_t*)*(int)(NSeed/nInterFact));
-    for(jj=0;jj<NSeed/nInterFact;jj++)
+    longTermDataStorage = (longTermDataStorage_t **)malloc(sizeof(longTermDataStorage_t*)*nPriorityList);
+    for(jj=0;jj<nPriorityList;jj++)
     {
         longTermDataStorage[jj] = (longTermDataStorage_t *)malloc(sizeof(longTermDataStorage_t)*K);
         
@@ -265,6 +274,7 @@ int main( int argc , char *argv[])
         }
         
     }
+    
     emptySpaceInd = (int *)malloc(sizeof(int*)*K);
     
     // iterating over all files 
@@ -298,7 +308,7 @@ int main( int argc , char *argv[])
         sameFile = strcmp(baseName, searchFile);
         for(ii=0;ii<NSeed;ii++)
         {
-           priorityListInd = (int)(ii/nInterFact);
+           priorityListInd = (int)floor(ii/nInterFact);
            
            for(jj=0;jj<lenTS;jj++)
             {
@@ -313,21 +323,21 @@ int main( int argc , char *argv[])
                 
                 LB_kim_FL = computeLBkimFL(dataInterpSeed[ii][0], dataInterp[jj][0], dataInterpSeed[ii][lenMotifReal-1], dataInterp[jj][lenMotifReal-1], SqEuclidean);
                 myProcLogs.totalFLDone++;
-                if (LB_kim_FL< bsf)
+                if (LB_kim_FL< bsfArray[priorityListInd])
                 {
-                    LB_Keogh_EQ = computeKeoghsLB(USeed[ii],LSeed[ii], accLB, dataInterp[jj],lenMotifReal, bsf, SqEuclidean);
+                    LB_Keogh_EQ = computeKeoghsLB(USeed[ii],LSeed[ii], accLB, dataInterp[jj],lenMotifReal, bsfArray[priorityListInd], SqEuclidean);
                     myProcLogs.totalLBKeoghEQ++;
-                    if(LB_Keogh_EQ < bsf)
+                    if(LB_Keogh_EQ < bsfArray[priorityListInd])
                     {
-                        LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB, dataInterpSeed[ii],lenMotifReal, bsf, SqEuclidean);
+                        LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB, dataInterpSeed[ii],lenMotifReal, bsfArray[priorityListInd], SqEuclidean);
                         myProcLogs.totalLBKeoghEC++;
-                        if(LB_Keogh_EC < bsf)
+                        if(LB_Keogh_EC < bsfArray[priorityListInd])
                         {
-                            realDist = dtw1dBandConst(dataInterpSeed[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, SqEuclidean, bandDTW, bsf, accLB);
+                            realDist = dtw1dBandConst(dataInterpSeed[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, SqEuclidean, bandDTW, bsfArray[priorityListInd], accLB);
                             myProcLogs.totalDTWComputations++;
-                            if(realDist<bsf)
+                            if(realDist<bsfArray[priorityListInd])
                             {
-                                bsf = manageTopKMotifs(topKmotifs[priorityListInd], tStampsInterpSeed, tStampsInterp, K, ii, jj, realDist, myProcParams.blackDur, searchFileID);
+                                bsfArray[priorityListInd] = manageTopKMotifs(topKmotifs[priorityListInd], tStampsInterpSeed, tStampsInterp, K, ii, jj, realDist, myProcParams.blackDur, searchFileID);
                                 myProcLogs.totalPriorityUpdates++;
                             }
                         }
@@ -336,7 +346,7 @@ int main( int argc , char *argv[])
             }
             
             
-        manageTopKMotifsData(topKmotifs[priorityListInd], longTermDataStorage[priorityListInd], dataInterp, tStampsInterp, &patternID, priorityListInd, emptySpaceInd, lenMotifReal, K, searchFileID);
+        manageTopKMotifsData(topKmotifs[priorityListInd], longTermDataStorage[priorityListInd], dataInterp, tStampsInterp, &patternID, emptySpaceInd, lenMotifReal, K, searchFileID);
             
         }
         
@@ -370,7 +380,7 @@ int main( int argc , char *argv[])
             // Since there can be multiple similarity measure used for rank refinement (mainly during experiment phase) this rank refinement step should be in loop, no need to loop rest of the steps
             
             //recomputing the distance
-            for(ii=0;ii<NSeed/nInterFact;ii++)
+            for(ii=0;ii<nPriorityList;ii++)
             {
                 for(jj=0;jj<K;jj++)
                 {
@@ -396,7 +406,7 @@ int main( int argc , char *argv[])
         free(LSeed[ii]);
         
     }
-    for(jj=0;jj<NSeed/nInterFact;jj++)
+    for(jj=0;jj<nPriorityList;jj++)
     {
         free(topKmotifs[jj]);
     }
@@ -416,7 +426,7 @@ int main( int argc , char *argv[])
     {
         free(combMTX[ii]);
     }
-    for(jj=0;jj<NSeed/nInterFact;jj++)
+    for(jj=0;jj<nPriorityList;jj++)
     {
         for(ii=0;ii<K;ii++)
         {
@@ -430,6 +440,7 @@ int main( int argc , char *argv[])
     free(emptySpaceInd);
     free(combMTX);
     free(myProcParams.simMeasureRankRefinement);
+    free(bsfArray);
     
     t4=clock();
     myProcLogs.timeTotal += (t4-t3)/CLOCKS_PER_SEC;
@@ -444,7 +455,7 @@ int main( int argc , char *argv[])
 /*
  * This function manages the data for top K motifs so that we can perform rank refinement at the end. The logic is simple but steps may seesm a bit complex.
  */
-int manageTopKMotifsData(motifInfo *topKmotifs, longTermDataStorage_t *longTermDataStorage, DATATYPE** dataInterp, segInfo_t *tStampsInterp, INDTYPE *patternID, int priorityListInd, int *emptySpaceInd, int lenMotifReal, int K, int searchFileID)
+int manageTopKMotifsData(motifInfo *topKmotifs, longTermDataStorage_t *longTermDataStorage, DATATYPE** dataInterp, segInfo_t *tStampsInterp, INDTYPE *patternID, int *emptySpaceInd, int lenMotifReal, int K, int searchFileID)
 {
     int match_found, *emptySpacePtr;
     int emptySpaceCnt=0;
@@ -475,7 +486,7 @@ int manageTopKMotifsData(motifInfo *topKmotifs, longTermDataStorage_t *longTermD
     for(pp=0;pp<K;pp++)
     {
         //newly added patterns will be the ones added from the current search file so just search only in that domain
-        if ((topKmotifs[pp].searchFileID == searchFileID)&&(topKmotifs[pp].patternID==-3))
+        if ((topKmotifs[pp].searchFileID == searchFileID)&&(topKmotifs[pp].patternID==PID_DEFAULT3))
         {
             topKmotifs[pp].patternID = *patternID;
             (*patternID)++;
