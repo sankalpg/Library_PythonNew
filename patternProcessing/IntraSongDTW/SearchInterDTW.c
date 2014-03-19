@@ -373,6 +373,7 @@ int main( int argc , char *argv[])
     }
     fclose(fp);
     fclose(fp2);
+
     
     //############## Rank Refinement using sophisticated DTW ########################
     for (mm=0;mm<myProcParams.nSimMeasuresUsed;mm++)
@@ -520,6 +521,7 @@ int manageTopKMotifsData(motifInfo *topKmotifs, longTermDataStorage_t *longTermD
             }
         }
     }
+    
     return 1;
 }
 
@@ -537,8 +539,9 @@ DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, segInfo_t *tStamps1, segInfo_t 
         {
             sortInd=ii;
         }
+
         // searching if we already have a motif in out top K list which is near to the currently good match
-         if ((tStamps1[topKmotifs[ii].ind1].str == tStamps1[ind1].str) && (fabs(tStamps2[topKmotifs[ii].ind2].str-tStamps2[ind2].str)<blackDur))
+        if ((topKmotifs[ii].searchFileID==searchFileID) && (fabs(tStamps2[topKmotifs[ii].ind2].str-tStamps2[ind2].str)<blackDur))
         {
             matchInd=ii;
             break;
