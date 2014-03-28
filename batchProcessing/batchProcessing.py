@@ -15,6 +15,30 @@ import numpy as np
 #import eyed3
 import scipy.interpolate as scpyinterp
 
+try:
+    from mutagen.mp3 import MP3
+except:
+    pass
+
+
+
+def computeDutationSongs(root_dir, FileExt2Proc='.mp3'): 
+    
+        audiofilenames = GetFileNamesInDir(root_dir, FileExt2Proc)
+        
+        totalLen = 0
+        for audiofile in audiofilenames:
+            if  FileExt2Proc=='.mp3':
+                audio = MP3(audiofile)
+                totalLen += audio.info.length
+            elif FileExt2Proc=='.wav':
+                totalLen +=ES.MetadataReader(filename = audiofile)()[7]
+                
+                
+        print "total files %d\n"%len(audiofilenames)
+        print "Total length %d\n"%totalLen
+                
+
 # This function is to batch process 
 def BatchProcess_PitchExtraction(RootDir, FileExt2Proc = ".mp3", HopSize = 128, FrameSize = 2048, BinResolution = 10, GuessUnvoiced=True, output = "Pitch", VoicingTolerance=0.2, MaxFrequency=20000, extension=".pit_justin.txt", PostProcess =0):
     
@@ -165,7 +189,7 @@ def GetFileNamesInDir(dir_name, filter=".wav"):
     for (path, dirs, files) in os.walk(dir_name):
         for f in files:
             #if filter in f.lower():
-            if filter.split('.')[-1] == f.split('.')[-1]:
+            if filter.split('.')[-1].lower() == f.split('.')[-1].lower():
                 #print(path+"/"+f)
                 #print(path)
                 #ftxt.write(path + "/" + f + "\n")
