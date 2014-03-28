@@ -258,12 +258,26 @@ class PitchHistogram():
         if ((len(self.swarLocs)>0)&(len(self.hist_Xval)>0)):
             self.swarCents = self.hist_Xval[self.swarLocs]
             
-    def PlotSwarOnHistogram(self):
+    def PlotSwarOnHistogram(self, showOrSave=0):
         if((len(self.hist_Yval)>0)&(len(self.swarLocs)>0)):
+            fig = plt.figure()
             plt.hold('True')
-            plt.plot(self.hist_Xval, self.hist_Yval)
+            plt.plot(self.hist_Xval, self.hist_Yval, 'k')
             plt.plot(self.hist_Xval[self.swarLocs], self.hist_Yval[self.swarLocs],'ro')
-            plt.show()
+            
+            if showOrSave ==1:
+                fsize = 18
+                plt.ylabel("Normalized Frequency", fontsize=fsize)
+                plt.xlabel("F0 Frequency (cents)", fontsize=fsize)
+                plt.xlim([-100, 1300])
+                plt.ylim([0, 1.1])
+                ax = plt.axes()
+                ax.set_aspect(500)
+                #plt.show()
+                fig.savefig('swarOnHistogram.pdf')
+            else:
+                plt.show()
+            
         else:
             print "Either histogram is not computed or swar locations are not obtained!! take care!! "  
         
