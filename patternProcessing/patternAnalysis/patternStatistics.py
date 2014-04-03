@@ -154,10 +154,12 @@ def computeSeedPatternDistHistogramDB(nBins=100, plotHist=0):
 
 
 
-def createEvaluationSubset(nBins=10, totalPatterns=200, nSearchItems=10, nVersions=4):
+def createISMIR2014EvaluationSubset(nBins=10, totalPatterns=200, nSearchItems=10, nVersions=4, splitLogic = 1):
     """
     this method will sample the seed pattern space and will select a subset such that they are equally disctibuted over stratas of 
     distances, where each strata is basically equi-spaced bin from min to max in log distance domain.
+    
+    In addtion for each seed pattern top N searched patterns are selected for different versions of the rank refinement.
     """    
 
     cmd1 = "select source_id, distance from match where version =-1 order by distance"
@@ -185,8 +187,22 @@ def createEvaluationSubset(nBins=10, totalPatterns=200, nSearchItems=10, nVersio
 
     min_val = np.min(distArrayLOG)
     max_val = np.max(distArrayLOG)
-
-    bins = np.linspace(min_val, max_val, num=nBins+1)
+    
+    #constructing bins with different different logic, very crucial step.
+    
+    ### Logic 1: Equal width bins from min_val to max_val
+    if splitLogic ==1:
+        bins = np.linspace(min_val, max_val, num=nBins+1)
+    
+    ### Logic 2: for the case of three bins taking  min_val < bin1 < mean-2*std < bin2 < mean+2*std < bin3 < max_val
+    if splitLogic ==2:
+        if nBins ==3:
+            mean = np.mean(distArrayLOG)
+            std = np.std(distArrayLOG)
+            threshold1 = mean - 2*std
+            threshold2 = mean + 2*std
+            bins = [min_val, threshold1, threshold2, max_val]
+    
     
     #just store indexes for each strata
     indStratas=[]
@@ -219,22 +235,27 @@ def createEvaluationSubset(nBins=10, totalPatterns=200, nSearchItems=10, nVersio
     distSubset = seedData[indexSample,1]
     
     #ok so after subsampling now lets fetch the searched patterns
-    evalSubSet = -1*np.ones((1+(nVersions*nSearchItems), totalPatterns))
+    evalSubSet = -1*np.ones((2+(nVersions*nSearchItems), totalPatterns))
     
     cmd1 = "select target_id from match where source_id=%d and version= %d order by distance"
+    cmd2 = "select pair_id from pattern where id=%d"
 
     try:
         con = psy.connect(database=myDatabase, user=myUser) 
         cur = con.cursor()
         
         for ii,seed in enumerate(seedSubset):
-            evalSubSet[0,ii]=seedSubset[ii]
+            evalSubSet[1,ii]=seed
+            cur.execute(cmd2%seed)
+            seedPair = int(cur.fetchone()[0])
+            evalSubSet[0,ii]=seedPair
+            
             for jj in range(nVersions):
                 cur.execute(cmd1%(seed,jj))   
                 searchData = cur.fetchall()
                 searchData = [x[0] for x in searchData]
                 searchData = np.array(searchData[:nSearchItems])
-                evalSubSet[1+(jj*nSearchItems) : 1 + ((jj+1)*nSearchItems),ii] = searchData
+                evalSubSet[2+(jj*nSearchItems) : 2 + ((jj+1)*nSearchItems),ii] = searchData
  
         
     except psy.DatabaseError, e:
