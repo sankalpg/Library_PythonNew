@@ -267,8 +267,8 @@ class PitchHistogram():
             
             if showOrSave ==1:
                 fsize = 18
-                plt.ylabel("Normalized Frequency", fontsize=fsize)
-                plt.xlabel("F0 Frequency (cents)", fontsize=fsize)
+                plt.ylabel("Normalized Frequency", fontsize=fsize, fontname="Times New Roman")
+                plt.xlabel("F0 Frequency (cents)", fontsize=fsize, fontname="Times New Roman")
                 plt.xlim([-100, 1300])
                 plt.ylim([0, 1.1])
                 ax = plt.axes()
