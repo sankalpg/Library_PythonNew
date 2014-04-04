@@ -305,7 +305,6 @@ int main( int argc , char *argv[])
         
         //############## Performing a search using basic DTW ########################
         t1=clock();
-        sameFile = strcmp(baseName, searchFile);
         for(ii=0;ii<NSeed;ii++)
         {
            priorityListInd = (int)floor(ii/nInterFact);
@@ -316,7 +315,7 @@ int main( int argc , char *argv[])
                 {
                     continue;
                 }
-                if ((sameFile)&&(fabs(tStampsInterpSeed[ii].str-tStampsInterp[jj].str)< myProcParams.blackDur))
+                if ((strcmp(baseName, searchFile)==0)&&(fabs(tStampsInterpSeed[ii].str-tStampsInterp[jj].str)< myProcParams.blackDur))
                 {
                     continue;
                 }
