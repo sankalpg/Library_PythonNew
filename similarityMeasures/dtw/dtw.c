@@ -50,7 +50,7 @@ double distCityBlock(double a, double b)
 double distShiftCityBlock(double a, double b)
 {
     int index;
-    index = int(fabs(a-b)*MULT_FACTOR_TABLE);
+    index = (int)(fabs(a-b)*MULT_FACTOR_TABLE);
     return simShifCB[min(SIM_TB_SIZE, index)];
 }
 
@@ -65,21 +65,20 @@ double distTMM_CityBlock(double a, double b)
 double distShiftLinExp(double a, double b)
 {
     int index;
-    index = int(fabs(a-b)*MULT_FACTOR_TABLE);
+    index = (int)(fabs(a-b)*MULT_FACTOR_TABLE);
     return simShifCBExp[min(SIM_TB_SIZE, index)];
 }
 
 simMeasure mySimMeasure[N_SIM_MEASURES] = {distEuclidean, distSqEuclidean, distCityBlock, distShiftCityBlock, distTMM_CityBlock, distShiftLinExp};
 const char*SimMeasureNames[N_SIM_MEASURES] = {"Euclidean", "SqEuclidean", "CityBlock", "ShiftCityBlock", "TMM_CityBlock", "ShiftLinExp"};
 
-/*
-mySimMeasure[Euclidean] = &distEuclidean;
-mySimMeasure[SqEuclidean] = &distSqEuclidean;
-mySimMeasure[CityBlock] = &distCityBlock;
-mySimMeasure[ShiftCityBlock] = &distShiftCityBlock;
-mySimMeasure[TMM_CityBlock] = &distTMM_CityBlock;
-mySimMeasure[ShiftLinExp] = &distShiftLinExp;
-*/
+distMeasures myDistMeasures[N_SIM_MEASURES] = {distEuclidean, distSqEuclidean, distCityBlock, distShiftCityBlock, distTMM_CityBlock, distShiftLinExp};
+
+
+
+
+
+
 //////////////////////////////// TO BE REMOVE AFTER SOME TIME TEMP ONES \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 // euclidean distance
 double EucDist(double a, double b)
@@ -123,6 +122,133 @@ if (c < a)
 return a;
 }
 
+
+/*
+ * All the DTW variants for one dimensional time series
+ * 
+ * NOTE: this first category of dtw functions are quite generic and can be used in C/Cython/Python/Mex/MATLAB. They do not require any specific consideration from the calling function.
+ * Whereas there are some specific dtw versions I wrote specifically for my usage which incorporate lower bounding, early abandoning and do not initialize cost matrix for faster processing. (find them after this category)
+ * 
+ * We should Ideally be keeping input param structure same for all variants so that they can be later indexed by a function pointer
+*   # ==    Global  Local   Subsequence
+*           No      No      No
+*           Yes     No      No
+*           No      Yes     No
+*           Yes     Yes     No
+*           No      Yes     Yes (with sub version it always make sense to have local alignment)
+*           Yes     Yes     Yes (with sub version it always make sense to have local alignment)
+ */
+
+double dtw_GLS(double *x, double*y, int x_len, int y_len, double*cost, dtwParams_t params)
+{
+        // declarations of variables
+        int i,j, bandwidth;    
+        float min_vals, factor, max_del, bound; 
+        
+        max_del = max(params.delStep, params.moveStep);
+        bandwidth = params.bandwidth;
+        
+        if (params.globalType==0)
+        {
+            /*This is along 45 degree, the usual way to do in dtw*/
+            factor=1;
+            /*Since this is subsequence dtw, even if bandwidth is smaller than abs(x_len-y_len) its not a problem*/
+        }
+        else if (params.globalType==1)
+        {
+            factor = (float)y_len/(float)x_len;
+        }
+        
+        if (params.initCostMtx==1)
+        {
+            //putting infi in all cost mtx
+            for (i=0;i<x_len;i++)
+            {
+                for (j=0;j<y_len;j++)
+                {
+                    cost[(i*y_len)+ j] = FLT_MAX;
+                }
+            
+            }            
+        }
+        if (params.hasGlobalConst==0)
+        {
+            bandwidth = max(x_len, y_len);  
+        }
+        
+        if (params.reuseCostMtx==0)
+        {
+            
+
+            //Initializing the row and columns of cost matrix
+            cost[0]= (*myDistMeasures[params.distType])(x[0],y[0]);
+            if (params.initFirstCol==1)
+            {
+                for (i=1;i<min(bandwidth+1, x_len);i++)
+                {
+                    cost[i*y_len]=(*myDistMeasures[params.distType])(x[i],y[0]) + cost[((i-1)*y_len)];
+                }
+            }
+            for (j=1;j< min(bandwidth+1, y_len);j++)
+            {
+                cost[j]=(*myDistMeasures[params.distType])(x[0],y[j]);
+            }
+            
+            /*Initializing other rows and colms till we can support out local constraints to be applied*/
+            for (i=1;i<=min(bandwidth+1, x_len-1);i++)
+            {
+                for (j=1;j<=max_del;j++)
+                {
+                    cost[(i*y_len)+ j] = (*myDistMeasures[params.distType])(x[i],y[j]) + min3(((i-1)*y_len)+ j, cost[((i-1)*y_len)+(j-1)], cost[((i)*y_len)+(j-1)]);
+                }
+            }
+            for (j=1;j<= min(bandwidth+1,y_len-1);j++)
+            {
+                for (i=1;i<=max_del;i++)
+                {
+                    cost[(i*y_len)+ j] = (*myDistMeasures[params.distType])(x[i],y[j]) + min3(cost[((i-1)*y_len)+(j)], cost[((i-1)*y_len)+(j-1)], cost[((i)*y_len)+(j-1)]);
+                }
+            }
+            
+            //filling in all the cumulative cost matrix
+            for (i=max_del;i<x_len;i++)
+            {
+                for (j=max(max_del, i-bandwidth);j<=min(y_len-1, i+bandwidth);j++)
+                {
+                    cost[(i*y_len)+ j] = (*myDistMeasures[params.distType])(x[i],y[j]) + 
+                                            min3(cost[(i-params.moveStep)*y_len+(j-params.delStep)], cost[((i-params.diagStep)*y_len)+(j-params.diagStep)], cost[((i-params.delStep)*y_len)+(j-params.moveStep)]);
+                }
+            
+            }
+        }
+        
+        if (params.isSubsequence==1)
+        {   
+            min_vals = FLT_MAX;
+            for (i=x_len-1;i>=max(x_len-1-bandwidth, 0);i--)
+            {
+                j = y_len -1;
+                if(cost[(i*y_len)+ j] < min_vals)
+                {
+                    min_vals = cost[(i*y_len)+ j];
+                }
+            }
+            for (j=y_len-1;j>=max(y_len-1-bandwidth,0);j--)
+            {
+                i = x_len -1;
+                if(cost[(i*y_len)+ j] < min_vals)
+                {
+                    min_vals = cost[(i*y_len)+ j];
+                }
+            }
+        }
+        else
+        {
+            min_vals = cost[x_len*y_len -1];
+        }
+        return min_vals;
+
+}
 
 
 // This is the standard dtw implementation for multidimensional time series. In case the dimension is > 1 the point to point distance is computed as weighted point to point 
@@ -429,25 +555,30 @@ double dtw1d_BandConst_LocalConst_Subsequence(double *x, double*y, int x_len, in
         }
         
         //setting up types of methods availale for measuring point to point distance
-        myDistMethods[Euclidean]=&EucDist;
-        myDistMethods[TMM_CityBlock]=&octBy2WrappedCitiblock;
+        myDistMethods[Euclidean]=&distEuclidean;
+        myDistMethods[SqEuclidean]=&distSqEuclidean;
+        myDistMethods[CityBlock]=&distCityBlock;
+        myDistMethods[ShiftCityBlock]=&distShiftCityBlock;
+        myDistMethods[TMM_CityBlock]=&distTMM_CityBlock;
+        
+        
         
         //Initializing the row and columns of cost matrix
         cost[0]= (*myDistMethods[dist_type])(x[0],y[0]);
-        for (i=1;i<bandwidth+1;i++)
+        for (i=1;i<min(bandwidth+1, x_len);i++)
         {
             cost[i*y_len]=(*myDistMethods[dist_type])(x[i],y[0]);
         }
-        for (j=1;j<bandwidth+1;j++)
+        for (j=1;j< min(bandwidth+1, y_len);j++)
         {
             cost[j]=(*myDistMethods[dist_type])(x[0],y[j]);
         }
-        for (i=1;i<=bandwidth+1;i++)
+        for (i=1;i<=min(bandwidth+1, x_len-1);i++)
         {
             j=1;
             cost[(i*y_len)+ j] = (*myDistMethods[dist_type])(x[i],y[j]) + min3(((i-1)*y_len)+ j, cost[((i-1)*y_len)+(j-1)], cost[((i)*y_len)+(j-1)]);
         }
-        for (j=1;j<=bandwidth+1;j++)
+        for (j=1;j<= min(bandwidth+1,y_len-1);j++)
         {
             i=1;
             cost[(i*y_len)+ j] = (*myDistMethods[dist_type])(x[i],y[j]) + min3(cost[((i-1)*y_len)+(j)], cost[((i-1)*y_len)+(j-1)], cost[((i)*y_len)+(j-1)]);
@@ -464,7 +595,7 @@ double dtw1d_BandConst_LocalConst_Subsequence(double *x, double*y, int x_len, in
         
         }
         min_vals = FLT_MAX;
-        for (i=x_len-1;i>=x_len-1-bandwidth;i--)
+        for (i=x_len-1;i>=max(x_len-1-bandwidth, 0);i--)
         {
             j = y_len -1;
             if(cost[(i*y_len)+ j] < min_vals)
@@ -472,7 +603,7 @@ double dtw1d_BandConst_LocalConst_Subsequence(double *x, double*y, int x_len, in
                 min_vals = cost[(i*y_len)+ j];
             }
         }
-        for (j=y_len-1;j>=y_len-1-bandwidth;j--)
+        for (j=y_len-1;j>=max(y_len-1-bandwidth,0);j--)
         {
             i = x_len -1;
             if(cost[(i*y_len)+ j] < min_vals)

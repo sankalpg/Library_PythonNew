@@ -39,6 +39,25 @@ typedef struct DTW_path
   int *py;
 }DTW_path;
 
+
+typedef struct dtwParams
+{
+    
+    int distType;
+    int hasGlobalConst;
+    int globalType;
+    int bandwidth;
+    int initCostMtx;
+    int reuseCostMtx;
+    int delStep;
+    int moveStep;
+    int diagStep;
+    int initFirstCol;
+    int isSubsequence;
+    
+}dtwParams_t;
+
+
 typedef struct Config
 {
 	int DistMthd;
@@ -56,6 +75,14 @@ typedef struct MatrixSize
 typedef double (*DistMethods)(double, double);
 
 typedef double (*simMeasure)(double, double);
+
+typedef double (*distMeasures)(double, double);
+
+
+/*Generic dtw variants*/
+double dtw_GLS(double *x, double*y, int x_len, int y_len, double*cost, dtwParams_t params);
+
+
 
 double octBy2WrappedCitiblock(double a, double b);
 
