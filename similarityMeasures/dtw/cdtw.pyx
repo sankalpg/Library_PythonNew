@@ -315,7 +315,7 @@ def dtw1dSubLocalBand(x, y, configuration):
                 'cost' (cost matrix)
                 
             'Ldistance': {
-                  'type': 0 (Euclidean) or 1 (squared Euclidean) or 2 (octBy2WrappedCitiblock - used in makam music score alignment)
+                  'type': 0 (Euclidean) or 1 (SqEuclidean) or 2 (CityBlock) or 3 (ShiftCityBlock) or 4 (TMM_CityBlock)- used in makam music score alignment) or 5 (ShiftLinExp)
                    }
             'Constraint': {
                   'type':'Band' or 'Local' or 'BandLocal'
