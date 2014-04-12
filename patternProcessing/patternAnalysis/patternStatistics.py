@@ -278,6 +278,53 @@ def createISMIR2014EvaluationSubset(nBins=10, totalPatterns=200, nSearchItems=10
     
     return 1
 
+
+def generateHeatMapPlotForSeedVsSearchEvalSubSetISMIR(patternInfoFile, versionSet= [0]):
+    
+    #reading the pattern ids from info filename
+    patternData = np.loadtxt(patternInfoFile)
+    
+    seedPatterns = patternData[1,:]
+    seedPatternPairs = patternData[0,:]
+    
+    searchPatternsAll = patternData[2:,:]
+    
+    cmd1 = "select distance in match where source_id=%d and target_id=%d"
+    
+    try:
+        con = psy.connect(database=myDatabase, user=myUser) 
+        cur = con.cursor()
+        distVals = np.array([[0,0]])
+        for ii, seed in enumerate(seedPatterns):
+            for version in versionSet:
+                searchPatterns = searchPatternsAll[ii,version*10:(version+1)*10]
+                
+                for searches in searchPatterns:
+                    cur.execute(cmd1%(seed, searches))
+                    distVals.append(np.array([[]]))
+                
+                
+                    
+            
+        
+        
+        
+        seedData = cur.fetchall()
+        
+    except psy.DatabaseError, e:
+        print 'Error %s' % e
+        if con:
+            con.rollback()
+            con.close()
+        sys.exit(1)
+
+    if con:
+        con.close()
+    
+    
+        
+    
+
     
     
 
