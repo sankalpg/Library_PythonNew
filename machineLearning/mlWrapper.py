@@ -308,7 +308,7 @@ class experimenter(classifiers):
             
             self.classLabelsInt= (self.classLabelsInt).astype(np.int)
 
-    def setExperimentParams(self, nExp = 10, typeEval = ("kFoldCrossVal",10), nInstPerClass = -1, classifier = ('svm',"default"), balanceClasses=1):
+    def setExperimentParams(self, nExp = 10, typeEval = ("kFoldCrossVal",10), nInstPerClass = -1, classifier = ('svm',"default"), balanceClasses=1, normalizeFeatures=1):
         self.nExp = nExp
         self.typeEval = typeEval
         self.nInstPerClass = nInstPerClass  #this means balance the dataset taking least number of instances present in a class
@@ -317,6 +317,7 @@ class experimenter(classifiers):
         self.setClassifierParams(classifier[1])
         
         self.balanceClasses = balanceClasses
+        self.normalizeFeatures = normalizeFeatures
         
 
     def setFeaturesAndClassLabels(self, features, classLabels):
@@ -402,7 +403,8 @@ class experimenter(classifiers):
         
         
         ### Feature Normalization (perform normalization only when classifier is not mYkNN)
-        self.normalizeFeatures()
+        if self.normalizeFeatures==1:
+            self.normalizeFeatures()
         
         # Soon after setting experimental params we can initialize variables to store the results/ other stats for each experiment
         ### Variable to store stats of all the experiments
