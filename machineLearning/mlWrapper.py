@@ -478,6 +478,7 @@ class experimenter(classifiers):
                 expIndices = np.arange(self.featuresSelected.shape[0])
                 #counting unique ids
                 idsArray = np.unique(self.filterArray)
+                nInstPerClass = []
                 for idfile in idsArray:
                     testInd = np.where(self.filterArray==idfile)[0]
                     restInd = np.setdiff1d(expIndices, testInd)
@@ -486,16 +487,19 @@ class experimenter(classifiers):
                         classMapp = []
                         minInstPerClass = sys.float_info.max
                         for i in range(0,len(self.cNames)):
-                            classMapp.append(np.where(self.classLabelsInt[restInd] == i)[0])
+                            classind = np.where(self.classLabelsInt[restInd] == i)[0]
+                            classMapp.append(restInd[classind])
                             if(len(classMapp[i])<minInstPerClass):
                                 minInstPerClass = len(classMapp[i])
                         if self.nInstPerClass==-1:
-                            self.nInstPerClass = minInstPerClass
+                                nInstPerClass.append(minInstPerClass)
+                        else:
+                                nInstPerClass.append(self.nInstPerClass)
                         
                         trainInd = np.array([], dtype = int)  # this array will contain indices of instances which are to be used in one experiment
                         for j in range(0,len(self.cNames)):     #reshuffling the order in every experiment before selecting the samples for each experiment
                             np.random.shuffle(classMapp[j])
-                            trainInd = np.append(trainInd, classMapp[j][:self.nInstPerClass])
+                            trainInd = np.append(trainInd, classMapp[j][:nInstPerClass[-1]])
                     else:
                         trainInd = restInd
                 
