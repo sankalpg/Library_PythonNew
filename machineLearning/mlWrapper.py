@@ -282,7 +282,7 @@ class experimenter(classifiers):
                         classnames = classnames.replace('\t','')
                         classnames = classnames.replace(' ','')
                         self.cNames = classnames.split(',')
-                        self.cNames.remove('')  #this is because there are some extra ","s
+                        #self.cNames.remove('')  #this is because there are some extra ","s
                     else:
                         print "there is a problem reading %s file, features are not numeric" %filename
             line = f.readline().strip()
