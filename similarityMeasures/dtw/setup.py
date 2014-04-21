@@ -25,7 +25,7 @@ py_inc = [get_python_inc()]
 np_lib = os.path.dirname(numpy.__file__)
 np_inc = [os.path.join(np_lib, 'core/include')]
 
-sourcefiles = ['dtw.c', 'cdtw.pyx']
+sourcefiles = ['tables.c', 'dtw.c',  'cdtw.pyx']
 
 setup(
     cmdclass = {'build_ext': build_ext},
