@@ -404,7 +404,7 @@ class experimenter(classifiers):
         
         ### Feature Normalization (perform normalization only when classifier is not mYkNN)
         if self.normalizeFeatures==1:
-            self.normalizeFeatures()
+            self.performFeatureNormalization()
         
         # Soon after setting experimental params we can initialize variables to store the results/ other stats for each experiment
         ### Variable to store stats of all the experiments
@@ -562,7 +562,7 @@ class experimenter(classifiers):
         else:
             print "Features2Use should be either list of features or -1"
 
-    def normalizeFeatures(self):
+    def performFeatureNormalization(self):
         """
         This function performs feature normalization depending upon the kind of classifier that has to be used
         """
@@ -603,7 +603,7 @@ class experimenter(classifiers):
         self.setClassifierName(classifier)
         self.setClassifierParams(classifierParams)
         self.featureSelection()
-        self.normalizeFeatures()
+        self.performFeatureNormalization()
         
         classHandle = self.exportClassifierModelHandle(self.featuresSelected, self.classLabelsInt, self.classifierName, self.classifierParams)
         if isinstance(classHandle, int):
