@@ -295,7 +295,77 @@ def dtw1dLocalBand(x, y, configuration):
         else:
             return udist, path_t.plen, (px_cord, py_cord), cost_arr 
             
-            
+def dtw1d_GLS(x, y):
+    """Modified version of standard DTW as described in [Muller07] and [Keogh01],
+    Modified code provided in mlpy.dtw
+    This version is a subsequence version of the code with local constraints and global band constraint:
+      
+    :Parameters:
+    x : 1d numpy array (length N) first sequence
+    y : 1d numpy array (length M) second sequence 
+    
+    :Returns: a list of same entities specified in the configuration parameter for 'Output'
+    udist : (float) unnormalized minimum-distance of warp path between sequences
+    plength : (float) path length 
+    path : tuple of two 1d numpy array (path_x, path_y) warp path
+    cost : 2d numpy array (N,M) containing accumulated cost matrix
+    
+      
+    References
+    .. [Muller07] M Muller. Information Retrieval for Music and Motion. Springer, 2007.
+    .. [Keogh01] E J Keogh, M J Pazzani. Derivative Dynamic Time Warping. In FirsWt SIAM International Conference on Data Mining, 2001.
+    """
+      
+    cdef np.ndarray[np.float_t, ndim=1] x_arr
+    cdef np.ndarray[np.float_t, ndim=1] y_arr  
+    cdef np.ndarray[np.float_t, ndim=2] cost_arr
+    cdef np.ndarray[np.int_t, ndim=1] px_cord
+    cdef np.ndarray[np.int_t, ndim=1] py_cord
+    
+    cdef double udist
+    cdef DTW_path path_t    
+    cdef dtwParams_t myDtwParama
+    
+
+    
+    x_arr = np.ascontiguousarray(x, dtype=np.float)
+    y_arr = np.ascontiguousarray(y, dtype=np.float)
+    
+    cost_arr = np.ones((x_arr.shape[0], y_arr.shape[0]), dtype=np.float)
+    
+    myDtwParama.distType = 0;
+    myDtwParama.hasGlobalConst = 1;
+    myDtwParama.globalType = 0;
+    myDtwParama.bandwidth = np.round(x_arr.shape[0]*0.2).astype(np.int);
+    myDtwParama.initCostMtx = 1;
+    myDtwParama.reuseCostMtx = 0;
+    myDtwParama.delStep = 1;
+    myDtwParama.moveStep = 1;
+    myDtwParama.diagStep = 1;
+    myDtwParama.initFirstCol = 1;
+    myDtwParama.isSubsequence = 1;
+    
+        
+    udist = dtw_GLS(<double *>x_arr.data, <double*>y_arr.data, x_arr.shape[0],y_arr.shape[0], <double*>cost_arr.data, myDtwParama)
+    
+    y_cord = np.argmin(cost_arr[x_arr.shape[0]-1, :])
+    x_cord = x_arr.shape[0]-1
+    min_val = np.min(cost_arr[x_arr.shape[0]-1, :])
+    if np.min(cost_arr[:,y_arr.shape[0]-1]) < min_val:
+        x_cord = np.argmin(cost_arr[:,y_arr.shape[0]-1])
+        y_cord = y_arr.shape[0]-1
+    
+    path(<double*>cost_arr.data, cost_arr.shape[0], cost_arr.shape[1], x_cord, y_cord, &path_t)
+    px_cord = np.empty(path_t.plen, dtype=np.int)
+    py_cord = np.empty(path_t.plen, dtype=np.int)
+    for i in range(path_t.plen):
+        px_cord[i] = path_t.px[i]
+        py_cord[i] = path_t.py[i] 
+    free (path_t.px)
+    free (path_t.py)
+    
+    return udist, path_t.plen, (px_cord, py_cord), cost_arr 
+    
             
             
 def dtw1dSubLocalBand(x, y, configuration):
