@@ -305,17 +305,18 @@ int main( int argc , char *argv[])
         
         //############## Performing a search using basic DTW ########################
         t1=clock();
-        for(ii=0;ii<NSeed;ii++)
+        for(jj=0;jj<lenTS;jj++)
         {
-           priorityListInd = (int)floor(ii/nInterFact);
-           
-           for(jj=0;jj<lenTS;jj++)
+            for(ii=0;ii<NSeed;ii++)
             {
+                priorityListInd = (int)floor(ii/nInterFact);
+        
                 if (myProcParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
                 {
                     continue;
                 }
                 if ((strcmp(baseName, searchFile)==0)&&(fabs(tStampsInterpSeed[ii].str-tStampsInterp[jj].str)< myProcParams.blackDur))
+                    //beware that basename and searchFile name should both have either full path or relative path.
                 {
                     continue;
                 }
@@ -344,8 +345,11 @@ int main( int argc , char *argv[])
                 }
             }
             
-            
-        manageTopKMotifsData(topKmotifs[priorityListInd], longTermDataStorage[priorityListInd], dataInterp, tStampsInterp, &patternID, emptySpaceInd, lenMotifReal, K, searchFileID);
+        }
+        for(ii=0;ii<NSeed;ii++)
+        {
+            priorityListInd = (int)floor(ii/nInterFact);
+            manageTopKMotifsData(topKmotifs[priorityListInd], longTermDataStorage[priorityListInd], dataInterp, tStampsInterp, &patternID, emptySpaceInd, lenMotifReal, K, searchFileID);
             
         }
         
@@ -531,6 +535,8 @@ DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, segInfo_t *tStamps1, segInfo_t 
     int ii=0;
     int sortInd = -1;
     int matchInd = -1;
+    int a=0;
+    
     
     for(ii=0;ii<K;ii++)
     {
@@ -547,6 +553,7 @@ DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, segInfo_t *tStamps1, segInfo_t 
         }
         
     }
+
     if (sortInd==-1)//we couldn't get any satisfactory replacement before we get a close neighbour
     {
         return topKmotifs[K-1].dist;
