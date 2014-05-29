@@ -27,7 +27,7 @@ int compareMotifInfo(const void *a, const void *b)
 int main( int argc , char *argv[])
 {
     FILE *fp, *fp2;
-    char *baseName, motifFile[N_SIM_MEASURES][400]={'\0'}, logFile[400]={'\0'}, searchFileList[400]={'\0'}, searchFile[400] = {'\0'}, mappFile[400] = {'\0'}, paramOutFile[400]={'\0'} ;
+    char *baseName, motifFile[N_SIM_MEASURES][400]={'\0'}, logFile[400]={'\0'}, searchFileList[400]={'\0'}, searchFile[400] = {'\0'}, mappFile[400] = {'\0'}, paramOutFile[400]={'\0'} , tempFilename[400]={'\0'};
     float t1,t2, t3,t4;
     int lenMotifReal, verbos=0, bandDTW, maxNMotifsPairs, nInterFact, **combMTX, mm, searchFileID, *emptySpaceInd, emptySpaceCnt, priorityListInd, nPriorityList, *emptySpacePtr, match_found; 
     INDTYPE    NSeed, lenTS, K,ii,jj, pp, ss;
@@ -209,7 +209,7 @@ int main( int argc , char *argv[])
             fprintf(fp, "%f\t", dataInterpSeed[ii][jj]);
         }
         fprintf(fp, "\n");
-    }
+    }read
     fclose(fp);
     return 1;
     
@@ -283,8 +283,9 @@ int main( int argc , char *argv[])
     
     fp = fopen(searchFileList, "r");
     patternID = 0;
-    while(fscanf(fp, "%[^\n]s",searchFile)!=EOF)
+    while(fgets(tempFilename, 400, fp))
     {
+        sscanf(tempFilename, "%[^\n]s\n", searchFile);
         //generating subsequence database for file to be searched
         lenTS = readPreProcessGenDB(&dataInterp, &tStampsInterp, &lenMotifReal, searchFile, &myFileExts, &myProcParams, &myProcLogs, verbos);
         
