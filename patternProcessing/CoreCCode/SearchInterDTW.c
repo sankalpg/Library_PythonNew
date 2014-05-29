@@ -283,7 +283,7 @@ int main( int argc , char *argv[])
     
     fp = fopen(searchFileList, "r");
     patternID = 0;
-    while(fscanf(fp, "%s\n",searchFile)!=EOF)
+    while(fscanf(fp, "%[^\n]s",searchFile)!=EOF)
     {
         //generating subsequence database for file to be searched
         lenTS = readPreProcessGenDB(&dataInterp, &tStampsInterp, &lenMotifReal, searchFile, &myFileExts, &myProcParams, &myProcLogs, verbos);
