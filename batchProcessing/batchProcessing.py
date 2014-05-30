@@ -206,14 +206,6 @@ def BatchPRocess_DeleteFiles(RootDir, FileExt2Proc = ".wav"):
         print "File removed " + audiofile
         os.remove(audiofile)
     
-def BatchPRocess_DeleteFiles(RootDir, FileExt2Proc = ".wav"):
-    
-    audiofilenames = GetFileNamesInDir(RootDir, FileExt2Proc)
-    
-    for audiofile in audiofilenames:
-        print "File removed " + audiofile
-        os.remove(audiofile)
-    
     
 def BatchPRocess_CheckDatabase(RootDir, FileExt2Proc = ".mp3"):
   #note that this function is heavily hardcoded
@@ -338,3 +330,113 @@ def PreprocessMelodicFeatures(RootDir, Ext2Proc = ".wav", FileExts2Proc = [(".tp
         outname.replace("\s","_")
         shutil.move(filename, outname)
 """
+
+def createValidityFiles(root_dir, searchExt, validFileList):
+    """
+    This function searches files with extention (searchExt) in the root_dir folder (recursively) and generate a validity file containing (1) for valid files and (0) for non valid files. 
+    This kind of arrangement was needed for some codes to not consider file with validity 0.
+    
+    """
+    
+    #read the valid file list and generate a dictionary
+    lines = open(validFileList, "r").readlines()
+    validityInfo = {}
+    for line in lines:
+        linesplit = line.strip().split()
+        validityInfo[linesplit[0]]={}
+        validityInfo[linesplit[0]]['validity'] = linesplit[1]
+        validityInfo[linesplit[0]]['done'] = 0
+    
+        
+    
+    filenames = GetFileNamesInDir(root_dir, searchExt)
+    filesNotInList = []
+    genCnt = 0
+    for f in filenames:
+        fn, fext = os.path.splitext(f)
+        if validityInfo.has_key(fn):            
+            fid=open(fn+'.validity', "w")
+            fid.write(validityInfo[fn]['validity'])
+            fid.close()
+            validityInfo[fn]['done']=1
+            genCnt = genCnt+1
+        else:
+            filesNotInList.append(f)
+    filesNoMp3 = []     
+    for key in validityInfo.keys():
+        if validityInfo[key]['done']==0:
+            filesNoMp3.append(key)
+    
+    print "total files generate %d" % (genCnt)
+    print "total files not generate %d" % (len(filesNotInList))
+    print "total mp3 files not found %d" % (len(filesNoMp3))
+    
+
+def testFileExist(fileList, Extension):
+    
+    #read the valid file list and generate a dictionary
+    lines = open(fileList, "r").readlines()
+    nonExist = [] 
+    for line in lines:
+        fname = line.strip()
+        if not fname:
+            continue
+        fname = fname + Extension
+        
+        if not os.path.isfile(fname):
+            nonExist.append(fname)
+            
+    print "total non existing files are %d"%(len(nonExist))
+    print nonExist
+    
+def copyFileListForSearchingMotifs(root_dir, fileList, extOut):
+    
+    filenames = GetFileNamesInDir(root_dir, '.mp3')
+    
+    for f in filenames:
+        filename, ext = os.path.splitext(f)
+        filename = filename + extOut        
+        shutil.copy(fileList, filename)
+
+def generateFileList(root_dir, fileOut):
+    
+    filenames = GetFileNamesInDir(root_dir, '.mp3')
+    
+    fid = open(fileOut, "w")
+    for f in filenames:
+        filename, ext = os.path.splitext(f)
+        fid.write("%s\n"%filename)
+    
+    fid.close()
+        
+def batchDeleteFiles(RootDir, delExts= [""]):
+    
+    for ext in delExts:
+        filenames = GetFileNamesInDir(RootDir, ext)        
+        for filename in filenames:
+            print "File removed " + filename
+            os.remove(filename)            
+    
+            
+            
+        
+        
+def validateMotifSearchDB(root_dir, fileout):
+    
+    filenames = GetFileNamesInDir(root_dir, '.mp3')
+    
+    ExtensionsRef = ['.flist', '.pitch', '.tonic', '.tablaSec']
+    
+    fid = open(fileout, "w")
+    
+    for filename in filenames:
+        fname, ext = os.path.splitext(filename)
+        
+        for ext in ExtensionsRef:
+            filecheck = fname + ext
+            if not os.path.isfile(filecheck):
+                fid.write("%s\t%s\n"%(filename, ext))
+                #break
+            
+    fid.close()
+            
