@@ -14,10 +14,10 @@ import batchProcessing as BP
 
 
 myUser = 'sankalp'
-myDatabase = 'motifDB_CONF1'
+myDatabase = 'motifHindustani_CONF1'
 
-serverPrefix = "/homedtic/sgulati/motifDiscovery/dataset/carnatic/compMusic/"
-localPrefix = "/media/Data/Datasets/MotifDiscovery_Dataset/CompMusic/"
+serverPrefix = "/homedtic/sgulati/motifDiscovery/dataset/hindustani/compmusic/"
+localPrefix = "/media/Data/Datasets/MotifDiscovery_Dataset/CompMusic/Hindustani/"
 
 
 def resetAllTables():
@@ -217,7 +217,6 @@ def createPatternMatchTable(root_dir):
             audiofile = fname + '.mp3'
             
             audiofile = stripPrefix(audiofile)
-            
             cur.execute(cmd7%(audiofile))
             file_id = cur.fetchone()[0]
             
@@ -278,6 +277,7 @@ def createPatternMatchTable(root_dir):
             
             for line in searchMappData:
                 fid,fileSearched = line.split('\t')
+                
                 fileSearched = fileSearched.strip() + '.mp3'
                 fileSearched = stripPrefix(fileSearched)
                 searchedFileArray = np.append(searchedFileArray,fileSearched)
@@ -426,6 +426,8 @@ sudo -u postgres createdb motif_local -O sankalp
 create index on file(filename);
 
 select last_value from match_id_seq; ALTERNATIVE OF COUNT!!!
+
+alter table file add hasseed int;
 
 
 
