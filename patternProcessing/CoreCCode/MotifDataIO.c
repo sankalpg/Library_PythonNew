@@ -507,6 +507,46 @@ INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *b
 }
 
 /*
+ * This function read the pattern information (text file with column as PatternID, start_time, end_time ) which is needed for computing distances building distances
+ */
+
+int readPatternDump(char *patternFile, patternInfo_t **pInfo, int *NPatterns)
+{
+    FILE *fp;
+    patternInfo_t *patterns, *patternsFinal;
+    float temp[2]={0};
+    long long int temp1;
+    int ii;    
+    
+    //################## reading pattern information %%%%%%%%%%%%%%%%%%%%%
+    fp = fopen(patternFile,"r");
+    if (fp==NULL)
+    {
+        printf("Error opening file %s\n", patternFile);
+        return 0;
+    }
+    patterns = (patternInfo_t*)malloc(sizeof(patternInfo_t)*10000); //ASSUME that none of the single pattern info file will have more than 10k motifs
+    ii=0;
+    while(fscanf(fp,"%lld\t%f\t%f\n", &temp1, &temp[0], &temp[1])!=EOF)
+    {
+        patterns[ii].id = temp1;
+        patterns[ii].str = temp[0];
+        patterns[ii].end = temp[1];
+        ii++;
+    }
+    *NPatterns=ii;
+    fclose(fp);
+    
+    patternsFinal = (patternInfo_t*)malloc(sizeof(patternInfo_t)*(*NPatterns)); //ASSUME that none of the single pattern info file will have more than 10k motifs
+    memcpy(patternsFinal, patterns, sizeof(patternInfo_t)*(*NPatterns));    
+    free(patterns);    
+    *pInfo = patternsFinal;
+    
+    return 1;    
+}
+
+
+/*
  * This function read the seed motif information which was dumped during the discovery phase
  */
 
@@ -553,6 +593,112 @@ int readSeedMotifDump(char *motifFile, segInfo_t **sm, int maxNMotifsPairs, int 
     return 1;
     
 }
+
+/*
+ * This function read pattern information, and after preprocessing the pitch sequence chop out these motifs return them (later used for storing motifs (time series))
+ */
+
+INDTYPE fetchPatternsTS(DATATYPE ***d, patternInfo_t **p, int *pattenLen, char *baseName, fileExts_t *myFileExts, procParams_t *myProcParams, procLogs_t *myProcLogs, int verbos)
+{
+    char pitchFile[400]={'\0'}, tonicFile[400]={'\0'}, patternFile[400]={'\0'};
+    
+    INDTYPE ii, jj, lenTS, N, totalPitchNonSilSamples, *patternInd, lenRawMotifData;
+    DATATYPE *pitchSamples, **data, **dataInterp;
+    
+    float pHop;
+    float *timeSamples, min_val;
+    
+    int NPatterns, max_factor; 
+    
+    segInfoInterp_t *tStamps;
+    patternInfo_t *pInfo;
+    INDTYPE nPitchSamples;
+    
+    
+    //pitch file name
+    strcat(pitchFile,baseName);
+    strcat(pitchFile,myFileExts->pitchExt);
+    //tonic file name
+    strcat(tonicFile,baseName);
+    strcat(tonicFile,myFileExts->tonicExt);
+    //motif file name
+    strcat(patternFile,baseName);
+    strcat(patternFile,myFileExts->seedMotifExt);
+    
+    //################ Reading pitch data, pre-processing it ##############
+    readPreprocessPitchData(pitchFile, tonicFile, &pitchSamples, &timeSamples, &nPitchSamples, &pHop, myProcParams, myProcLogs);
+
+    
+    myProcParams->nPitchSamples = nPitchSamples;
+    
+    max_factor=0;
+    for (ii=0;ii<myProcParams->nInterpFac; ii++)
+    {
+        myProcParams->motifLengths[ii] = (int)ceil((myProcParams->durMotif*myProcParams->interpFac[ii])/pHop);
+        if (myProcParams->interpFac[ii]==1)
+        {
+            myProcParams->indexMotifLenReal = ii;
+        }
+        if (myProcParams->interpFac[ii]>max_factor)
+        {
+            max_factor = myProcParams->interpFac[ii];
+            myProcParams->indexMotifLenLongest = ii;
+        }
+    }
+    //CRUCIAL POINT !!! since cubic interpolation needs 4 points (2 ahead) just store 
+    myProcParams->motifLengths[myProcParams->indexMotifLenLongest]+=1;
+    
+    totalPitchNonSilSamples = nPitchSamples;
+    lenRawMotifData = myProcParams->motifLengths[myProcParams->indexMotifLenLongest];
+    
+    readPatternDump(patternFile, &pInfo, &NPatterns);
+    
+    //############ finding indexes where to start filling seed motif sequence #################
+    patternInd = (INDTYPE*)malloc(sizeof(INDTYPE)*NPatterns);
+    for(ii=0;ii<NPatterns;ii++)
+    {
+        min_val = INF;
+        for(jj=0;jj<totalPitchNonSilSamples;jj++)
+        {
+            if (fabs(timeSamples[jj]-pInfo[ii].str)<min_val)
+            {
+                min_val = fabs(timeSamples[jj]-pInfo[ii].str);
+                patternInd[ii] = jj;
+            }
+        }
+    }
+    
+    data = (DATATYPE **)malloc(sizeof(DATATYPE *)*NPatterns);
+    tStamps = (segInfoInterp_t *)malloc(sizeof(segInfoInterp_t)*NPatterns); 
+    
+    for(ii=0;ii<NPatterns;ii++)
+    {
+        data[ii] = (DATATYPE *)malloc(sizeof(DATATYPE*)*lenRawMotifData);
+        
+        tStamps[ii].str = timeSamples[patternInd[ii]];
+        for(jj=0;jj<myProcParams->nInterpFac;jj++)
+        {
+            tStamps[ii].end[jj] = timeSamples[patternInd[ii]+myProcParams->motifLengths[jj]-1];
+        }
+        for(jj=0;jj<lenRawMotifData;jj++)
+        {
+            data[ii][jj]=pitchSamples[patternInd[ii]+jj];
+        }
+    }
+   
+    lenTS = NPatterns; 
+    free(tStamps);
+    free(pitchSamples);
+    free(timeSamples);
+    free(patternInd);
+    
+    *d = data;
+    *p = pInfo;
+    *pattenLen = lenRawMotifData;
+    
+    return lenTS;
+}
+
 
 
 /*

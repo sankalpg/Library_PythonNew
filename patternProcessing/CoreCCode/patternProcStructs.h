@@ -12,6 +12,14 @@ typedef struct segInfo
     float end;
 }segInfo_t;
 
+typedef struct patternInfo
+{
+    INDTYPE id;
+    float str;
+    float end;
+}patternInfo_t;
+
+
 typedef struct segInfoInterp
 {
     float str;
