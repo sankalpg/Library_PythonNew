@@ -439,4 +439,26 @@ def validateMotifSearchDB(root_dir, fileout):
                 #break
             
     fid.close()
+    
+def validateMotifSearchOutput(root_dir, fileout):
+    
+    filenames = GetFileNamesInDir(root_dir, '.2s25Motif_CONF1')
+    
+    ExtensionsRef = ['.2s25SearchMapp_CONF1', '.2s25MotifSearch_CONF1SqEuclidean', '.2s25MotifSearch_CONF1ShiftLinExp', '.2s25MotifSearch_CONF1ShiftCityBlock', '.2s25MotifSearch_CONF1CityBlock']
+    
+    fid = open(fileout, "w")
+    
+    for filename in filenames:
+        fname, ext = os.path.splitext(filename)
+        
+        for ext in ExtensionsRef:
+            filecheck = fname + ext
+            if not os.path.isfile(filecheck):
+                fid.write("%s\t%s\n"%(filename, ext))
+                #break
             
+    fid.close()    
+
+
+        
+        
