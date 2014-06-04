@@ -27,21 +27,23 @@ int compareMotifInfo(const void *a, const void *b)
 int main( int argc , char *argv[])
 {
     FILE *fp, *fp2;
-    char *baseName, *patternInfoExt, *patternDataExt, *flistExt, motifFile[N_SIM_MEASURES][400]={'\0'}, *knnExt, searchFileList[400]={'\0'}, searchFile1[400] = {'\0'}, searchFile2[400] = {'\0'}, tempFilename[200][400]= {'\0'};
-    float t1,t2, t3,t4;
+    char *baseName, *patternInfoExt, *patternDataExt, *flistExt, motifFile[N_SIM_MEASURES][400]={'\0'}, *knnExt, filelistFilename[400]={'\0'}, searchFileNames[2000][400] = {'\0'}, tempFilename[400]= {'\0'};
+    float t1,t2, t3,t4, temp[10], pHop;
     int lenMotifReal, verbos=0, bandDTW, maxNMotifsPairs, nInterFact, **combMTX, mm, searchFileID, *emptySpaceInd, emptySpaceCnt, priorityListInd, nPriorityList, *emptySpacePtr, match_found, NFilesSearch; 
-    INDTYPE    NSeed, lenTS, K,ii,jj, pp, ss;
+    INDTYPE    NSeed, lenTS, K,ii,jj, pp, ss, NPatternsFile1, NPatternsFile2;
     bool sameFile;
+    patternInfo_t *patternInfo1, *patternInfo2;
     
-    DATATYPE **dataInterpSeed, **dataInterp, **U, **L, **USeed, **LSeed, *accLB;
+    DATATYPE **data1Interp, **data2Interp, *dataStr1, **dataPtr1, *dataStr2, **dataPtr2, **U1, **L1, **U2, **L2, *accLB;
     DISTTYPE LB_Keogh_EQ, realDist,LB_Keogh_EC,bsf=INF,**costMTX, LB_kim_FL, *bsfArray;
     motifInfo **topKmotifs;
-    segInfo_t *tStampsInterp, *tStampsInterpSeed;
+    segInfo_t *tStampsInterpDummy;
     procLogs_t myProcLogs;
     procParams_t myProcParams;
     fileExts_t myFileExts;
     longTermDataStorage_t **longTermDataStorage;
     INDTYPE patternID;
+    segInfoInterp_t *tStampsDummy;
     
     t3=clock();
     
@@ -66,7 +68,7 @@ int main( int argc , char *argv[])
     myProcLogs.totalPriorityUpdates=0;
     
     
-    if(argc < 12 || argc > 13)
+    if(argc < 13 || argc > 14)
     {
         printf("\nInvalid number of arguments!!!\n");
         exit(1);
@@ -82,7 +84,8 @@ int main( int argc , char *argv[])
     myProcParams.durMotif = atof(argv[8]);
     K = atoi(argv[9]);
     myProcParams.nInterpFac=atoi(argv[10]);
-    if (atoi(argv[11])>0)
+    myProcParams.dsFactor = atoi(argv[11]);
+    if (atoi(argv[12])>0)
     {
         myProcParams.simMeasureRankRefinement = (int*)malloc(sizeof(int)*1);
         myProcParams.simMeasureRankRefinement[0] = atoi(argv[18]);
@@ -98,7 +101,7 @@ int main( int argc , char *argv[])
         myProcParams.nSimMeasuresUsed =4;
     }
      
-    if( argc == 13 ){verbos = atoi(argv[12]);}
+    if( argc == 14 ){verbos = atoi(argv[13]);}
     
     //############ CRUCIAL PARAMETERS ##################
     myProcParams.minPossiblePitch = 60.0;
@@ -172,39 +175,114 @@ int main( int argc , char *argv[])
     }
 
     //search file name
-    strcat(searchFileList,baseName);
-    strcat(searchFileList,myFileExts.searchExt); 
+    strcat(filelistFilename,baseName);
+    strcat(filelistFilename,flistExt); 
     
     
     
-    fp1 = fopen(searchFileList, "r");
+    fp1 = fopen(filelistFilename, "r");
+    ii=0;
     while(fgets(tempFilename, 400, fp1))
     {
-        sscanf(tempFilename, "%[^\n]s\n", searchFile1);
-        
-        //read the data of the file searchFile1
-        strcat(motifFile[ii],baseName);
-        strcat(motifFile[ii],knnExt);
-        
-        // process the data of the searchFile1 (mainly linear stretching)
-        
-        fp2 = fopen(searchFileList, "r");
-        while(fgets(tempFilename, 400, fp2))
-        {
-            sscanf(tempFilename, "%[^\n]s\n", searchFile2);
-            //read the data of the file searchFile2
-        
-            // process the data of the searchFile2 (mainly linear stretching)
-            
-            //loop to compute distances
-            
-            
-            
-        }
-        fclose(fp2);
+        sscanf(tempFilename, "%[^\n]s\n", searchFileNames[ii]);
+        ii++;
         
     }
     fclose(fp1);
+    
+    NFilesSearch = ii;
+    
+    //since we need to know hop size and compute motif lengths in terms of samples and since we have stored only the processed patterns (downsampled etc). We need to read one pitch file with the same processing parameters to fetch these values.
+    // Opening pitch file (JUST TO OBTAIN HOP SIZE)
+    //pitch file name
+    strcat(pitchFile,searchFileNames[0]);
+    strcat(pitchFile,myFileExts->pitchExt);
+    fp1 =fopen(pitchFile,"r");
+    if (fp1==NULL)
+    {
+        printf("Error opening file %s\n", pitchFile);
+        return 0;(myProcParams->motifLengths[myProcParams->indexMotifLenLongest]
+    }
+    //reading just first two lines, in order to obtain hopsize//
+    nRead = fscanf(fp1, "%f\t%f\n",&temp[0],&temp[1]);
+    nRead = fscanf(fp1, "%f\t%f\n",&temp[2],&temp[3]);
+    pHop = (temp[2]-temp[0])*myProcParams->dsFactor;  //final hop size afte downsampling
+    fclose(fp1);
+    
+    // calculating lengths of the patterns
+    for (ii=0;ii<myProcParams->nInterpFac; ii++)
+    {
+        myProcParams->motifLengths[ii] = (int)ceil((myProcParams->durMotif*myProcParams->interpFac[ii])/pHop);
+        if (myProcParams->interpFac[ii]==1)
+        {
+            myProcParams->indexMotifLenReal = ii;
+        }
+        if (myProcParams->interpFac[ii]>max_factor)
+        {
+            max_factor = myProcParams->interpFac[ii];
+            myProcParams->indexMotifLenLongest = ii;
+        }
+    }
+    
+    //CRUCIAL POINT !!! since cubic interpolation needs 4 points (2 ahead) just store 
+    myProcParams->motifLengths[myProcParams->indexMotifLenLongest]+=1;    
+    
+    
+    for (ii=0;ii<NFilesSearch;ii++)
+    {
+        //read the data 
+        strcat(tempFilename,searchFileNames[ii]);
+        strcat(tempFilename,patternInfoExt);
+        readPatternDump(tempFilename, &patternInfo1, &NPatternsFile1);
+        
+        //since we know the length of the data by now. Lets assign memory for it
+        dataStr1 = (DATATYPE *)malloc(sizeof(DATATYPE)*(NPatternsFile1*myProcParams->motifLengths[myProcParams->indexMotifLenLongest]))
+        dataPtr1 = (DATATYPE **)malloc(sizeof(DATATYPE *)*NPatternsFile1);
+        for (ss = 0 ; ss < NPatternsFile1 ; ss++)
+        {
+            dataPtr1[ss] = &dataStr1[ss*myProcParams->motifLengths[myProcParams->indexMotifLenLongest]];
+        }
+        
+        strcat(tempFilename,searchFileNames[ii]);
+        strcat(tempFilename,patternDataExt);
+        fp1 = fopen(tempFilename, "rb");
+        fread ( dataStr1, sizeof(DATATYPE), NPatternsFile1, fp1);
+        fclose(fp1);
+        
+        //generate multiple interpolated versions
+        tStampsDummy = (segInfoInterp_t*)malloc(sizeof(segInfoInterp_t)*NPatternsFile1);
+        generateInterpolatedSequences(dataPtr1, tStampsDummy, &data1Interp,  &tStampsInterpDummy, NPatternsFile1, myProcParams);
+        
+        for (jj=ii;jj<NFilesSearch; jj++)
+        {
+            //read the data 
+            strcat(tempFilename,searchFileNames[jj]);
+            strcat(tempFilename,patternInfoExt);
+            readPatternDump(tempFilename, &patternInfo1, &NPatternsFile1);
+            
+            //since we know the length of the data by now. Lets assign memory for it
+            dataStr1 = (DATATYPE *)malloc(sizeof(DATATYPE)*(NPatternsFile1*myProcParams->motifLengths[myProcParams->indexMotifLenLongest]))
+            dataPtr1 = (DATATYPE **)malloc(sizeof(DATATYPE *)*NPatternsFile1);
+            for (ss = 0 ; ss < NPatternsFile1 ; ss++)
+            {
+                dataPtr1[ss] = &dataStr1[ss*myProcParams->motifLengths[myProcParams->indexMotifLenLongest]];
+            }
+            
+            strcat(tempFilename,searchFileNames[jj]);
+            strcat(tempFilename,patternDataExt);
+            fp1 = fopen(tempFilename, "rb");
+            fread ( dataStr1, sizeof(DATATYPE), NPatternsFile1, fp1);
+            fclose(fp1);
+            
+            //generate multiple interpolated versions
+            tStampsDummy = (segInfoInterp_t*)malloc(sizeof(segInfoInterp_t)*NPatternsFile1);
+            generateInterpolatedSequences(dataPtr1, tStampsDummy, &data1Interp,  &tStampsInterpDummy, NPatternsFile1, myProcParams);
+        
+        }
+    }
+
+
+    
     
     
     
