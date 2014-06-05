@@ -53,6 +53,17 @@ typedef struct motifInfo
 }motifInfo_t;
 
 
+typedef struct patternDist
+{
+  
+    DISTTYPE dist;
+    INDTYPE patternID1;
+    INDTYPE patternID2;
+
+    
+}patternDist_t;
+
+
 
 
 

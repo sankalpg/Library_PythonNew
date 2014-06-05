@@ -85,6 +85,11 @@ void dumpDiscoveredMotifInfo(char *motifFile, motifInfo *topKmotifs, segInfo_t *
 
 void dumpParameterValuesUsed(char *paramOutFile, procParams_t *myProcParams);
 
+
+int readPatternDump(char *patternFile, patternInfo_t **pInfo, int *NPatterns);
+
+void generateInterpolatedSequences(DATATYPE **data, segInfoInterp_t *tStamps, DATATYPE ***dataOut,  segInfo_t **timeOut, INDTYPE N, procParams_t *myProcParams);
+
 #endif //MOTIFDATAIO_H
 
 
