@@ -22,7 +22,7 @@ int main( int argc , char *argv[])
     bool sameFile;
     patternInfo_t *patternInfo1, *patternInfo2;
     
-    DATATYPE **data1Interp, **data2Interp, *dataStr1, **dataPtr1, *dataStr2, **dataPtr2, **U1, **L1, **U2, **L2, *accLB;
+    DATATYPE **data1Interp, **data2Interp, **data1, **data2, **U1, **L1, **U2, **L2, *accLB;
     DISTTYPE LB_Keogh_EQ, realDist,LB_Keogh_EC,bsf=INF,**costMTX, LB_kim_FL, *bsfArray, bsf_local;
     patternDist_t **topKmotifs;
     segInfo_t *tStampsInterpDummy1, *tStampsInterpDummy2;
@@ -166,12 +166,14 @@ int main( int argc , char *argv[])
     strcat(filelistFilename,baseName);
     strcat(filelistFilename,flistExt); 
     
-    
+    printf("Hello1\n");
     
     fp1 = fopen(filelistFilename, "r");
+    printf("%s\n", filelistFilename);
     ii=0;
     while(fgets(tempFilename, 400, fp1))
     {
+        printf("%s\n", tempFilename);
         sscanf(tempFilename, "%[^\n]s\n", searchFileNames[ii]);
         ii++;
         
@@ -179,6 +181,8 @@ int main( int argc , char *argv[])
     fclose(fp1);
     
     NFilesSearch = ii;
+
+    printf("Hello1.25\n");
     
     //since we need to know hop size and compute motif lengths in terms of samples and since we have stored only the processed patterns (downsampled etc). We need to read one pitch file with the same processing parameters to fetch these values.
     // Opening pitch file (JUST TO OBTAIN HOP SIZE)
@@ -212,6 +216,8 @@ int main( int argc , char *argv[])
         }
     }
     
+    printf("Hello1.5\n");
+
     //CRUCIAL POINT !!! since cubic interpolation needs 4 points (2 ahead) just store 
     myProcParams.motifLengths[myProcParams.indexMotifLenLongest]+=1;    
  
@@ -219,25 +225,33 @@ int main( int argc , char *argv[])
     strcat(patternInfoFile,patternInfoExt);
     readPatternDump(patternInfoFile, &patternInfo1, &NPatternsFile1);
     
+    lenTS1 = NPatternsFile1*myProcParams.nInterpFac;
+
     //since we know the length of the data by now. Lets assign memory for it
-    dataStr1 = (DATATYPE *)malloc(sizeof(DATATYPE)*(NPatternsFile1*myProcParams.motifLengths[myProcParams.indexMotifLenLongest]));
-    dataPtr1 = (DATATYPE **)malloc(sizeof(DATATYPE *)*NPatternsFile1);
-    for (ss = 0 ; ss < NPatternsFile1 ; ss++)
-    {
-        dataPtr1[ss] = &dataStr1[ss*myProcParams.motifLengths[myProcParams.indexMotifLenLongest]];
-    }
+    data1 = (DATATYPE **)malloc(sizeof(DATATYPE *)*NPatternsFile1);
     
     strcat(patternDataFile,baseName);
     strcat(patternDataFile,patternDataExt);
     fp1 = fopen(patternDataFile, "rb");
-    fread ( dataStr1, sizeof(DATATYPE), NPatternsFile1, fp1);
+
+    for (ss = 0 ; ss < NPatternsFile1 ; ss++)
+    {
+        data1[ss] = (DATATYPE *)malloc(sizeof(DATATYPE)*myProcParams.motifLengths[myProcParams.indexMotifLenLongest]);
+        fread(data1[ss], sizeof(DATATYPE), myProcParams.motifLengths[myProcParams.indexMotifLenLongest], fp1);
+
+    }
+    
     fclose(fp1);
     
+
+    printf("Hello2\n");
+
+
     //generate multiple interpolated versions
     tStampsDummy1 = (segInfoInterp_t*)malloc(sizeof(segInfoInterp_t)*NPatternsFile1);
-    generateInterpolatedSequences(dataPtr1, tStampsDummy1, &data1Interp,  &tStampsInterpDummy1, (INDTYPE)NPatternsFile1, &myProcParams);
+    generateInterpolatedSequences(data1, tStampsDummy1, &data1Interp,  &tStampsInterpDummy1, (INDTYPE)NPatternsFile1, &myProcParams);
 
-    lenTS1 = NPatternsFile1*myProcParams.nInterpFac;
+    
     nPriorityList = NPatternsFile1;
 
     // generating envelops for the seed motifs
@@ -283,6 +297,8 @@ int main( int argc , char *argv[])
         bsfArray[ii] = bsf;
     }
 
+    printf("Hello3\n");
+
     memset(tempFilename, '\0', sizeof(char)*400);
     for (ss=0;ss<NFilesSearch; ss++)
     {
@@ -292,26 +308,26 @@ int main( int argc , char *argv[])
         readPatternDump(tempFilename, &patternInfo2, &NPatternsFile2);
         memset(tempFilename, '\0', sizeof(char)*400);
         
+        lenTS2 = NPatternsFile2*myProcParams.nInterpFac;
+
         //since we know the length of the data by now. Lets assign memory for it
-        dataStr2 = (DATATYPE *)malloc(sizeof(DATATYPE)*(NPatternsFile2*myProcParams.motifLengths[myProcParams.indexMotifLenLongest]));
-        dataPtr2 = (DATATYPE **)malloc(sizeof(DATATYPE *)*NPatternsFile2);
-        for (ii = 0 ; ii < NPatternsFile2 ; ii++)
-        {
-            dataPtr2[ii] = &dataStr2[ii*myProcParams.motifLengths[myProcParams.indexMotifLenLongest]];
-        }
-        
+        data2 = (DATATYPE **)malloc(sizeof(DATATYPE *)*NPatternsFile2);
         strcat(tempFilename,searchFileNames[ss]);
         strcat(tempFilename,patternDataExt);
         fp1 = fopen(tempFilename, "rb");
-        fread ( dataStr2, sizeof(DATATYPE), NPatternsFile2, fp1);
+        for (ii = 0 ; ii < NPatternsFile2 ; ii++)
+        {
+            data2[ii] = (DATATYPE *)malloc(sizeof(DATATYPE)*myProcParams.motifLengths[myProcParams.indexMotifLenLongest]);
+            fread(data2[ii], sizeof(DATATYPE), myProcParams.motifLengths[myProcParams.indexMotifLenLongest], fp1);
+        }
         fclose(fp1);
         memset(tempFilename, '\0', sizeof(char)*400);
         
         //generate multiple interpolated versions
         tStampsDummy2 = (segInfoInterp_t*)malloc(sizeof(segInfoInterp_t)*NPatternsFile2);
-        generateInterpolatedSequences(dataPtr2, tStampsDummy2, &data2Interp,  &tStampsInterpDummy2, (INDTYPE) NPatternsFile2, &myProcParams);
+        generateInterpolatedSequences(data2, tStampsDummy2, &data2Interp,  &tStampsInterpDummy2, (INDTYPE) NPatternsFile2, &myProcParams);
         
-        lenTS2 = NPatternsFile2*myProcParams.nInterpFac;
+        printf("Hello4\n");
 
         t1=clock();
         //computing envelops for the file to be searched
@@ -381,29 +397,19 @@ int main( int argc , char *argv[])
             }
         }
 
+        printf("Hello5\n");
+
         for(ii=0;ii<(lenTS2);ii++)
         {   
             free(U2[ii]);
             free(L2[ii]);
+            free(data2Interp[ii]);
         }
-        for(ii=0;ii<(NPatternsFile2);ii++)
-        {   
-            for (jj=0; jj < myProcParams.nInterpFac; jj++)
-            {
-                if (myProcParams.interpFac[jj] !=1)
-                {
-                    free(data2Interp[ii]);
-                }
-                
-            }
-        }
-
-
+        
         free(U2);
         free(L2);
         free(data2Interp);
-        free(dataStr2);
-        free(dataPtr2);
+        free(data2);
         free(tStampsDummy2);
         free(tStampsInterpDummy2);
     
@@ -413,30 +419,19 @@ int main( int argc , char *argv[])
     {   
         free(U1[ii]);
         free(L1[ii]);
+        free(data1Interp[ii]);
     }
-    for(ii=0;ii<(NPatternsFile1);ii++)
-    {   
-        for (jj=0; jj < myProcParams.nInterpFac; jj++)
-        {
-            if (myProcParams.interpFac[jj] ==1)
-            {
-                continue;
-            }
-            free(data1Interp[ii]);    
-        }
-    }
-
-
+    
     free(U1);
     free(L1);
     free(data1Interp);
-    free(dataStr1);
-    free(dataPtr1);
+    free(data1);
     free(tStampsDummy1);
     free(tStampsInterpDummy1);
 
-    
-        
+    printf("Hello6\n");
+
+    return 1;
 
 
 }
