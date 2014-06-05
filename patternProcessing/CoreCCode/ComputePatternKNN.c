@@ -7,21 +7,9 @@
 ******************************************************************************/
 
 
-#include "SearchInterDTW.h"
+#include "ComputePatternKNN.h"
 //#define DEBUG_GENERATION
 
-int compareMotifInfo(const void *a, const void *b)
-{
-    if (((motifInfo*)a)->dist > ((motifInfo*)b)->dist)
-    {
-        return 1;
-    }
-    else if (((motifInfo*)a)->dist < ((motifInfo*)b)->dist)
-    {
-        return -1;
-    }
-    return 0;
-}
 
 
 int main( int argc , char *argv[])
@@ -29,21 +17,21 @@ int main( int argc , char *argv[])
     FILE *fp, *fp1, *fp2;
     char *baseName, *patternInfoExt, *patternDataExt, *flistExt, motifFile[N_SIM_MEASURES][400]={'\0'}, *knnExt, filelistFilename[400]={'\0'}, searchFileNames[2000][400] = {'\0'}, tempFilename[400]= {'\0'}, pitchFile[400]={'\0'}, patternInfoFile[400]={'\0'}, patternDataFile[400]={'\0'};
     float t1,t2, t3,t4, temp[10], pHop, max_factor;
-    int lenMotifReal, verbos=0, bandDTW, maxNMotifsPairs, nInterFact, **combMTX, mm, searchFileID, *emptySpaceInd, emptySpaceCnt, priorityListInd, nPriorityList, *emptySpacePtr, match_found, NFilesSearch, nRead, NPatternsFile1, NPatternsFile2; 
-    INDTYPE    NSeed, lenTS, K,ii,jj, pp,mm, ss, ind1, ind2;
+    int lenMotifReal, verbos=0, bandDTW, maxNMotifsPairs, nInterFact, **combMTX, searchFileID, *emptySpaceInd, emptySpaceCnt, priorityListInd, nPriorityList, *emptySpacePtr, match_found, NFilesSearch, nRead, NPatternsFile1, NPatternsFile2; 
+    INDTYPE    NSeed, K,ii,jj, pp,mm, ss, ind1, ind2, lenTS1, lenTS2;
     bool sameFile;
     patternInfo_t *patternInfo1, *patternInfo2;
     
     DATATYPE **data1Interp, **data2Interp, *dataStr1, **dataPtr1, *dataStr2, **dataPtr2, **U1, **L1, **U2, **L2, *accLB;
-    DISTTYPE LB_Keogh_EQ, realDist,LB_Keogh_EC,bsf=INF,**costMTX, LB_kim_FL, *bsfArray;
+    DISTTYPE LB_Keogh_EQ, realDist,LB_Keogh_EC,bsf=INF,**costMTX, LB_kim_FL, *bsfArray, bsf_local;
     patternDist_t **topKmotifs;
-    segInfo_t *tStampsInterpDummy;
+    segInfo_t *tStampsInterpDummy1, *tStampsInterpDummy2;
     procLogs_t myProcLogs;
     procParams_t myProcParams;
     fileExts_t myFileExts;
     longTermDataStorage_t **longTermDataStorage;
     INDTYPE patternID;
-    segInfoInterp_t *tStampsDummy;
+    segInfoInterp_t *tStampsDummy1, *tStampsDummy2;
     
     t3=clock();
     
@@ -246,20 +234,21 @@ int main( int argc , char *argv[])
     fclose(fp1);
     
     //generate multiple interpolated versions
-    tStampsDummy = (segInfoInterp_t*)malloc(sizeof(segInfoInterp_t)*NPatternsFile1);
-    generateInterpolatedSequences(dataPtr1, tStampsDummy, &data1Interp,  &tStampsInterpDummy, (INDTYPE)NPatternsFile1, &myProcParams);
+    tStampsDummy1 = (segInfoInterp_t*)malloc(sizeof(segInfoInterp_t)*NPatternsFile1);
+    generateInterpolatedSequences(dataPtr1, tStampsDummy1, &data1Interp,  &tStampsInterpDummy1, (INDTYPE)NPatternsFile1, &myProcParams);
 
+    lenTS1 = NPatternsFile1*myProcParams.nInterpFac;
     nPriorityList = NPatternsFile1;
 
     // generating envelops for the seed motifs
     lenMotifReal = myProcParams.motifLengths[myProcParams.indexMotifLenReal];
     bandDTW = (int)floor(lenMotifReal*myProcParams.DTWBand);
-    U1 = (DATATYPE **)malloc(sizeof(DATATYPE *)*NPatternsFile1*myProcParams.nInterpFac);
-    L1= (DATATYPE **)malloc(sizeof(DATATYPE *)*NPatternsFile1*myProcParams.nInterpFac);
+    U1 = (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS1);
+    L1= (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS1);
     accLB = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
-    topKmotifs = (motifInfo **)malloc(sizeof(motifInfo*)*nPriorityList);
+    topKmotifs = (patternDist_t **)malloc(sizeof(patternDist_t*)*nPriorityList);
     
-    for (ii=0;ii<NPatternsFile1;ii++)
+    for (ii=0;ii<lenTS1;ii++)
     {
         U1[ii] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
         L1[ii] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
@@ -280,7 +269,7 @@ int main( int argc , char *argv[])
 
     for(jj=0;jj<nPriorityList;jj++)
     {
-        topKmotifs[jj] = (motifInfo *)malloc(sizeof(motifInfo)*K);
+        topKmotifs[jj] = (patternDist_t *)malloc(sizeof(patternDist_t)*K);
         for(ii=0;ii<K;ii++)
         {
             topKmotifs[jj][ii].dist = INF;
@@ -294,7 +283,7 @@ int main( int argc , char *argv[])
         bsfArray[ii] = bsf;
     }
 
-
+    memset(tempFilename, '\0', sizeof(char)*400);
     for (ss=0;ss<NFilesSearch; ss++)
     {
         //read the data 
@@ -306,9 +295,9 @@ int main( int argc , char *argv[])
         //since we know the length of the data by now. Lets assign memory for it
         dataStr2 = (DATATYPE *)malloc(sizeof(DATATYPE)*(NPatternsFile2*myProcParams.motifLengths[myProcParams.indexMotifLenLongest]));
         dataPtr2 = (DATATYPE **)malloc(sizeof(DATATYPE *)*NPatternsFile2);
-        for (ss = 0 ; ss < NPatternsFile2 ; ss++)
+        for (ii = 0 ; ii < NPatternsFile2 ; ii++)
         {
-            dataPtr2[ss] = &dataStr2[ss*myProcParams.motifLengths[myProcParams.indexMotifLenLongest]];
+            dataPtr2[ii] = &dataStr2[ii*myProcParams.motifLengths[myProcParams.indexMotifLenLongest]];
         }
         
         strcat(tempFilename,searchFileNames[ss]);
@@ -319,16 +308,17 @@ int main( int argc , char *argv[])
         memset(tempFilename, '\0', sizeof(char)*400);
         
         //generate multiple interpolated versions
-        tStampsDummy = (segInfoInterp_t*)malloc(sizeof(segInfoInterp_t)*NPatternsFile2);
-        generateInterpolatedSequences(dataPtr2, tStampsDummy, &data2Interp,  &tStampsInterpDummy, (INDTYPE) NPatternsFile2, &myProcParams);
+        tStampsDummy2 = (segInfoInterp_t*)malloc(sizeof(segInfoInterp_t)*NPatternsFile2);
+        generateInterpolatedSequences(dataPtr2, tStampsDummy2, &data2Interp,  &tStampsInterpDummy2, (INDTYPE) NPatternsFile2, &myProcParams);
         
+        lenTS2 = NPatternsFile2*myProcParams.nInterpFac;
 
         t1=clock();
         //computing envelops for the file to be searched
-        U2 = (DATATYPE **)malloc(sizeof(DATATYPE *)*NPatternsFile2*myProcParams.nInterpFac);
-        L2 = (DATATYPE **)malloc(sizeof(DATATYPE *)*NPatternsFile2*myProcParams.nInterpFac);
+        U2 = (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS2);
+        L2 = (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS2);
         
-        for (ii=0;ii<lenTS;ii++)
+        for (ii=0;ii<lenTS2;ii++)
         {
             U2[ii] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
             L2[ii] = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
@@ -391,13 +381,123 @@ int main( int argc , char *argv[])
             }
         }
 
+        for(ii=0;ii<(lenTS2);ii++)
+        {   
+            free(U2[ii]);
+            free(L2[ii]);
+        }
+        for(ii=0;ii<(NPatternsFile2);ii++)
+        {   
+            for (jj=0; jj < myProcParams.nInterpFac; jj++)
+            {
+                if (myProcParams.interpFac[jj] !=1)
+                {
+                    free(data2Interp[ii]);
+                }
+                
+            }
+        }
 
- 
+
+        free(U2);
+        free(L2);
+        free(data2Interp);
+        free(dataStr2);
+        free(dataPtr2);
+        free(tStampsDummy2);
+        free(tStampsInterpDummy2);
     
     }
 
+    for(ii=0;ii<(lenTS1);ii++)
+    {   
+        free(U1[ii]);
+        free(L1[ii]);
+    }
+    for(ii=0;ii<(NPatternsFile1);ii++)
+    {   
+        for (jj=0; jj < myProcParams.nInterpFac; jj++)
+        {
+            if (myProcParams.interpFac[jj] ==1)
+            {
+                continue;
+            }
+            free(data1Interp[ii]);    
+        }
+    }
 
 
+    free(U1);
+    free(L1);
+    free(data1Interp);
+    free(dataStr1);
+    free(dataPtr1);
+    free(tStampsDummy1);
+    free(tStampsInterpDummy1);
+
+    
+        
+
+
+}
+
+
+
+
+DISTTYPE manageTopKMotifs(patternDist_t *topKmotifs, int K, INDTYPE id1, INDTYPE id2, DISTTYPE dist)
+{
+    int ii=0;
+    int sortInd = -1;
+    int matchInd = -1;
+    int a=0;
+    
+    
+    for(ii=0;ii<K;ii++)
+    {
+        if ((topKmotifs[ii].dist > dist)&&(sortInd==-1))
+        {
+            sortInd=ii;
+        }
+
+        // searching if we already have a motif in out top K list which is near to the currently good match
+        if ((topKmotifs[ii].patternID1 == id1) && (topKmotifs[ii].patternID2 == id2))
+        {
+            matchInd=ii;
+            break;
+        }
+        
+    }
+
+    if (sortInd==-1)//we couldn't get any satisfactory replacement before we get a close neighbour
+    {
+        return topKmotifs[K-1].dist;
+    }
+    //There are threbsfe possibilities
+    //1) There is no match found in the existing top motifs, simplest
+    if (matchInd==-1)
+    {
+        memmove(&topKmotifs[sortInd+1], &topKmotifs[sortInd], sizeof(patternDist_t)*(K-(sortInd+1)));
+        topKmotifs[sortInd].dist = dist;
+        topKmotifs[sortInd].patternID1 = id1;
+        topKmotifs[sortInd].patternID2 = id2;
+    }
+    else if (sortInd == matchInd)
+    {
+        topKmotifs[sortInd].dist = dist;
+        topKmotifs[sortInd].patternID1 = id1;
+        topKmotifs[sortInd].patternID2 = id2;
+    }
+    else if (sortInd < matchInd)
+    {
+        memmove(&topKmotifs[sortInd+1], &topKmotifs[sortInd], sizeof(patternDist_t)*(matchInd-sortInd));
+        topKmotifs[sortInd].dist = dist;
+        topKmotifs[sortInd].patternID1 = id1;
+        topKmotifs[sortInd].patternID2 = id2;
+    }
+    
+    return topKmotifs[K-1].dist;
+    
+}
     
     
     
@@ -525,73 +625,8 @@ int main( int argc , char *argv[])
     dumpParameterValuesUsed(paramOutFile, &myProcParams);
 
     */
-    
-    return 1;
-    
-}
 
 
-
-DISTTYPE manageTopKMotifs(motifInfo *topKmotifs, segInfo_t *tStamps1, segInfo_t *tStamps2, int K, INDTYPE ind1 , INDTYPE ind2, DISTTYPE dist, float blackDur, int searchFileID)
-{
-    int ii=0;
-    int sortInd = -1;
-    int matchInd = -1;
-    int a=0;
-    
-    
-    for(ii=0;ii<K;ii++)
-    {
-        if ((topKmotifs[ii].dist > dist)&&(sortInd==-1))
-        {
-            sortInd=ii;
-        }
-
-        // searching if we already have a motif in out top K list which is near to the currently good match
-        if ((topKmotifs[ii].searchFileID==searchFileID) && (fabs(tStamps2[topKmotifs[ii].ind2].str-tStamps2[ind2].str)<blackDur))
-        {
-            matchInd=ii;
-            break;
-        }
-        
-    }
-
-    if (sortInd==-1)//we couldn't get any satisfactory replacement before we get a close neighbour
-    {
-        return topKmotifs[K-1].dist;
-    }
-    //There are threbsfe possibilities
-    //1) There is no match found in the existing top motifs, simplest
-    if (matchInd==-1)
-    {
-        memmove(&topKmotifs[sortInd+1], &topKmotifs[sortInd], sizeof(motifInfo)*(K-(sortInd+1)));
-        topKmotifs[sortInd].dist = dist;
-        topKmotifs[sortInd].ind1 = ind1;
-        topKmotifs[sortInd].ind2 = ind2;
-        topKmotifs[sortInd].searchFileID = searchFileID;
-        topKmotifs[sortInd].patternID = PID_DEFAULT3;
-    }
-    else if (sortInd == matchInd)
-    {
-        topKmotifs[sortInd].dist = dist;
-        topKmotifs[sortInd].ind1 = ind1;
-        topKmotifs[sortInd].ind2 = ind2;
-        topKmotifs[sortInd].searchFileID = searchFileID;
-        topKmotifs[sortInd].patternID = PID_DEFAULT3;
-    }
-    else if (sortInd < matchInd)
-    {
-        memmove(&topKmotifs[sortInd+1], &topKmotifs[sortInd], sizeof(motifInfo)*(matchInd-sortInd));
-        topKmotifs[sortInd].dist = dist;
-        topKmotifs[sortInd].ind1 = ind1;
-        topKmotifs[sortInd].ind2 = ind2;
-        topKmotifs[sortInd].searchFileID = searchFileID;
-        topKmotifs[sortInd].patternID = PID_DEFAULT3;
-    }
-    
-    return topKmotifs[K-1].dist;
-    
-}
 
 
 
