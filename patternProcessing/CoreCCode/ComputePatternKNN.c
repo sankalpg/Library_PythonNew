@@ -166,14 +166,10 @@ int main( int argc , char *argv[])
     strcat(filelistFilename,baseName);
     strcat(filelistFilename,flistExt); 
     
-    printf("Hello1\n");
-    
     fp1 = fopen(filelistFilename, "r");
-    printf("%s\n", filelistFilename);
     ii=0;
     while(fgets(tempFilename, 400, fp1))
     {
-        printf("%s\n", tempFilename);
         sscanf(tempFilename, "%[^\n]s\n", searchFileNames[ii]);
         ii++;
         
@@ -182,8 +178,6 @@ int main( int argc , char *argv[])
     
     NFilesSearch = ii;
 
-    printf("Hello1.25\n");
-    
     //since we need to know hop size and compute motif lengths in terms of samples and since we have stored only the processed patterns (downsampled etc). We need to read one pitch file with the same processing parameters to fetch these values.
     // Opening pitch file (JUST TO OBTAIN HOP SIZE)
     //pitch file name
@@ -215,8 +209,6 @@ int main( int argc , char *argv[])
             myProcParams.indexMotifLenLongest = ii;
         }
     }
-    
-    printf("Hello1.5\n");
 
     //CRUCIAL POINT !!! since cubic interpolation needs 4 points (2 ahead) just store 
     myProcParams.motifLengths[myProcParams.indexMotifLenLongest]+=1;    
@@ -243,10 +235,6 @@ int main( int argc , char *argv[])
     
     fclose(fp1);
     
-
-    printf("Hello2\n");
-
-
     //generate multiple interpolated versions
     tStampsDummy1 = (segInfoInterp_t*)malloc(sizeof(segInfoInterp_t)*NPatternsFile1);
     generateInterpolatedSequences(data1, tStampsDummy1, &data1Interp,  &tStampsInterpDummy1, (INDTYPE)NPatternsFile1, &myProcParams);
@@ -297,8 +285,6 @@ int main( int argc , char *argv[])
         bsfArray[ii] = bsf;
     }
 
-    printf("Hello3\n");
-
     memset(tempFilename, '\0', sizeof(char)*400);
     for (ss=0;ss<NFilesSearch; ss++)
     {
@@ -326,8 +312,6 @@ int main( int argc , char *argv[])
         //generate multiple interpolated versions
         tStampsDummy2 = (segInfoInterp_t*)malloc(sizeof(segInfoInterp_t)*NPatternsFile2);
         generateInterpolatedSequences(data2, tStampsDummy2, &data2Interp,  &tStampsInterpDummy2, (INDTYPE) NPatternsFile2, &myProcParams);
-        
-        printf("Hello4\n");
 
         t1=clock();
         //computing envelops for the file to be searched
@@ -389,7 +373,7 @@ int main( int argc , char *argv[])
 
                 if (bsf_local < bsfArray[ii])
                 {
-                    bsfArray[ii] = manageTopKMotifs(topKmotifs[ii], nPriorityList, patternInfo1[ii].id, patternInfo2[jj].id, bsf_local);
+                    bsfArray[ii] = manageTopKMotifs(topKmotifs[ii], K, patternInfo1[ii].id, patternInfo2[jj].id, bsf_local);
                     myProcLogs.totalPriorityUpdates++;
                 }
 
@@ -397,9 +381,7 @@ int main( int argc , char *argv[])
             }
         }
 
-        printf("Hello5\n");
-
-        for(ii=0;ii<(lenTS2);ii++)
+        for(ii=0;ii<lenTS2;ii++)
         {   
             free(U2[ii]);
             free(L2[ii]);
@@ -428,8 +410,6 @@ int main( int argc , char *argv[])
     free(data1);
     free(tStampsDummy1);
     free(tStampsInterpDummy1);
-
-    printf("Hello6\n");
 
     return 1;
 
