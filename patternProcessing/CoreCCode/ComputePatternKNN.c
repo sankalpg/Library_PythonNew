@@ -1,5 +1,5 @@
-/******************************************************************************
-*******************************************************************************
+
+/*******************************************************************************
 ****** Sankalp Gulati                                                   *******
 ****** MUSIC TECHNOLOGY GROUP, UPF, BARCELONA                           *******
 ******                                                                  *******
@@ -15,9 +15,9 @@
 int main( int argc , char *argv[])
 {
     FILE *fp, *fp1, *fp2;
-    char *baseName, *patternInfoExt, *patternDataExt, *flistExt, motifFile[N_SIM_MEASURES][400]={'\0'}, *knnExt, filelistFilename[400]={'\0'}, searchFileNames[2000][400] = {'\0'}, tempFilename[400]= {'\0'}, pitchFile[400]={'\0'}, patternInfoFile[400]={'\0'}, patternDataFile[400]={'\0'};
+    char *baseName, *patternInfoExt, *patternDataExt, *flistExt, motifFile[N_SIM_MEASURES][400]={'\0'}, *knnExt, filelistFilename[400]={'\0'}, searchFileNames[2000][400] = {'\0'}, tempFilename[400]= {'\0'}, pitchFile[400]={'\0'}, patternInfoFile[400]={'\0'}, patternDataFile[400]={'\0'}, kNNOutFile[400]={'\0'};
     float t1,t2, t3,t4, temp[10], pHop, max_factor;
-    int lenMotifReal, verbos=0, bandDTW, maxNMotifsPairs, nInterFact, **combMTX, searchFileID, *emptySpaceInd, emptySpaceCnt, priorityListInd, nPriorityList, *emptySpacePtr, match_found, NFilesSearch, nRead, NPatternsFile1, NPatternsFile2; 
+    int err, lenMotifReal, verbos=0, bandDTW, maxNMotifsPairs, nInterFact, **combMTX, searchFileID, *emptySpaceInd, emptySpaceCnt, priorityListInd, nPriorityList, *emptySpacePtr, match_found, NFilesSearch, nRead, NPatternsFile1, NPatternsFile2; 
     INDTYPE    NSeed, K,ii,jj, pp,mm, ss, ind1, ind2, lenTS1, lenTS2;
     bool sameFile;
     patternInfo_t *patternInfo1, *patternInfo2;
@@ -29,7 +29,7 @@ int main( int argc , char *argv[])
     procLogs_t myProcLogs;
     procParams_t myProcParams;
     fileExts_t myFileExts;
-    longTermDataStorage_t **longTermDataStorage;
+  
     INDTYPE patternID;
     segInfoInterp_t *tStampsDummy1, *tStampsDummy2;
     
@@ -215,8 +215,12 @@ int main( int argc , char *argv[])
  
     strcat(patternInfoFile,baseName);
     strcat(patternInfoFile,patternInfoExt);
-    readPatternDump(patternInfoFile, &patternInfo1, &NPatternsFile1);
+    err = readPatternDump(patternInfoFile, &patternInfo1, &NPatternsFile1);
     
+	if (err==0)
+	{
+		return 0;
+	}
     lenTS1 = NPatternsFile1*myProcParams.nInterpFac;
 
     //since we know the length of the data by now. Lets assign memory for it
@@ -285,15 +289,22 @@ int main( int argc , char *argv[])
         bsfArray[ii] = bsf;
     }
 
-    memset(tempFilename, '\0', sizeof(char)*400);
     for (ss=0;ss<NFilesSearch; ss++)
     {
         //read the data 
+    	memset(tempFilename, '\0', sizeof(char)*400);
         strcat(tempFilename,searchFileNames[ss]);
         strcat(tempFilename,patternInfoExt);
-        readPatternDump(tempFilename, &patternInfo2, &NPatternsFile2);
-        memset(tempFilename, '\0', sizeof(char)*400);
+        err =  readPatternDump(tempFilename, &patternInfo2, &NPatternsFile2);
+	
+	if (err==0)
+	{
+		continue;
+	}
+	printf("File number %d\t%s\n",(int)ss, tempFilename);
         
+    	memset(tempFilename, '\0', sizeof(char)*400);
+
         lenTS2 = NPatternsFile2*myProcParams.nInterpFac;
 
         //since we know the length of the data by now. Lets assign memory for it
@@ -411,12 +422,32 @@ int main( int argc , char *argv[])
     free(tStampsDummy1);
     free(tStampsInterpDummy1);
 
+    strcat(kNNOutFile, baseName);
+    strcat(kNNOutFile, knnExt);
+    
+    dumpKNNPatterns(kNNOutFile, topKmotifs, K, nPriorityList); 
     return 1;
 
 
 }
 
+int dumpKNNPatterns(char *filename, patternDist_t **topKmotifs, int K, int nPriorityList) 
+{	
+	int ii, jj;
+	FILE *fp;
 
+	
+	fp = fopen(filename, "w"); 
+	for(ii=0;ii<nPriorityList;ii++)
+	{
+		for(jj=0;jj<K;jj++)
+		{
+			fprintf(fp, "%lld\t%lld\t%f\n", topKmotifs[ii][jj].patternID1, topKmotifs[ii][jj].patternID2, topKmotifs[ii][jj].dist);
+		}
+	}
+	fclose(fp);
+
+}
 
 
 DISTTYPE manageTopKMotifs(patternDist_t *topKmotifs, int K, INDTYPE id1, INDTYPE id2, DISTTYPE dist)
