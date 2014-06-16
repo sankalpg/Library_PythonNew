@@ -8,7 +8,8 @@ int main(int argc, char* argv[])
     int verbos;
     int ii=0, jj=0;
     long long int ind1, ind2;
-    float dist;
+    float dist, min_dist=1000000000, max_dist=-100000000000;
+    double clusterCoff;
     
     PUNGraph Graph = TUNGraph::New();
     
@@ -52,8 +53,17 @@ int main(int argc, char* argv[])
                 if (!Graph->IsNode(ind1)) Graph->AddNode(ind1);
                 if (!Graph->IsNode(ind2)) Graph->AddNode(ind2);
                 if (!Graph->IsEdge(ind1, ind2)) Graph->AddEdge(ind1, ind2);
+                
+                if (min_dist > dist)
+                {
+                    min_dist = dist;
+                }
+                if (max_dist < dist)
+                {
+                    max_dist = dist;
+                }
             }
-
+            
             
             jj++;
             fclose(fp2);
@@ -64,11 +74,20 @@ int main(int argc, char* argv[])
         memset(patternKNNFile, '\0', sizeof(char)*400);
         ii++;
     }
+    fclose(fp1);
+    
+    //clusterCoff = TSnap::GetClustCf(Graph);
+    
+    printf("Clustering coff is %f\n",clusterCoff);
+    printf("minimum and maximum distances are %f and %f respectively", min_dist, max_dist);
 
     /*TFOut FOut(outputNetworkFile); 
     Graph->Save(FOut);*/
     
-    TSnap::SaveEdgeList(Graph, outputNetworkFile, "Save as tab-separated list of edges");
+    
+    
+    //TSnap::SaveEdgeList(Graph, outputNetworkFile, "Save as tab-separated list of edges");
+    TSnap::SavePajek(Graph, outputNetworkFile); 
 	
 	//TSnap::SaveEdgeList(Graph, "test.txt", "Save as tab-separated list of edges");
     

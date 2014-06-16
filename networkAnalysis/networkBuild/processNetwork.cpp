@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
     if( argc == 3 ){verbos = atoi(argv[2]);}
     
     printf("Trying to read %s\n",graphFile);
-    TFIn FIn(graphFile); 
-    PNGraph Graph = TNGraph::Load(FIn);
+    
+    PNGraph Graph = TSnap::LoadEdgeList(graphFile, 0, 1);
 
 }
