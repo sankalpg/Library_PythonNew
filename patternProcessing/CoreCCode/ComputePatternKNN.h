@@ -5,6 +5,7 @@
 
 
 #include "MotifDataIO.h"
+#include <unistd.h>
 
 //functions
 DISTTYPE manageTopKMotifs(patternDist_t *topKmotifs, int K, INDTYPE id1, INDTYPE id2, DISTTYPE dist);

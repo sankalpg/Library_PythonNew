@@ -17,7 +17,7 @@ int main( int argc , char *argv[])
     FILE *fp, *fp1, *fp2;
     char *baseName, *patternInfoExt, *patternDataExt, *flistExt, motifFile[N_SIM_MEASURES][400]={'\0'}, *knnExt, filelistFilename[400]={'\0'}, searchFileNames[2000][400] = {'\0'}, tempFilename[400]= {'\0'}, pitchFile[400]={'\0'}, patternInfoFile[400]={'\0'}, patternDataFile[400]={'\0'}, kNNOutFile[400]={'\0'};
     float t1,t2, t3,t4, temp[10], pHop, max_factor;
-    int err, lenMotifReal, verbos=0, bandDTW, maxNMotifsPairs, nInterFact, **combMTX, searchFileID, *emptySpaceInd, emptySpaceCnt, priorityListInd, nPriorityList, *emptySpacePtr, match_found, NFilesSearch, nRead, NPatternsFile1, NPatternsFile2; 
+    int err, lenMotifReal, verbos=0, bandDTW, maxNMotifsPairs, nInterFact, **combMTX, searchFileID, *emptySpaceInd, emptySpaceCnt, priorityListInd, nPriorityList, *emptySpacePtr, match_found, NFilesSearch, nRead, NPatternsFile1, NPatternsFile2, overWrite; 
     INDTYPE    NSeed, K,ii,jj, pp,mm, ss, ind1, ind2, lenTS1, lenTS2;
     bool sameFile;
     patternInfo_t *patternInfo1, *patternInfo2;
@@ -56,7 +56,7 @@ int main( int argc , char *argv[])
     myProcLogs.totalPriorityUpdates=0;
     
     
-    if(argc < 13 || argc > 14)
+    if(argc < 14 || argc > 15)
     {
         printf("\nInvalid number of arguments!!!\n");
         exit(1);
@@ -88,8 +88,9 @@ int main( int argc , char *argv[])
         myProcParams.simMeasureRankRefinement[3] = ShiftLinExp;
         myProcParams.nSimMeasuresUsed =4;
     }
+    overWrite = atoi(argv[13]);
      
-    if( argc == 14 ){verbos = atoi(argv[13]);}
+    if( argc == 15 ){verbos = atoi(argv[14]);}
     
     //############ CRUCIAL PARAMETERS ##################
     myProcParams.minPossiblePitch = 60.0;
@@ -100,6 +101,35 @@ int main( int argc , char *argv[])
     myProcParams.maxPauseDur = 0.5;
     myProcParams.DTWBand = 0.1;
     myProcParams.removeTaniSegs=1;
+    
+    strcat(kNNOutFile, baseName);
+    strcat(kNNOutFile, knnExt);
+    
+    if (access(kNNOutFile, F_OK) == 0)
+    {
+        if (verbos ==1)
+        {
+            printf("Files does exists");
+        }
+        
+        if (overWrite == 0)
+        {
+            if (verbos ==1)
+            {
+                printf("File does exists, I am returning");
+            }
+            
+            return 1;
+        }
+    }
+    else
+    {
+        if (verbos ==1)
+        {
+            printf("Output file doesn't exist, need to compute the output");
+        }
+        
+    }
     
     
     if (myProcParams.nInterpFac==1)
@@ -422,9 +452,6 @@ int main( int argc , char *argv[])
     free(tStampsDummy1);
     free(tStampsInterpDummy1);
 
-    strcat(kNNOutFile, baseName);
-    strcat(kNNOutFile, knnExt);
-    
     dumpKNNPatterns(kNNOutFile, topKmotifs, K, nPriorityList); 
     return 1;
 
