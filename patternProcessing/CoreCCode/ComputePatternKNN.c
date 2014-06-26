@@ -414,8 +414,11 @@ int main( int argc , char *argv[])
 
                 if (bsf_local < bsfArray[ii])
                 {
-                    bsfArray[ii] = manageTopKMotifs(topKmotifs[ii], K, patternInfo1[ii].id, patternInfo2[jj].id, bsf_local);
-                    myProcLogs.totalPriorityUpdates++;
+                    if (bsf_local > 0) // update only when the patterns are different
+                    {
+                        bsfArray[ii] = manageTopKMotifs(topKmotifs[ii], K, patternInfo1[ii].id, patternInfo2[jj].id, bsf_local);
+                        myProcLogs.totalPriorityUpdates++;
+                    }
                 }
 
 
