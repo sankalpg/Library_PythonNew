@@ -537,7 +537,7 @@ int readKNNDump(char *kNNFile, patternDist_t **pDist, int *NPairs)
     *NPairs=ii;
     fclose(fp);
     
-    pairsFinal = (patternDist_t*)malloc(sizeof(patternDist_t)*(*pairsFinal)); //ASSUME that none of the single pattern info file will have more than 10k motifs
+    pairsFinal = (patternDist_t*)malloc(sizeof(patternDist_t)*(*NPairs)); //ASSUME that none of the single pattern info file will have more than 10k motifs
     memcpy(pairsFinal, pairs, sizeof(patternDist_t)*(*NPairs));    
     free(pairs);    
     *pDist = pairsFinal;
