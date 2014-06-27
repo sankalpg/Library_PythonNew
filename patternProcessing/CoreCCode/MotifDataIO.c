@@ -510,6 +510,47 @@ INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *b
  * This function read the pattern information (text file with column as PatternID, start_time, end_time ) which is needed for computing distances building distances
  */
 
+int readKNNDump(char *kNNFile, patternDist_t **pDist, int *NPairs)
+{
+    FILE *fp;
+    patternDist_t *pairs, *pairsFinal;
+    float temp;
+    long long int temp1, temp2;
+    int ii;    
+    
+    //################## reading pattern information %%%%%%%%%%%%%%%%%%%%%
+    fp = fopen(kNNFile,"r");
+    if (fp==NULL)
+    {
+        printf("Error opening file %s\n", kNNFile);
+        return 0;
+    }
+    pairs = (patternDist_t*)malloc(sizeof(patternDist_t)*10000); //ASSUME that none of the single kNN file will have more than 10k pairs
+    ii=0;
+    while(fscanf(fp,"%lld\t%lld\t%f\n", &temp1, &temp2, &temp)!=EOF)
+    {
+        pairs[ii].patternID1 = temp1;
+        pairs[ii].patternID2 = temp2;
+        pairs[ii].dist = temp;
+        ii++;
+    }
+    *NPairs=ii;
+    fclose(fp);
+    
+    pairsFinal = (patternDist_t*)malloc(sizeof(patternDist_t)*(*pairsFinal)); //ASSUME that none of the single pattern info file will have more than 10k motifs
+    memcpy(pairsFinal, pairs, sizeof(patternDist_t)*(*NPairs));    
+    free(pairs);    
+    *pDist = pairsFinal;
+    
+    return 1;    
+}
+
+
+
+/*
+ * This function read the pattern information (text file with column as PatternID, start_time, end_time ) which is needed for computing distances building distances
+ */
+
 int readPatternDump(char *patternFile, patternInfo_t **pInfo, int *NPatterns)
 {
     FILE *fp;
