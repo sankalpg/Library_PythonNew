@@ -87,9 +87,9 @@ int main( int argc , char *argv[])
         blackListArray = (int *)malloc(sizeof(int)*nPatterns);
         for(jj=0; jj< nPatterns; jj++)
         {
-            blackListArray[jj]=-1;
+            blackListArray[jj]=1; //by default all of them are blacklisted
         }
-
+        
         //sorting the pairs according to ascending order of the distance values
         //qsort (patternDist, nPatterns, sizeof(patternDist_t), comparePairs);
 
@@ -106,9 +106,15 @@ int main( int argc , char *argv[])
         nTimeSamples = (int)ceil(timeMax/resolution);
         
         overlapArray = (int*)malloc(sizeof(int)*nTimeSamples);
+        for(jj=0; jj< nTimeSamples; jj++)
+        {
+            overlapArray[jj]=-1;
+        }
         
         for (jj=0;jj<nPatterns;jj++)
         {
+            hasOverlap=0;
+            OverlapIndex=-1;
             if (patternInfo[jj].id!=patternDist[jj].patternID1)
             {
                 if (verbos==1)
