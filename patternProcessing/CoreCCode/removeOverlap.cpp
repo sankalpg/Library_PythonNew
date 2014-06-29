@@ -68,16 +68,23 @@ int main( int argc , char *argv[])
 
     for (ii=0;ii<NFilesSearch;ii++)
     {
+        printf("file: %s\n", searchFileNames[ii]);	
         strcat(tempFilename,searchFileNames[ii]);
         strcat(tempFilename,patternInfoExt);
         err =  readPatternDump(tempFilename, &patternInfo, &nPatterns);
         memset(tempFilename, '\0', sizeof(char)*400);
-
+        if (err == 0)
+	{
+		continue;
+	}
         strcat(tempFilename,searchFileNames[ii]);
         strcat(tempFilename,patternKNNExt);
         err = readKNNDump(tempFilename, &patternDist, &NPairs);
         memset(tempFilename, '\0', sizeof(char)*400);
-
+	if (err == 0)
+	{
+		continue;
+	}
         if ( nPatterns != NPairs)
         {
             if (verbos ==1)
