@@ -11,11 +11,11 @@
 
 int comparePairs(const void *a, const void *b)
 {
-    if (((patternDist_t*)a)->dist > ((patternDist_t*)b)->dist)
+    if (((sortArr_t*)a)->value > ((sortArr_t*)b)->value)
     {
         return 1;
     }
-    else if (((patternDist_t*)a)->dist < ((patternDist_t*)b)->dist)
+    else if (((sortArr_t*)a)->value < ((sortArr_t*)b)->value)
     {
         return -1;
     }
@@ -23,19 +23,21 @@ int comparePairs(const void *a, const void *b)
 }
 
 
+
+
 int main( int argc , char *argv[])
 {
     FILE *fp1;
     char *patternInfoExt, *patternKNNExt, *filelistFilename, *blackListPatternExt, searchFileNames[2000][400] = {'\0'}, tempFilename[400]= {'\0'},  blackListFile[400]={'\0'};
     int verbos =1, ii, jj, mm, nPatterns, NFilesSearch, NPairs;
-    patternInfo_t *patternInfo;
-    patternDist_t *patternDist;
+    patternInfo_t *patternInfo, *patternInfo_s;
+    patternDist_t *patternDist, *patternDist_s;
     int *blackListArray;
     float timeMax=0;
     float resolution = 0.01;
     int nTimeSamples, str, end, str_old, end_old, hasOverlap, OverlapIndex;
     int *overlapArray, err;
-    
+    sortArr_t *sortArr;
 
 
    if(argc < 5 || argc > 6)
@@ -91,14 +93,30 @@ int main( int argc , char *argv[])
         }
         
         //sorting the pairs according to ascending order of the distance values
-        //qsort (patternDist, nPatterns, sizeof(patternDist_t), comparePairs);
+        sortArr = (sortArr_t *)malloc(sizeof(sortArr_t)*nPatterns);
+	for(jj=0;jj<nPatterns;jj++)
+	{
+	  sortArr[jj].value = patternDist[jj].dist;
+	  sortArr[jj].index = jj;
+	}
+        qsort (sortArr, nPatterns, sizeof(sortArr_t), comparePairs);
+	patternInfo_s = (patternInfo_t*)malloc(sizeof(patternInfo_t)*nPatterns);
+	patternDist_s = (patternDist_t*)malloc(sizeof(patternDist_t)*nPatterns);
+	for(jj=0;jj<nPatterns;jj++)
+	{
+	  patternInfo_s[jj] = patternInfo[sortArr[jj].index];
+	  patternDist_s[jj] = patternDist[sortArr[jj].index];
+	}
+	free(patternInfo);
+	free(patternDist);
+	
 
         // finding out the longest time stamp in the current file
         for(jj=0; jj< nPatterns; jj++)
         {
-            if (patternInfo[jj].end > timeMax)
+            if (patternInfo_s[jj].end > timeMax)
             {
-                timeMax = patternInfo[jj].end;
+                timeMax = patternInfo_s[jj].end;
             }
         }
         
@@ -115,7 +133,7 @@ int main( int argc , char *argv[])
         {
             hasOverlap=0;
             OverlapIndex=-1;
-            if (patternInfo[jj].id!=patternDist[jj].patternID1)
+            if (patternInfo_s[jj].id!=patternDist_s[jj].patternID1)
             {
                 if (verbos==1)
                 {
@@ -125,9 +143,8 @@ int main( int argc , char *argv[])
             }
                 
                 
-            str = (int)floor(patternInfo[jj].str/resolution);
-            end = (int)floor(patternInfo[jj].end/resolution);
-            
+            str = (int)floor(patternInfo_s[jj].str/resolution);
+            end = (int)floor(patternInfo_s[jj].end/resolution);
             // first check if there is an overlap
             for(mm=str;mm<=end; mm++)
             {
@@ -138,35 +155,18 @@ int main( int argc , char *argv[])
                     break;
                 }
             }
-            
-            if (hasOverlap==1)
-            {
-                if (patternDist[OverlapIndex].dist > patternDist[jj].dist)
-                {
-                    //this means that the current pattern is better and so the older one should be removed
-                    str_old = (int)floor(patternInfo[OverlapIndex].str/resolution);
-                    end_old = (int)floor(patternInfo[OverlapIndex].end/resolution);
-                    for(mm=str_old;mm<=end_old; mm++)
-                    {
-                        overlapArray[mm] = -1;
-                    }
-                    hasOverlap=0;
-                    blackListArray[OverlapIndex]=1;
-                }
-                //the other case where the older pattern is the better one leave thigns as it is. Since hasOverlap flag is 1 there won't be any action
-                
-            }
             if (hasOverlap==0)
             {
                 for(mm=str;mm<=end; mm++)
                 {
                     overlapArray[mm] = jj;
                 }
-                blackListArray[jj]=0;
+                blackListArray[sortArr[jj].index]=0;
                 
             }
           
         }
+        
         
         strcat(blackListFile,searchFileNames[ii]);
         strcat(blackListFile,blackListPatternExt);
@@ -177,6 +177,13 @@ int main( int argc , char *argv[])
         }
         fclose(fp1);
         memset(blackListFile, '\0', sizeof(char)*400);
+	
+	free(blackListArray);
+	free(patternInfo_s);
+	free(patternDist_s);
+	free(sortArr);
+	free(overlapArray);
+        
      
     }
 }

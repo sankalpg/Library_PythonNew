@@ -6,6 +6,12 @@
 
 #include "hashDefs.h"
 
+typedef struct sortArr
+{
+    DISTTYPE value;
+    INDTYPE index;
+}sortArr_t;
+
 typedef struct segInfo
 {
     float str;
