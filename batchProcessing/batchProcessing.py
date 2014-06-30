@@ -460,5 +460,37 @@ def validateMotifSearchOutput(root_dir, fileout):
     fid.close()    
 
 
+def checkFileExistance(root_dir, outfile, fileList, Ext2Search = ['.mp3']):
+    
+    lines = open(fileList).readlines()
+    
+    fid = open(outfile, "w")
+    
+    for line in lines:
+        line = line.strip()
+        fid.write("%s\t"%line )
+        for ext in Ext2Search:
+            filename = line  + ext
+            if os.path.isfile(filename):
+                fid.write("%d\t"%1)
+            else:
+                fid.write("%d\t"%0)
+                
+        fid.write("\n")
+        
+    fid.close()
+        
+def countNumberOfRemovedPatterns(root_dir, Ext):
+    
+    filenames = GetFileNamesInDir(root_dir, Ext)
+    
+    totalPatterns = 0 
+    validPatterns = 0
+    
+    for filename in filenames:
+        out = np.loadtxt(filename)
+        totalPatterns = totalPatterns + out.size
+        validPatterns = validPatterns + out.size - np.sum(out)
         
         
+    print "Total number of patterns are %d and total valid patterns are %d\n"%(totalPatterns, validPatterns)

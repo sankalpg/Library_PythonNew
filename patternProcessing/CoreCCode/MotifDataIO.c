@@ -506,6 +506,27 @@ INDTYPE readPreProcessGenDB(DATATYPE ***d, segInfo_t **t, int *motifLen, char *b
     return lenTS;
 }
 
+int readBlackListDump(char *blacklistFile, int *isRemoved)
+{
+    FILE *fp;
+    int temp, ii=0;
+    
+    fp = fopen(blacklistFile,"r");
+    if (fp==NULL)
+    {
+        printf("Error opening file %s\n", blacklistFile);
+        return 0;
+    }
+     while(fscanf(fp,"%d\n", &temp)!=EOF)
+    {
+        isRemoved[ii] = temp;
+    }
+    
+    return 1;
+    
+}
+
+
 /*
  * This function read the pattern information (text file with column as PatternID, start_time, end_time ) which is needed for computing distances building distances
  */
