@@ -521,6 +521,7 @@ int readBlackListDump(char *blacklistFile, int *isRemoved)
     {
         isRemoved[ii] = temp;
     }
+    fclose(fp);
     
     return 1;
     

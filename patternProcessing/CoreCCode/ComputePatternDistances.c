@@ -57,7 +57,7 @@ int main( int argc , char *argv[])
     myProcLogs.totalPriorityUpdates=0;
     
     
-    if(argc < 14 || argc > 15)
+    if(argc < 15 || argc > 16)
     {
         printf("\nInvalid number of arguments!!!\n");
         exit(1);
@@ -193,6 +193,11 @@ int main( int argc , char *argv[])
 
     
     fp1 = fopen(filelistFilename, "r");
+    if (fp1==NULL)
+    {
+        printf("Error opening file %s\n", filelistFilename);
+        return 0;
+    }
     ii=0;
     while(fgets(tempFilename, 400, fp1))
     {
@@ -342,9 +347,9 @@ int main( int argc , char *argv[])
         memset(tempFilename, '\0', sizeof(char)*400);
         
         
-        printf("File number %d\t%s\n",(int)ss, tempFilename);
+        printf("File number %d\t%s\n",(int)ss, searchFileNames[ss]);
         
-    	
+    	if (ss==1019){printf("Checkpoint -3\n");}
 
         lenTS2 = NPatternsFile2*myProcParams.nInterpFac;
 
@@ -353,13 +358,22 @@ int main( int argc , char *argv[])
         strcat(tempFilename,searchFileNames[ss]);
         strcat(tempFilename,patternDataExt);
         fp1 = fopen(tempFilename, "rb");
+        if (fp1==NULL)
+        {
+            printf("Error opening file %s\n", tempFilename);
+            return 0;
+        }
+        if (ss==1019){printf("Checkpoint -2\n");}
         for (ii = 0 ; ii < NPatternsFile2 ; ii++)
         {
+            if (ss==1019){printf("index %d\n",ii);}
             data2[ii] = (DATATYPE *)malloc(sizeof(DATATYPE)*myProcParams.motifLengths[myProcParams.indexMotifLenLongest]);
             fread(data2[ii], sizeof(DATATYPE), myProcParams.motifLengths[myProcParams.indexMotifLenLongest], fp1);
         }
         fclose(fp1);
         memset(tempFilename, '\0', sizeof(char)*400);
+        
+        if (ss==1019){printf("Checkpoint 0\n");}
         
         //generate multiple interpolated versions
         tStampsDummy2 = (segInfoInterp_t*)malloc(sizeof(segInfoInterp_t)*NPatternsFile2);
@@ -380,6 +394,7 @@ int main( int argc , char *argv[])
         t2=clock();
         myProcLogs.timeGenEnvelops += (t2-t1)/CLOCKS_PER_SEC;
 
+        if (ss==1019){printf("Checkpoint 1\n");}
         for (ii=0; ii < NPatternsFile1; ii++)
         {
             if (isBlackListed1[ii]==1)
@@ -407,7 +422,7 @@ int main( int argc , char *argv[])
                         {
                             continue;
                         }
-
+                        if (ss==1019){printf("Checkpoint 2\n");}
                         LB_kim_FL = computeLBkimFL(data1Interp[ind1+pp][0], data2Interp[ind2+mm][0], data1Interp[ind1+pp][lenMotifReal-1], data2Interp[ind2+mm][lenMotifReal-1], myProcParams.simMeasureRankRefinement[0]);
                         myProcLogs.totalFLDone++;
                         if (LB_kim_FL< bsf_local)
@@ -420,6 +435,7 @@ int main( int argc , char *argv[])
                                 myProcLogs.totalLBKeoghEC++;
                                 if(LB_Keogh_EC < bsf_local)
                                 {
+                                    if (ss==1019){printf("Checkpoint 3\n");}
                                     realDist = dtw1dBandConst(data1Interp[ind1+pp], data2Interp[ind2+mm], lenMotifReal, lenMotifReal, costMTX, myProcParams.simMeasureRankRefinement[0], bandDTW, bsf_local, accLB);
                                     myProcLogs.totalDTWComputations++;
                                     if(realDist < bsf_local)
@@ -432,19 +448,23 @@ int main( int argc , char *argv[])
 
                     }   
                 }
+                if (ss==1019){printf("Checkpoint 4\n");}
 
                 if (bsf_local < distThshld)
                 {
                     if (bsf_local > 0) // update only when the patterns are different
                     {
-			manageMotifStorage(&patternDists[jj], pattCndMan, patternInfo1[ii].id, patternInfo2[jj].id, bsf_local);
-			myProcLogs.totalPriorityUpdates++;
+                        manageMotifStorage(&patternDists[jj], pattCndMan, patternInfo1[ii].id, patternInfo2[jj].id, bsf_local);
+                        myProcLogs.totalPriorityUpdates++;
                     }
                 }
 
 
             }
+            if (ss==1019){printf("Checkpoint 5\n");}
         }
+        
+        if (ss==1019){printf("Checkpoint 6\n");}
 
         for(ii=0;ii<lenTS2;ii++)
         {   
@@ -452,6 +472,7 @@ int main( int argc , char *argv[])
             free(L2[ii]);
             free(data2Interp[ii]);
         }
+        if (ss==1019){printf("Checkpoint 7\n");}
         
         free(U2);
         free(L2);
@@ -462,6 +483,7 @@ int main( int argc , char *argv[])
         free(isBlackListed2);
     
     }
+    if (ss==1019){printf("Checkpoint 8\n");}
 
     for(ii=0;ii<(lenTS1);ii++)
     {   
