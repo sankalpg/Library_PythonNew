@@ -443,6 +443,10 @@ int main( int argc , char *argv[])
                 {
                     if (bsf_local > 0) // update only when the patterns are different
                     {
+			if ((patternInfo1[ii].id==121)&&(patternInfo2[jj].id==768923))
+			{
+			  patternInfo1[ii].id=121;
+			}
                         manageMotifStorage(&patternDists[jj], pattCndMan, patternInfo1[ii].id, patternInfo2[jj].id, bsf_local);
                         myProcLogs.totalPriorityUpdates++;
                     }
@@ -526,7 +530,7 @@ int dumpKNNPatterns(char *filename, patternDist_t **patternDists, pattCntManager
 	for(ii=0;ii<nPriorityList;ii++)
 	{
 		for(jj=0;jj<patCntMan[ii].pattCnt;jj++)
-		{
+		{	printf("%d\t%d\n", ii, jj);
 			fprintf(fp, "%lld\t%lld\t%f\n", patternDists[ii][jj].patternID1, patternDists[ii][jj].patternID2, patternDists[ii][jj].dist);
 		}
 	}
