@@ -7,7 +7,7 @@
 ******************************************************************************/
 
 
-#include "ComputePatternKNN.h"
+#include "ComputePatternDistances.h"
 //#define DEBUG_GENERATION
 
 #define MOTIFDBSIZE     500
@@ -21,6 +21,7 @@ int main( int argc , char *argv[])
     INDTYPE    NSeed, K,ii,jj, pp,mm, ss, ind1, ind2, lenTS1, lenTS2;
     bool sameFile;
     patternInfo_t *patternInfo1, *patternInfo2;
+    pattCntManager_t  *pattCndMan;
     
     DATATYPE **data1Interp, **data2Interp, **data1, **data2, **U1, **L1, **U2, **L2, *accLB;
     DISTTYPE LB_Keogh_EQ, realDist,LB_Keogh_EC,bsf=INF,**costMTX, LB_kim_FL, *bsfArray, bsf_local, distThshld;
@@ -251,7 +252,7 @@ int main( int argc , char *argv[])
     strcat(tempFilename,baseName);
     strcat(tempFilename,blackListExt);         
     isBlackListed1 = (int*)malloc(sizeof(int)*NPatternsFile1);
-    readBlackListDump(tempFilename, isBlackListed1)
+    readBlackListDump(tempFilename, isBlackListed1);
     memset(tempFilename, '\0', sizeof(char)*400);
     
 	
@@ -272,7 +273,7 @@ int main( int argc , char *argv[])
     
     fclose(fp1);
     
-    //generate multiple interpolated versions
+    //generate multiple interpolatedpattCndMan versions
     tStampsDummy1 = (segInfoInterp_t*)malloc(sizeof(segInfoInterp_t)*NPatternsFile1);
     generateInterpolatedSequences(data1, tStampsDummy1, &data1Interp,  &tStampsInterpDummy1, (INDTYPE)NPatternsFile1, &myProcParams);
 
@@ -286,6 +287,7 @@ int main( int argc , char *argv[])
     L1= (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS1);
     accLB = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
     patternDists = (patternDist_t **)malloc(sizeof(patternDist_t*)*nPriorityList);
+    pattCndMan = (pattCntManager_t *)malloc(sizeof(pattCntManager_t)*nPriorityList);
     
     for (ii=0;ii<lenTS1;ii++)
     {
@@ -308,20 +310,22 @@ int main( int argc , char *argv[])
 
     for(jj=0;jj<nPriorityList;jj++)
     {
-        patternDists[jj] = (patternDist_t *)malloc(sizeof(patternDist_t)*K);
-        for(ii=0;ii<K;ii++)
-        {
-            patternDists[jj][ii].dist = INF;
-            patternDists[jj][ii].patternID1 = PID_DEFAULT1;
-            patternDists[jj][ii].patternID1 = PID_DEFAULT2;
-        }
+	if (isBlackListed1[jj]==1)
+	{
+	  pattCndMan[jj].pattCnt =0;
+	  continue;
+	}
+        patternDists[jj] = (patternDist_t *)malloc(sizeof(patternDist_t)*MOTIFDBSIZE);
+	pattCndMan[jj].allocSpace =MOTIFDBSIZE;
+	pattCndMan[jj].pattCnt =0;
+
     }
 
 
     for (ss=0;ss<NFilesSearch; ss++)
     {
         //read the data 
-    	memset(tempFilename, '\0', sizeof(char)*400);x  
+    	memset(tempFilename, '\0', sizeof(char)*400);
         strcat(tempFilename,searchFileNames[ss]);
         strcat(tempFilename,patternInfoExt);
         err =  readPatternDump(tempFilename, &patternInfo2, &NPatternsFile2);
@@ -334,8 +338,8 @@ int main( int argc , char *argv[])
         strcat(tempFilename,baseName);
         strcat(tempFilename,blackListExt);         
         isBlackListed2 = (int*)malloc(sizeof(int)*NPatternsFile2);
-        readBlackListDump(tempFilename, isBlackListed2)
-        memset(tempFilename, '\0', sizeof(char)*400);NPatternsFile1
+        readBlackListDump(tempFilename, isBlackListed2);
+        memset(tempFilename, '\0', sizeof(char)*400);
         
         
         printf("File number %d\t%s\n",(int)ss, tempFilename);
@@ -393,7 +397,7 @@ int main( int argc , char *argv[])
                 ind1 = ii*myProcParams.nInterpFac;
                 ind2 = jj*myProcParams.nInterpFac;
 
-                bsf_local = bsfArray[ii];
+                bsf_local = distThshld;
                 for (pp = 0; pp < myProcParams.nInterpFac; pp++)
                 {
                     for (mm = 0; mm < myProcParams.nInterpFac; mm++)
@@ -429,12 +433,12 @@ int main( int argc , char *argv[])
                     }   
                 }
 
-                if (bsf_local < bsfArray[ii])
+                if (bsf_local < distThshld)
                 {
                     if (bsf_local > 0) // update only when the patterns are different
                     {
-                        bsfArray[ii] = manageTopKMotifs(patternDists[ii], K, patternInfo1[ii].id, patternInfo2[jj].id, bsf_local);
-                        myProcLogs.totalPriorityUpdates++;
+			manageMotifStorage(&patternDists[jj], pattCndMan, patternInfo1[ii].id, patternInfo2[jj].id, bsf_local);
+			myProcLogs.totalPriorityUpdates++;
                     }
                 }
 
@@ -474,22 +478,50 @@ int main( int argc , char *argv[])
     free(tStampsInterpDummy1);
     free(isBlackListed1);
 
-    dumpKNNPatterns(kNNOutFile, patternDists, K, nPriorityList); 
+    dumpKNNPatterns(kNNOutFile, patternDists, pattCndMan, nPriorityList); 
     return 1;
 
 
 }
 
-int dumpKNNPatterns(char *filename, patternDist_t **patternDists, int K, int nPriorityList) 
+int updatePatternStorage(patternDist_t **patternDist, pattCntManager_t *patCntMan)
+{
+    patternDist_t *newStorage;
+    
+    newStorage = (patternDist_t *)malloc(sizeof(patternDist_t)*(patCntMan->allocSpace + MOTIFDBSIZE));
+    patCntMan->allocSpace += MOTIFDBSIZE;
+    
+    memcpy(newStorage, *patternDist, sizeof(patternDist_t)*patCntMan->pattCnt);
+    
+    free(*patternDist);
+    *patternDist = newStorage;
+  
+}
+
+int manageMotifStorage(patternDist_t **patternDist, pattCntManager_t *patCntMan, INDTYPE id1, INDTYPE id2, DISTTYPE dist)
+{
+    if (patCntMan->allocSpace == patCntMan->pattCnt)
+    {
+	updatePatternStorage(patternDist, patCntMan);
+    }
+  
+    (*patternDist)[patCntMan->pattCnt].dist = dist ; 
+    (*patternDist)[patCntMan->pattCnt].patternID1 = id1 ; 
+    (*patternDist)[patCntMan->pattCnt].patternID1 = id2 ;
+    patCntMan->pattCnt++;
+    
+
+}
+
+int dumpKNNPatterns(char *filename, patternDist_t **patternDists, pattCntManager_t *patCntMan, int nPriorityList) 
 {	
 	int ii, jj;
 	FILE *fp;
 
-	
 	fp = fopen(filename, "w"); 
 	for(ii=0;ii<nPriorityList;ii++)
 	{
-		for(jj=0;jj<K;jj++)
+		for(jj=0;jj<patCntMan[ii].pattCnt;jj++)
 		{
 			fprintf(fp, "%lld\t%lld\t%f\n", patternDists[ii][jj].patternID1, patternDists[ii][jj].patternID2, patternDists[ii][jj].dist);
 		}
@@ -498,58 +530,3 @@ int dumpKNNPatterns(char *filename, patternDist_t **patternDists, int K, int nPr
 
 }
 
-
-DISTTYPE manageTopKMotifs(patternDist_t *patternDists, int K, INDTYPE id1, INDTYPE id2, DISTTYPE dist)
-{
-    int ii=0;
-    int sortInd = -1;
-    int matchInd = -1;
-    int a=0;
-    
-    
-    for(ii=0;ii<K;ii++)
-    {
-        if ((patternDists[ii].dist > dist)&&(sortInd==-1))
-        {
-            sortInd=ii;
-        }
-
-        // searching if we already have a motif in out top K list which is near to the currently good match
-        if ((patternDists[ii].patternID1 == id1) && (patternDists[ii].patternID2 == id2))
-        {
-            matchInd=ii;
-            break;
-        }
-        
-    }
-
-    if (sortInd==-1)//we couldn't get any satisfactory replacement before we get a close neighbour
-    {
-        return patternDists[K-1].dist;
-    }
-    //There are threbsfe possibilities
-    //1) There is no match found in the existing top motifs, simplest
-    if (matchInd==-1)
-    {
-        memmove(&patternDists[sortInd+1], &patternDists[sortInd], sizeof(patternDist_t)*(K-(sortInd+1)));
-        patternDists[sortInd].dist = dist;
-        patternDists[sortInd].patternID1 = id1;
-        patternDists[sortInd].patternID2 = id2;
-    }
-    else if (sortInd == matchInd)
-    {
-        patternDists[sortInd].dist = dist;
-        patternDists[sortInd].patternID1 = id1;
-        patternDists[sortInd].patternID2 = id2;
-    }
-    else if (sortInd < matchInd)
-    {
-        memmove(&patternDists[sortInd+1], &patternDists[sortInd], sizeof(patternDist_t)*(matchInd-sortInd));
-        patternDists[sortInd].dist = dist;
-        patternDists[sortInd].patternID1 = id1;
-        patternDists[sortInd].patternID2 = id2;
-    }
-    
-    return patternDists[K-1].dist;
-    
-}

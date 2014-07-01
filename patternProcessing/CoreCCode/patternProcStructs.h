@@ -70,6 +70,14 @@ typedef struct patternDist
 }patternDist_t;
 
 
+typedef struct pattCntManager
+{
+  
+    INDTYPE allocSpace;
+    INDTYPE pattCnt;
+
+    
+}pattCntManager_t;
 
 
 
