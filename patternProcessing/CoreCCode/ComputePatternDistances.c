@@ -114,8 +114,8 @@ int main( int argc , char *argv[])
             printf("Files does exists");
         }
         
-        if (overWrite == 0)/home/sankalp/Work/Work_PhD/Library_PythonNew
-        {
+        if (overWrite == 0)
+    {
             if (verbos ==1)
             {
                 printf("File does exists, I am returning");
@@ -135,7 +135,7 @@ int main( int argc , char *argv[])
     
     
     if (myProcParams.nInterpFac==1)
-    {/home/sankalp/Work/Work_PhD/Library_PythonNew
+    {
         myProcParams.interpFac[0]=1.0;
         
         myProcParams.combMTX = (int **)malloc(sizeof(int*)*myProcParams.nInterpFac);
@@ -443,11 +443,7 @@ int main( int argc , char *argv[])
                 {
                     if (bsf_local > 0) // update only when the patterns are different
                     {
-			if ((patternInfo1[ii].id==121)&&(patternInfo2[jj].id==768923))
-			{
-			  patternInfo1[ii].id=121;
-			}
-                        manageMotifStorage(&patternDists[jj], pattCndMan, patternInfo1[ii].id, patternInfo2[jj].id, bsf_local);
+                        manageMotifStorage(&patternDists[ii], &pattCndMan[ii], patternInfo1[ii].id, patternInfo2[jj].id, bsf_local);
                         myProcLogs.totalPriorityUpdates++;
                     }
                 }
@@ -515,7 +511,7 @@ int manageMotifStorage(patternDist_t **patternDist, pattCntManager_t *patCntMan,
   
     (*patternDist)[patCntMan->pattCnt].dist = dist ; 
     (*patternDist)[patCntMan->pattCnt].patternID1 = id1 ; 
-    (*patternDist)[patCntMan->pattCnt].patternID1 = id2 ;
+    (*patternDist)[patCntMan->pattCnt].patternID2 = id2 ;
     patCntMan->pattCnt++;
     
 
@@ -530,7 +526,7 @@ int dumpKNNPatterns(char *filename, patternDist_t **patternDists, pattCntManager
 	for(ii=0;ii<nPriorityList;ii++)
 	{
 		for(jj=0;jj<patCntMan[ii].pattCnt;jj++)
-		{	printf("%d\t%d\n", ii, jj);
+		{
 			fprintf(fp, "%lld\t%lld\t%f\n", patternDists[ii][jj].patternID1, patternDists[ii][jj].patternID2, patternDists[ii][jj].dist);
 		}
 	}
