@@ -18,7 +18,7 @@ int main( int argc , char *argv[])
     int lenMotifReal, verbos=0, bandDTW, nInterFact, **combMTX; 
     
     INDTYPE    lenTS, K,ii,jj;
-    DATATYPE **dataInterp, **U, **L, *accLB;
+    DATATYPE **dataInterp, **U, **L, *accLB1, *accLB2;
     DISTTYPE LB_Keogh_EQ, realDist,LB_Keogh_EC,bsf=INF,**costMTX, LB_kim_FL;
     
     motifInfo *topKmotifs;
@@ -185,7 +185,8 @@ int main( int argc , char *argv[])
     bandDTW = (int)floor(lenMotifReal*myProcParams.DTWBand);
     U = (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS);
     L= (DATATYPE **)malloc(sizeof(DATATYPE *)*lenTS);
-    accLB = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
+    accLB1 = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
+    accLB2 = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
     topKmotifs = (motifInfo *)malloc(sizeof(motifInfo)*K);
     costMTX = (DISTTYPE **)malloc(sizeof(DISTTYPE *)*lenMotifReal);
 
@@ -240,15 +241,15 @@ int main( int argc , char *argv[])
             myProcLogs.totalFLDone++;
             if (LB_kim_FL< bsf) 
             {
-                LB_Keogh_EQ = computeKeoghsLB(U[ii],L[ii],accLB, dataInterp[jj],lenMotifReal, bsf, SqEuclidean);
+                LB_Keogh_EQ = computeKeoghsLB(U[ii],L[ii],accLB1, dataInterp[jj],lenMotifReal, bsf, SqEuclidean);
                 myProcLogs.totalLBKeoghEQ++;
                 if(LB_Keogh_EQ < bsf)
                 {
-                    LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB, dataInterp[ii],lenMotifReal, bsf, SqEuclidean);
+                    LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB2, dataInterp[ii],lenMotifReal, bsf, SqEuclidean);
                     myProcLogs.totalLBKeoghEC++;
                     if(LB_Keogh_EC < bsf)
                     {
-                        realDist = dtw1dBandConst(dataInterp[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, SqEuclidean, bandDTW, bsf, accLB);
+                        realDist = dtw1dBandConst(dataInterp[ii], dataInterp[jj], lenMotifReal, lenMotifReal, costMTX, SqEuclidean, bandDTW, bsf, accLB1);
                         myProcLogs.totalDTWComputations++;
                         if(realDist<bsf)
                         {
@@ -281,7 +282,8 @@ int main( int argc , char *argv[])
         
     }
     free(dataInterp);
-    free(accLB);
+    free(accLB1);
+    free(accLB2);
     free(tStampsInterp);
     free(U);
     free(L);

@@ -128,7 +128,7 @@ int createPatternGraphPerCollection(char *listFile, char *patternKNNExt, PUNGrap
 int main(int argc, char* argv[])
 {
     FILE *fp1, *fp2;
-    char *listFile, *patternKNNExt,  tempFilename[400]= {'\0'}, *outputNetworkFile, patternKNNFile[400]= {'\0'}, outFileName[400]= {'\0'};
+    char *listFile, *patternKNNExt,  tempFilename[400]= {'\0'}, *outputNetworkFile, patternKNNFile[400]= {'\0'}, outFileName[400]= {'\0'}, outInfoFile[400]= {'\0'};;
     int verbos;
     int ii=0, jj=0;
     long long int ind1, ind2;
@@ -161,6 +161,10 @@ int main(int argc, char* argv[])
     fprintf(fp2, "%f\n", clusterCoff);
     fclose(fp2);
     
+    sprintf(outInfoFile, "%d_NetworkInfo.txt", thresholdBin);
+    TSnap::PrintInfo(Graph, "",outInfoFile, 0);
+
+ 
     //printf("Clustering coff is %f\n",clusterCoff);
     //printf("minimum and maximum distances are %f and %f respectively", min_dist, max_dist);
 
