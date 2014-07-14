@@ -1,1 +1,1 @@
-g++ -I/homedtic/sgulati/motifDiscovery/code/snap/snap-core -I/homedtic/sgulati/motifDiscovery/code/snap/glib-core /homedtic/sgulati/motifDiscovery/code/snap/snap-core/Snap.o constructNetwork.cpp  -O3 -o constructNetwork_O3
+g++ -I../../../snap/snap-core -I../../../snap/glib-core ../../../snap/snap-core/Snap.o constructNetwork.cpp  -O3 -o constructNetwork_O3

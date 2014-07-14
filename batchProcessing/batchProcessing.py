@@ -9,7 +9,10 @@
 # Last modified: --
 ########################################################3
 
-import essentia.standard as ES
+try:
+    import essentia.standard as ES
+except:
+    pass
 import os, sys, copy, shutil
 import numpy as np
 #import eyed3

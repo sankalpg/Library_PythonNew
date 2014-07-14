@@ -203,7 +203,7 @@ int main( int argc , char *argv[])
 #ifdef DEBUG_GENERATION
     fp = fopen("subsequences.bin","wb");
     for(ii=0;ii<NSeed;ii++)
-    {
+    { 
         for(jj=0;jj<lenMotifReal;jj++)
         {
             fprintf(fp, "%f\t", dataInterpSeed[ii][jj]);
@@ -259,7 +259,7 @@ int main( int argc , char *argv[])
     bsfArray = (DISTTYPE*)malloc(sizeof(DISTTYPE)*nPriorityList);
     for(ii=0;ii<nPriorityList;ii++)
     {
-        bsfArray[ii] = bsf;
+        bsfArray[ii] = bsf;motifFile
     }
     
     longTermDataStorage = (longTermDataStorage_t **)malloc(sizeof(longTermDataStorage_t*)*nPriorityList);
