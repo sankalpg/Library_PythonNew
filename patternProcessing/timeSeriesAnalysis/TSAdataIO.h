@@ -65,24 +65,19 @@ public:
     
     float pHop;
     
-    
-    
-    void*       readTSSeq(char* fileName, void* seq);
+    int         readTSData(char *fileName);
     void*       readTSSubSeq(char* fileName, void *subSeq, int len, int sizeSample);
-    float       readHopSizeTS(char *fileName);
+    int       readHopSizeTS(char *fileName);
     int         dumpMotifInfo();
     int         countNumberLines();
     int         genTemplate1SubSeqs();
     TSAIND      getNumLines(const char *file);
+    int         downSampleTS();
+    int         filterSamplesTS();
+    int         convertHz2Cents(char *tonicFileName);
     
     TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fileExts, procParams_t *pParams);
 };
-
-
-
-
-
-
 
 
 

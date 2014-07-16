@@ -115,16 +115,169 @@ TSAdataHandler::TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fi
 
 int TSAdataHandler::genTemplate1SubSeqs()
 {
-    //count number of lines in the file specified
-    nLinesFile = getNumLines(fHandle.getTSFileName());
-    procLogPtr->totalPitchSamples += nLinesFile;
+    //read the time series data    
+    readTSData(fHandle.getTSFileName());
+    readHopSizeTS(fHandle.getTSFileName());
+    
+    printf("%lld\n", lenTS);
+    
+    //downsample
+    downSampleTS();
+    
+    printf("%lld\n", lenTS);
+    
+    //remove silence pitch regions
+    filterSamplesTS();
+    
+    printf("%lld\n", lenTS);
+    
+    convertHz2Cents(fHandle.getTonicFileName());
     
     
-    //
+    
+    
     
     
 }
 
+int TSAdataHandler::convertHz2Cents(char *tonicFileName)
+{
+    float tonic;
+    
+    //Opening tonic file
+    FILE *fp =fopen(tonicFileName,"r");
+    if (fp==NULL)
+    {
+        printf("Error opening file %s\n", tonicFileName);
+        return 0;
+    }
+    int nRead = fscanf(fp, "%f\n",&tonic);
+    fclose(fp);
+    
+    float temp1 = ((float)procParams.binsPOct)/LOG2;
+    
+    for(int ii=0;ii<lenTS;ii++)
+    {
+        samPtr[ii].value = (TSADATA)(temp1*log((samPtr[ii].value+EPS)/tonic));
+    }
+    
+    return 1;
+}
+
+
+int TSAdataHandler::filterSamplesTS()
+{
+    
+    // There can be many filtering criterion. Currently what is implemented is to filter out silence regions of pitch sequence. 
+    
+    TSAIND nValidSamples = 0;
+    TSAIND *validSampleInd = (TSAIND *)malloc(sizeof(TSAIND)*lenTS);
+    //store all locations which have valid samples
+    for(int ii=0;ii<lenTS; ii++)
+    {
+        if(samPtr[ii].value > procParams.minPossiblePitch)
+        {
+            validSampleInd[nValidSamples]=ii;
+            nValidSamples++;
+        }
+    }
+    // just copy valid samples to another location
+    TSAIND lenTS_new = nValidSamples;
+    TSAsam_t * samPtr_new = (TSAsam_t *)malloc(sizeof(TSAsam_t)*lenTS_new);
+    for (int ii=0;ii<lenTS_new; ii++)
+    {
+        samPtr_new[ii] = samPtr[validSampleInd[ii]];
+    }
+    
+    //free old memory
+    free(samPtr);
+    free(validSampleInd);
+    samPtr = samPtr_new;
+    lenTS = lenTS_new;
+    
+    return 1;
+}
+
+int TSAdataHandler::readHopSizeTS(char *fileName)
+{
+    FILE *fp;
+    int nRead;
+    float tsData;
+    float tsTime1, tsTime2;
+    
+    // Opening time series file (JUST TO OBTAIN HOP SIZE)
+    fp =fopen(fileName,"r");
+    if (fp==NULL)
+    {
+        printf("Error opening file %s\n", fileName);
+        return 0;
+    }
+    //reading just first two lines, in order to obtain hopsize//
+    nRead = fscanf(fp, "%f\t%f\n",&tsData,&tsTime1);
+    nRead = fscanf(fp, "%f\t%f\n",&tsData,&tsTime2);
+    pHop = (tsTime2-tsTime1);
+    fclose(fp);
+    return 1;
+}
+int TSAdataHandler::downSampleTS()
+{
+    if (procParams.dsFactor <=0)
+    {
+        return 1;
+    }
+    
+    TSAIND lenTS_new = ceil(lenTS/procParams.dsFactor);
+    TSAsam_t * samPtr_new = (TSAsam_t *)malloc(sizeof(TSAsam_t)*lenTS_new);
+    for (int ii=0;ii<lenTS_new; ii++)
+    {
+        samPtr_new[ii] = samPtr[ii*procParams.dsFactor];
+    }
+    
+    //correcting hop size as well
+    pHop = pHop*procParams.dsFactor;
+    
+    //free old memory
+    free(samPtr);
+    samPtr = samPtr_new;
+    lenTS = lenTS_new;
+    
+    return 1;
+}
+
+int TSAdataHandler::readTSData(char *fileName)
+{
+    FILE *fp;
+    float tsData;
+    float tsTime;
+    TSAIND cnt;
+    
+    
+    //count number of lines in the file specified
+    nLinesFile = getNumLines(fHandle.getTSFileName());
+    procLogPtr->totalPitchSamples += nLinesFile;
+    lenTS = nLinesFile;
+    
+    //allocate memory to store the time series data 
+    samPtr = (TSAsam_t *)malloc(sizeof(TSAsam_t)*lenTS);
+    fp =fopen(fileName,"r");
+    if (fp==NULL)
+    {
+        printf("Error opening file %s\n", fileName);
+        return 0;
+    }
+    cnt = 0;
+    while (fscanf(fp, "%f\t%f\n",&tsData,&tsTime)!=EOF)    //read till the end of the file
+    {
+        samPtr[cnt].value  = tsData;
+        samPtr[cnt].tStamp  = tsTime;
+        cnt++;
+    }
+    fclose(fp);
+    
+    return 1;
+}
+    
+    
 
 /*
  * This function quickly returns number of lines in a text file
@@ -231,3 +384,4 @@ char* fileNameHandler::getOutFileName()
     
 }
   
+
