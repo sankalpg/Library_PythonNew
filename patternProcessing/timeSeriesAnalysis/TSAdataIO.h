@@ -78,6 +78,15 @@ public:
     int         downSampleTS();
     int         filterSamplesTS();
     int         convertHz2Cents(char *tonicFileName);
+    int         initializeBlackList();
+    int         updateBLDurThsld();
+    int         updateBLStdThsld();
+    int         updateBLInvalidSegment(char *fileName);
+    int         calculateDiffMotifLengths();
+    int         genSlidingWindowSubSeqs();
+    int         computeStdTSLocal(float **std, int varSam);
+    int         filterBlackListedSubSeqs();
+    int         genUniScaledSubSeqs();
     
     TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fileExts, procParams_t *pParams);
 };

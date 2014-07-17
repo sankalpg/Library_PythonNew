@@ -17,12 +17,15 @@
 #include <string.h>
 #include <float.h>
 #include <string.h>
+#include <algorithm>
+#include "../../similarityMeasures/dtw/dtw.h"
+#include "../../basicDSPFuncs/basicDSPCFuncs.h"
 
 
 //typdefs
 #define TSADATA      double
 #define TSADIST        double
-#define TSAIND        long long
+#define TSAIND        long long int
 
 
 // other Constants
@@ -32,6 +35,11 @@
 #define MAXNTEMPOFACTORS 10
 #define MAX_FNAME_CHARS 400
 #define MAX_FEXT_CHARS 100
+
+
+//Extern declarations
+extern const int combAllwd_5[5][5];
+extern const int combAllwd_3[3][3];
 
 #endif //TSA_HASHDEFS_H
 

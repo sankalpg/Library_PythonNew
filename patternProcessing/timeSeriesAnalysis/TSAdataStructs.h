@@ -16,6 +16,7 @@ typedef struct TSAsam
 typedef struct TSAsubSeq
 {
     TSADATA *pData;
+    float *pTStamps;
     TSAIND id;
     float sTime;
     float eTime;
@@ -52,7 +53,7 @@ typedef struct procParams
     float maxPauseDur;
     float DTWBand;
     float interpFac[MAXNTEMPOFACTORS];
-    int nInterpFac;
+    int nInterpFac; 
     int motifLengths[MAXNTEMPOFACTORS];
     int motifLengthsM1[MAXNTEMPOFACTORS];
     int indexMotifLenReal;
@@ -100,5 +101,6 @@ typedef struct procLogs
     long long totalDTWComputations;
     long long totalPriorityUpdates;
 }procLogs_t;
+
 
 #endif  // TSA_DATASTRUCTS_H

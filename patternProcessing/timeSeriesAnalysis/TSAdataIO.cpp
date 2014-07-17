@@ -133,25 +133,135 @@ int TSAdataHandler::genTemplate1SubSeqs()
     
     convertHz2Cents(fHandle.getTonicFileName());
 	
+    printf("Hello1\n");
 	//calculate different motif lengths before doing sliding window candidate generation
 	calculateDiffMotifLengths();
     
+    printf("Hello2\n");
     genSlidingWindowSubSeqs();
     
+    printf("%lld\n", nSubSeqs);
+    
+    printf("Hello3\n");
     initializeBlackList();
     
+    printf("Hello4\n");
     updateBLDurThsld();
     
+    printf("Hello5\n");
     updateBLStdThsld();
     
+    printf("Hello6\n");
     updateBLInvalidSegment(fHandle.getBlackListSegFileName());
     
+    printf("Hello7\n");
+    printf("%lld\n", nSubSeqs);
     
+    filterBlackListedSubSeqs();
+    printf("%lld\n", nSubSeqs);
     
+    printf("Hello8\n");
+    
+    genUniScaledSubSeqs();
+    
+    printf("Hello9\n");
+    printf("%lld\n", nSubSeqs);
     
 }
 
-int updateBLInvalidSegment(char *segmentFile)
+int TSAdataHandler::genUniScaledSubSeqs()
+{
+    int nInterpFac = procParams.nInterpFac;
+    int lenMotifReal = procParams.motifLengths[procParams.indexMotifLenReal];
+    
+    TSAIND nSubSeqs_new = nSubSeqs*nInterpFac;
+    
+    TSAsubSeq_t *subSeqPtr_new = (TSAsubSeq_t *)malloc(sizeof(TSAsubSeq_t)*nSubSeqs_new);
+    
+    
+    //we do interpolation as well
+    float **indInterp = (float**)malloc(sizeof(float*)*nInterpFac);
+    for (int jj=0;jj<nInterpFac;jj++)
+    {
+        indInterp[jj] = (float *)malloc(sizeof(float)*lenMotifReal);
+        for (int ii=0;ii<lenMotifReal; ii++)
+        {
+            indInterp[jj][ii] = procParams.interpFac[jj]*ii ;
+        }
+    }
+    TSAIND ind=0;
+    for (TSAIND ii=0;ii<nSubSeqs;ii++)
+    {
+        for (int jj=0;jj<nInterpFac;jj++)
+        {
+            if (procParams.interpFac[jj]==1)
+            {
+                subSeqPtr_new[ind] = subSeqPtr[ii];
+                subSeqPtr_new[ind].len = lenMotifReal;
+                ind++;
+            }
+            else
+            {
+                subSeqPtr_new[ind].pData = (TSADATA *)malloc(sizeof(TSADATA)*lenMotifReal);
+                subSeqPtr_new[ind].len = lenMotifReal;
+                cubicInterpolate(subSeqPtr[ii].pData, subSeqPtr_new[ind].pData, indInterp[jj], lenMotifReal);
+                subSeqPtr_new[ind].sTime  = subSeqPtr[ii].pTStamps[0];
+                subSeqPtr_new[ind].eTime  = subSeqPtr[ii].pTStamps[procParams.motifLengths[jj]];
+                ind++;
+            }
+        }
+    }
+    
+    for (int jj=0;jj<nInterpFac;jj++)
+    {
+        free(indInterp[jj]);
+    }
+    free(indInterp);
+    
+    free(subSeqPtr);
+    subSeqPtr = subSeqPtr_new;
+    nSubSeqs = nSubSeqs_new;
+    
+}
+
+
+int TSAdataHandler::filterBlackListedSubSeqs()
+{
+    
+    //counting number of valid segments
+    TSAIND cnt=0;
+    for (TSAIND ii=0; ii<nSubSeqs; ii++)
+    {
+        if(blacklist[ii]==0)
+        {
+            cnt++;
+        }
+    }
+    
+    TSAIND nSubSeqs_new = cnt;
+    
+    TSAsubSeq_t *subSeqPtr_new = (TSAsubSeq_t *)malloc(sizeof(TSAsubSeq_t)*nSubSeqs_new);
+    cnt=0;
+    for(TSAIND ii=0;ii<nSubSeqs;ii++)
+    {
+        if(blacklist[ii]==0)
+        {
+            subSeqPtr_new[cnt] = subSeqPtr[ii];
+            cnt++;
+        }
+        else
+        {
+            free(subSeqPtr[ii].pData);
+            free(subSeqPtr[ii].pTStamps);
+        }
+    }
+    free(subSeqPtr);
+    subSeqPtr = subSeqPtr_new;
+    nSubSeqs = nSubSeqs_new;
+    
+}
+
+int TSAdataHandler::updateBLInvalidSegment(char *segmentFile)
 {
     TSAIND ii,jj,nLines;
     FILE *fp;
@@ -159,7 +269,7 @@ int updateBLInvalidSegment(char *segmentFile)
     TSAPattern_t *invalidSegs;
     
     nLines = getNumLines(segmentFile);
-    invalidSegs = (segInfo_t *)malloc(sizeof(segInfo_t)*nLines);
+    invalidSegs = (TSAPattern_t *)malloc(sizeof(TSAPattern_t)*nLines);
     fp =fopen(segmentFile,"r");
     if (fp==NULL)
     {
@@ -244,17 +354,17 @@ int TSAdataHandler::computeStdTSLocal(float **std, int varSam)
 }
 
 
-int updateBLStdThsld()
+int TSAdataHandler::updateBLStdThsld()
 {
     //computing standard deviation
-    float *stdVec
+    float *stdVec;
     int varSam = (int)round(procParams.varDur/pHop);
     computeStdTSLocal(&stdVec, varSam);
     
     // Assigning weather a point belongs to a flat region or non flar region based on a threhsold
-    for(int ii=varSam;ii<nPitchSamples-varSam;ii++)
+    for(int ii=varSam;ii<lenTS-varSam;ii++)
     {
-        if (stdVec[ii]>myProcParams->threshold)
+        if (stdVec[ii]>procParams.threshold)
         {
             stdVec[ii] = 1;
         }
@@ -303,7 +413,7 @@ int TSAdataHandler::updateBLDurThsld()
     for(int ind=0; ind<nSubSeqs; ind++)
     {
         start = samPtr[ind].tStamp;
-        end = samPtr[ind+procParams.motifLengths[procParams.indexMotifLenLongest]].tStamp;
+        end = samPtr[ind+procParams.motifLengths[procParams.indexMotifLenLongest]-1].tStamp;
         
         if (fabs(start-end) > maxMotifDur)       //allow 200 ms pauses in total not more than that
         {
@@ -319,6 +429,10 @@ int TSAdataHandler::updateBLDurThsld()
 int TSAdataHandler::initializeBlackList()
 {
     blacklist = (int *)malloc(sizeof(int)*nSubSeqs);
+    for(TSAIND ii=0; ii<nSubSeqs; ii++)
+    {
+        blacklist[ii]=0;
+    }
     
     return 1;
 }
@@ -330,7 +444,6 @@ int TSAdataHandler::genSlidingWindowSubSeqs()
     int lenRawMotifData = procParams.motifLengths[procParams.indexMotifLenLongest];
     int lenRawMotifDataM1 = lenRawMotifData-1;
     
-    
     subSeqPtr = (TSAsubSeq_t *)malloc(sizeof(TSAsubSeq_t)*lenTS);
     
     TSAIND ind=0;
@@ -341,21 +454,23 @@ int TSAdataHandler::genSlidingWindowSubSeqs()
     {
         subSeqPtr[ind].sTime  = samPtr[ind].tStamp;
         subSeqPtr[ind].eTime  = samPtr[ind+procParams.motifLengths[procParams.indexMotifLenReal]].tStamp;
-        
-        if (ind < lenTs - lenRawMotifDataM1)
+    
+        if (ind < lenTS - lenRawMotifDataM1)
         {
             subSeqPtr[ind].pData = (TSADATA *)malloc(sizeof(TSADATA)*lenRawMotifData);
+            subSeqPtr[ind].len = lenRawMotifData;
+            subSeqPtr[ind].pTStamps = (float *)malloc(sizeof(float)*lenRawMotifData);
         }
         
         for(TSAIND ll = min(ind, lenTS - lenRawMotifDataM1-1) ; ll >= max(0,ind-lenRawMotifDataM1) ; ll--)
         {
             subSeqPtr[ll].pData[ind-ll] = samPtr[ind].value; 
+            subSeqPtr[ll].pTStamps[ind-ll] = samPtr[ind].tStamp;
         }
         
        ind++;        
     }
-    
-    nSubSeqs = ind;
+    nSubSeqs = lenTS - lenRawMotifDataM1;
     
     return 1;
 
@@ -363,6 +478,7 @@ int TSAdataHandler::genSlidingWindowSubSeqs()
 
 int TSAdataHandler::calculateDiffMotifLengths()
 {
+    int ii, jj;
     
     if (procParams.nInterpFac==1)
     {
@@ -513,8 +629,9 @@ int TSAdataHandler::readHopSizeTS(char *fileName)
         return 0;
     }
     //reading just first two lines, in order to obtain hopsize//
-    nRead = fscanf(fp, "%f\t%f\n",&tsData,&tsTime1);
-    nRead = fscanf(fp, "%f\t%f\n",&tsData,&tsTime2);
+    nRead = fscanf(fp, "%f\t%f\n",&tsTime1, &tsData);
+    nRead = fscanf(fp, "%f\t%f\n",&tsTime2, &tsData);
+    
     pHop = (tsTime2-tsTime1);
     fclose(fp);
     return 1;
@@ -566,7 +683,7 @@ int TSAdataHandler::readTSData(char *fileName)
         return 0;
     }
     cnt = 0;
-    while (fscanf(fp, "%f\t%f\n",&tsData,&tsTime)!=EOF)    //read till the end of the file
+    while (fscanf(fp, "%f\t%f\n",&tsTime, &tsData)!=EOF)    //read till the end of the file
     {
         samPtr[cnt].value  = tsData;
         samPtr[cnt].tStamp  = tsTime;
