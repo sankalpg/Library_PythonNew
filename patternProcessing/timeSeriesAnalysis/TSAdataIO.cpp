@@ -110,7 +110,7 @@ TSAdataHandler::TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fi
     baseName = bName;
     
     fHandle.initialize(baseName, fileExtPtr);
-    
+	
 }
 
 int TSAdataHandler::genTemplate1SubSeqs()
@@ -132,11 +132,311 @@ int TSAdataHandler::genTemplate1SubSeqs()
     printf("%lld\n", lenTS);
     
     convertHz2Cents(fHandle.getTonicFileName());
+	
+	//calculate different motif lengths before doing sliding window candidate generation
+	calculateDiffMotifLengths();
+    
+    genSlidingWindowSubSeqs();
+    
+    initializeBlackList();
+    
+    updateBLDurThsld();
+    
+    updateBLStdThsld();
+    
+    updateBLInvalidSegment(fHandle.getBlackListSegFileName());
     
     
     
     
+}
+
+int updateBLInvalidSegment(char *segmentFile)
+{
+    TSAIND ii,jj,nLines;
+    FILE *fp;
+    float temp[4] = {0};
+    TSAPattern_t *invalidSegs;
     
+    nLines = getNumLines(segmentFile);
+    invalidSegs = (segInfo_t *)malloc(sizeof(segInfo_t)*nLines);
+    fp =fopen(segmentFile,"r");
+    if (fp==NULL)
+    {
+        printf("Error opening file %s\n", segmentFile);
+        return 0;
+    }
+    //reading segments of the tani sections
+    ii=0;
+    while (fscanf(fp, "%f %f\n",&temp[0],&temp[1])!=EOF)
+    {
+        invalidSegs[ii].sTime = temp[0];
+        invalidSegs[ii].eTime = temp[1];
+        ii++;
+    }
+    fclose(fp);
+    //blacklisting the indexes whose time stamps lie between these segments
+    for(ii=0;ii<nSubSeqs;ii++)
+    {
+        for(jj=0;jj<nLines;jj++)
+        {
+            if ((subSeqPtr[ii].eTime >= invalidSegs[jj].sTime) && (subSeqPtr[ii].sTime <= invalidSegs[jj].eTime))
+                blacklist[ii]=1;
+        }
+        
+    }
+    
+    free(invalidSegs);
+    
+    return 1;
+}
+
+/*
+ * This function computes a running variance of the input data
+ */
+int TSAdataHandler::computeStdTSLocal(float **std, int varSam)
+{
+    float *mean, *stdVec, temp[2]={0};
+    TSAIND ii;
+    int N;
+    
+    
+    mean = (float *)malloc(sizeof(float)*lenTS);
+    memset(mean,0,sizeof(float)*lenTS);
+    stdVec = (float *)malloc(sizeof(float)*lenTS);
+    memset(stdVec,0,sizeof(float)*lenTS);
+    
+    N = 2*varSam+1 ;    
+    for(ii=0;ii<N;ii++)
+    {
+        mean[varSam] +=  samPtr[ii].value ;
+    }    
+    for(ii=varSam+1;ii<lenTS-varSam;ii++)
+    {
+        mean[ii] =  mean[ii-1] - samPtr[ii-(varSam+1)].value + samPtr[ii+varSam].value ;  //running mean
+    }
+    for(ii=0;ii<lenTS;ii++)
+    {
+        mean[ii] =  mean[ii]/N;  //running mean
+    }
+    
+    //computing running variance
+    for(ii=0;ii<N;ii++)
+    {
+        temp[0] = (samPtr[ii].value- mean[ii]);
+        stdVec[varSam] += temp[0]*temp[0];
+    } 
+    for(ii=varSam+1;ii<lenTS-varSam;ii++)
+    {
+        temp[0] = samPtr[ii-(varSam+1)].value -mean[ii-(varSam+1)];
+        stdVec[ii] =  stdVec[ii-1] - temp[0]*temp[0] ; 
+        temp[1] = (samPtr[ii+varSam].value -mean[ii+varSam]);
+        stdVec[ii] += temp[1]*temp[1] ;
+    }
+    for(ii=0;ii<lenTS;ii++)
+    {
+        stdVec[ii] =  sqrt(stdVec[ii]/N);
+    }    
+    
+    *std = stdVec;
+    free(mean);
+    
+}
+
+
+int updateBLStdThsld()
+{
+    //computing standard deviation
+    float *stdVec
+    int varSam = (int)round(procParams.varDur/pHop);
+    computeStdTSLocal(&stdVec, varSam);
+    
+    // Assigning weather a point belongs to a flat region or non flar region based on a threhsold
+    for(int ii=varSam;ii<nPitchSamples-varSam;ii++)
+    {
+        if (stdVec[ii]>myProcParams->threshold)
+        {
+            stdVec[ii] = 1;
+        }
+        else
+        {
+            stdVec[ii] = 0;
+        }            
+            
+    }
+    
+     //blackCnt=lenTS;
+    TSAIND ind=0;
+    float ex=0;
+    int lenRawMotifData = procParams.motifLengths[procParams.indexMotifLenLongest];
+    int lenRawMotifDataM1 = lenRawMotifData-1;
+    
+    //############################## generating subsequences ##########################################
+    while(ind<lenTS)
+    {
+        ex+=stdVec[ind];
+        if (ind >= lenRawMotifDataM1)
+        {
+            if (blacklist[ind-lenRawMotifDataM1]==0)
+            {
+                if(ex < procParams.flatThreshold*(float)lenRawMotifData)
+                {
+                    
+                    blacklist[ind-lenRawMotifDataM1]=1;
+                }
+                
+            }
+            ex -= stdVec[ind-lenRawMotifDataM1];
+        }
+       ind++;        
+    }
+    
+    return 1;
+}
+
+int TSAdataHandler::updateBLDurThsld()
+{
+    float start, end, maxMotifDur;
+    
+    maxMotifDur = (procParams.durMotif*procParams.interpFac[procParams.indexMotifLenLongest]) + procParams.maxPauseDur ; 
+    
+    for(int ind=0; ind<nSubSeqs; ind++)
+    {
+        start = samPtr[ind].tStamp;
+        end = samPtr[ind+procParams.motifLengths[procParams.indexMotifLenLongest]].tStamp;
+        
+        if (fabs(start-end) > maxMotifDur)       //allow 200 ms pauses in total not more than that
+        {
+            blacklist[ind]=1;
+        }
+    }
+    
+    return 1;
+}
+
+
+
+int TSAdataHandler::initializeBlackList()
+{
+    blacklist = (int *)malloc(sizeof(int)*nSubSeqs);
+    
+    return 1;
+}
+
+int TSAdataHandler::genSlidingWindowSubSeqs()
+{
+    
+    
+    int lenRawMotifData = procParams.motifLengths[procParams.indexMotifLenLongest];
+    int lenRawMotifDataM1 = lenRawMotifData-1;
+    
+    
+    subSeqPtr = (TSAsubSeq_t *)malloc(sizeof(TSAsubSeq_t)*lenTS);
+    
+    TSAIND ind=0;
+    float ex=0;
+    
+    //############################## generating subsequences ##########################################
+    while(ind<lenTS)
+    {
+        subSeqPtr[ind].sTime  = samPtr[ind].tStamp;
+        subSeqPtr[ind].eTime  = samPtr[ind+procParams.motifLengths[procParams.indexMotifLenReal]].tStamp;
+        
+        if (ind < lenTs - lenRawMotifDataM1)
+        {
+            subSeqPtr[ind].pData = (TSADATA *)malloc(sizeof(TSADATA)*lenRawMotifData);
+        }
+        
+        for(TSAIND ll = min(ind, lenTS - lenRawMotifDataM1-1) ; ll >= max(0,ind-lenRawMotifDataM1) ; ll--)
+        {
+            subSeqPtr[ll].pData[ind-ll] = samPtr[ind].value; 
+        }
+        
+       ind++;        
+    }
+    
+    nSubSeqs = ind;
+    
+    return 1;
+
+}
+
+int TSAdataHandler::calculateDiffMotifLengths()
+{
+    
+    if (procParams.nInterpFac==1)
+    {
+        procParams.interpFac[0]=1.0;
+        
+        procParams.combMTX = (int **)malloc(sizeof(int*)*procParams.nInterpFac);
+        for(ii=0;ii<procParams.nInterpFac;ii++)
+        {
+            procParams.combMTX[ii] =  (int *)malloc(sizeof(int)*procParams.nInterpFac);
+            for(jj=0;jj<procParams.nInterpFac;jj++)
+            {
+                procParams.combMTX[ii][jj] = 1;
+            }
+        }
+    }
+    else if (procParams.nInterpFac==3)
+    {
+        procParams.interpFac[0]=0.9;
+        procParams.interpFac[1]=1.0;
+        procParams.interpFac[2]=1.1;
+        
+        procParams.combMTX = (int **)malloc(sizeof(int*)*procParams.nInterpFac);
+        for(ii=0;ii<procParams.nInterpFac;ii++)
+        {
+            procParams.combMTX[ii] =  (int *)malloc(sizeof(int)*procParams.nInterpFac);
+            for(jj=0;jj<procParams.nInterpFac;jj++)
+            {
+                procParams.combMTX[ii][jj] = combAllwd_3[ii][jj];
+            }
+        }
+        
+        
+    }
+    else if (procParams.nInterpFac==5)
+    {
+        procParams.interpFac[0]=0.9;
+        procParams.interpFac[1]=0.95;
+        procParams.interpFac[2]=1.0;
+        procParams.interpFac[3]=1.05;
+        procParams.interpFac[4]=1.1;
+        
+        procParams.combMTX = (int **)malloc(sizeof(int*)*procParams.nInterpFac);
+        for(ii=0;ii<procParams.nInterpFac;ii++)
+        {
+            procParams.combMTX[ii] =  (int *)malloc(sizeof(int)*procParams.nInterpFac);
+            for(jj=0;jj<procParams.nInterpFac;jj++)
+            {
+                procParams.combMTX[ii][jj] = combAllwd_5[ii][jj];
+            }
+        }
+    }
+    
+    
+    //######### computing all the motif lengths for several interpolation factors ##############
+    int max_factor=-1;
+    for (ii=0;ii<procParams.nInterpFac; ii++)
+    {
+        procParams.motifLengths[ii] = (int)ceil((procParams.durMotif*procParams.interpFac[ii])/pHop);
+        if (procParams.interpFac[ii]==1)
+        {
+            procParams.indexMotifLenReal = ii;
+        }
+        if (procParams.interpFac[ii]>max_factor)
+        {
+            max_factor = procParams.interpFac[ii];
+            procParams.indexMotifLenLongest = ii;
+        }
+    }
+    
+    //CRUCIAL POINT !!! since cubic interpolation needs 4 points (2 ahead) just store
+    if (procParams.nInterpFac >1)
+    {
+        procParams.motifLengths[procParams.indexMotifLenLongest]+=1;
+    }
     
 }
 

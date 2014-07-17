@@ -175,3 +175,55 @@ void quadraticInterpolate(double *dataInp, double *dataOut, float *indInt, int N
 
 
 
+/*
+ * This function computes a running variance of the input data
+ */
+void computeRunningStd(double *pitchSamples, float **std, int varSam, INDTYPE nPitchSamples)
+{
+    float *mean, *stdVec, temp[2]={0};
+    INDTYPE ii;
+    int N;
+    
+    
+    mean = (float *)malloc(sizeof(float)*nPitchSamples);
+    memset(mean,0,sizeof(float)*nPitchSamples);
+    stdVec = (float *)malloc(sizeof(float)*nPitchSamples);
+    memset(stdVec,0,sizeof(float)*nPitchSamples);
+    
+    N = 2*varSam+1 ;    
+    for(ii=0;ii<N;ii++)
+    {
+        mean[varSam] +=  pitchSamples[ii] ;
+    }    
+    for(ii=varSam+1;ii<nPitchSamples-varSam;ii++)
+    {
+        mean[ii] =  mean[ii-1] - pitchSamples[ii-(varSam+1)] + pitchSamples[ii+varSam] ;  //running mean
+    }
+    for(ii=0;ii<nPitchSamples;ii++)
+    {
+        mean[ii] =  mean[ii]/N;  //running mean
+    }
+    
+    //computing running variance
+    for(ii=0;ii<N;ii++)
+    {
+        temp[0] = (pitchSamples[ii]- mean[ii]);
+        stdVec[varSam] += temp[0]*temp[0];
+    } 
+    for(ii=varSam+1;ii<nPitchSamples-varSam;ii++)
+    {
+        temp[0] = pitchSamples[ii-(varSam+1)] -mean[ii-(varSam+1)];
+        stdVec[ii] =  stdVec[ii-1] - temp[0]*temp[0] ; 
+        temp[1] = (pitchSamples[ii+varSam] -mean[ii+varSam]);
+        stdVec[ii] += temp[1]*temp[1] ;
+    }
+    for(ii=0;ii<nPitchSamples;ii++)
+    {
+        stdVec[ii] =  sqrt(stdVec[ii]/N);
+    }    
+    
+    *std = stdVec;
+    free(mean);
+    
+    
+}

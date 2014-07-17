@@ -30,7 +30,13 @@ typedef struct TSAmPair
     TSADIST dist;
 }TSAmPair_t;
 
-
+typedef struct TSAPattern
+{
+    float sTime;
+    float eTime;
+    int fileId;
+    int id;
+}TSAPattern_t;
 
 typedef struct procParams
 {

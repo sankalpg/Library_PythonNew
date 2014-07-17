@@ -58,6 +58,9 @@ public:
     TSAIND nSubSeqs;
     TSAIND nLinesFile;
     
+    int *blacklist;
+    
+    
     
     
     TSAsam_t *samPtr;
