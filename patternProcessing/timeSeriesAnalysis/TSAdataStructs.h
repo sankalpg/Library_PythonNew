@@ -102,6 +102,7 @@ typedef struct fileExts
     char logFileExt[MAX_FEXT_CHARS];
     char paramsDumpExt[MAX_FEXT_CHARS];
     char outFileExt[MAX_FEXT_CHARS];
+    fileExts
 }fileExts_t;
 
 typedef struct procLogs

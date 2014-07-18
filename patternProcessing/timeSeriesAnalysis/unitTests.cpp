@@ -77,6 +77,9 @@ int main( int argc , char *argv[])
     
     printf("Hello13\n");
     
+    // iterating over all files 
+    fp2 = fopen(,"w");
+    searchFileID=0;
     
     
     for(TSAIND ii=0;ii< TSData1.nSubSeqs;ii++)
