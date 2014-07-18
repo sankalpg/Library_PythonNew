@@ -1,6 +1,8 @@
 
 #include "TSAdataIO.h"
 #include "TSAsimilarity.h"
+#include "TSApool.h"
+#include "TSAlogs.h"
 
 
 using namespace std;
@@ -12,10 +14,11 @@ int main( int argc , char *argv[])
     fileExts_t *myFileExtsPtr;
     int Err=0;
     int verbos;
-    procLogs_t myProcLogs;
-    
     
     TSAparamHandle paramHand;
+    TSAlogs logs;
+    fileNameHandler fHandle;
+    
     
     //checking if the number of input arguments are correct 
     if(argc < 6 || argc > 7)
@@ -39,11 +42,11 @@ int main( int argc , char *argv[])
     paramHand.readFileExtsInfoFile(fileExtFile);
     myFileExtsPtr = paramHand.getExtPtr();
     
-    //initialize the log counts
-    initializeLogCounts(&myProcLogs);
+    
+    fHandle.initialize(baseName, myFileExtsPtr);
     
     //create a data handler object
-    TSAdataHandler TSData1(baseName, &myProcLogs, myFileExtsPtr, myProcParamsPtr);
+    TSAdataHandler TSData1(baseName, &logs.procLogs, myFileExtsPtr, myProcParamsPtr);
     
     TSData1.genTemplate1SubSeqs();
     printf("Hello10\n");
@@ -66,15 +69,15 @@ int main( int argc , char *argv[])
     
     int nInterFact = TSData1.procParams.nInterpFac;
     TSADIST LB_kim_FL, LB_Keogh_EQ, LB_Keogh_EC, realDist, bsf=FLT_MAX;
-    TSADATA **U, **L, *accLB1, *accLB2;
     
-    U = dtwUCR.envUQueryPtr;
-    L = dtwUCR.envLQueryPtr;
-    accLB1 = dtwUCR.accLB_Keogh_EQ;
-    accLB2 = dtwUCR.accLB_Keogh_EC;
+    TSApool pool(kNN, myProcParamsPtr->blackDur);
+    pool.initPriorityQDisc();
     
+    printf("you have chosen this KNN %d\n", pool.K);
     
     printf("Hello13\n");
+    
+    
     
     for(TSAIND ii=0;ii< TSData1.nSubSeqs;ii++)
     {
@@ -89,13 +92,17 @@ int main( int argc , char *argv[])
             LB_kim_FL = computeLBkimFL(subSeqPtr[ii].pData[0], subSeqPtr[jj].pData[0], subSeqPtr[ii].pData[lenMotifReal-1], subSeqPtr[jj].pData[lenMotifReal-1], SqEuclidean);
             if (LB_kim_FL< bsf) 
             {
-                LB_Keogh_EQ = computeKeoghsLB(U[ii],L[ii],accLB1, subSeqPtr[jj].pData,lenMotifReal, bsf, SqEuclidean);
+                LB_Keogh_EQ = computeKeoghsLB(dtwUCR.envUQueryPtr[ii],dtwUCR.envLQueryPtr[ii],dtwUCR.accLB_Keogh_EQ, subSeqPtr[jj].pData,lenMotifReal, bsf, SqEuclidean);
                 if(LB_Keogh_EQ < bsf)
                 {
-                    LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB2, subSeqPtr[ii].pData,lenMotifReal, bsf, SqEuclidean);
+                    LB_Keogh_EC = computeKeoghsLB(dtwUCR.envUQueryPtr[jj],dtwUCR.envLQueryPtr[jj],dtwUCR.accLB_Keogh_EC, subSeqPtr[ii].pData,lenMotifReal, bsf, SqEuclidean);
                     if(LB_Keogh_EC < bsf)
                     {
-                        realDist = dtw1dBandConst(subSeqPtr[ii].pData, subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, bsf, accLB1);
+                        realDist = dtw1dBandConst(subSeqPtr[ii].pData, subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, bsf, dtwUCR.accLB_Keogh_EQ);
+                        if (realDist <= bsf)
+                        {
+                            bsf = pool.managePriorityQDisc(subSeqPtr, ii, jj, realDist);
+                        }
                     }
                 }
             }
@@ -103,7 +110,7 @@ int main( int argc , char *argv[])
     }
     
     
-    
+    TSData1.dumpDiscMotifInfo(TSData1.fHandle.getOutFileName(), pool.priorityQDisc, pool.K, verbos);
     
     //generate pattern sub sequences
     

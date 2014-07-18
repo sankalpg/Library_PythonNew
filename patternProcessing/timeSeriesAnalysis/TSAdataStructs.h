@@ -24,12 +24,12 @@ typedef struct TSAsubSeq
     int fileId;
 }TSAsubSeq_t;
 
-typedef struct TSAmPair
+typedef struct TSAmotifInfo
 {
-    TSAIND id1;
-    TSAIND id2;
+    TSAIND ind1;
+    TSAIND ind2;
     TSADIST dist;
-}TSAmPair_t;
+}TSAmotifInfo_t;
 
 typedef struct TSAPattern
 {
@@ -38,6 +38,31 @@ typedef struct TSAPattern
     int fileId;
     int id;
 }TSAPattern_t;
+
+typedef struct TSAmotifDataStorage
+{
+  
+    TSAIND patternID;
+    TSADIST *data;
+    float strTime;
+    float endTime;
+    
+    
+    
+}TSAmotifDataStorage_t;
+
+typedef struct TSAmotifInfoExt
+{
+  
+    TSADIST dist;
+    TSAIND id1;
+    TSAIND id2;
+    int searchFileID;
+    TSAIND patternID;
+    TSAmotifDataStorage_t *storagePtr;
+
+}TSAmotifInfoExt_t;
+
 
 typedef struct procParams
 {
@@ -81,25 +106,25 @@ typedef struct fileExts
 
 typedef struct procLogs
 {
-    float timeDataLoad;
-    float timeGenSubs;
-    float timeRemBlacklist; 
-    float timeGenEnvelops;
-    float timeDiscovery;
-    float timeWriteData;
-    float timeTotal;
+    float tLoadTS;
+    float tProcTS;
+    float tGenEnv; 
+    float tGenUniScal;
+    float tTotal;
+    float tDump;
     
-    long long totalPitchSamples;
-    long long totalPitchNonSilSamples;
-    long long totalSubsGenerated;
-    long long totalSubsBlacklisted;
-    long long totalSubsInterpolated;
+    long long lenTS;
+    long long lenProcTS;
+    long long nSubSeqs;
+    long long nSubSeqsBL;
+    long long nProcSubSeq;
     
-    long long totalFLDone;
-    long long totalLBKeoghEQ;
-    long long totalLBKeoghEC;
-    long long totalDTWComputations;
-    long long totalPriorityUpdates;
+    long long nLB_KIM_FL;
+    long long nLB_Keogh_EQ;
+    long long nLB_Keogh_EC;
+    long long nDTW_EA;
+    long long nPriorityUpdates;
+    
 }procLogs_t;
 
 

@@ -1,4 +1,4 @@
-/******************************************************************************
+ /******************************************************************************
 *******************************************************************************
 ****** Sankalp Gulati                                                   *******
 ****** MUSIC TECHNOLOGY GROUP, UPF, BARCELONA                           *******
@@ -259,7 +259,7 @@ int main( int argc , char *argv[])
     bsfArray = (DISTTYPE*)malloc(sizeof(DISTTYPE)*nPriorityList);
     for(ii=0;ii<nPriorityList;ii++)
     {
-        bsfArray[ii] = bsf;motifFile
+        bsfArray[ii] = bsf;
     }
     
     longTermDataStorage = (longTermDataStorage_t **)malloc(sizeof(longTermDataStorage_t*)*nPriorityList);

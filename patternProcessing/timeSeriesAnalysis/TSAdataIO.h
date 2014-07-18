@@ -58,6 +58,7 @@ public:
     TSAIND nSubSeqs;
     TSAIND nLinesFile;
     
+    
     int *blacklist;
     
     
@@ -87,6 +88,7 @@ public:
     int         computeStdTSLocal(float **std, int varSam);
     int         filterBlackListedSubSeqs();
     int         genUniScaledSubSeqs();
+    int         dumpDiscMotifInfo(char *motifFile, TSAmotifInfo_t *priorityQDisc, int K, int verbos);
     
     TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fileExts, procParams_t *pParams);
 };

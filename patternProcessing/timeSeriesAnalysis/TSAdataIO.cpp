@@ -78,29 +78,6 @@ fileExts_t* TSAparamHandle::getExtPtr()
     return &fileExts;
 };
 
-int initializeLogCounts(procLogs_t *myProcLogs)
-{
-    myProcLogs->timeDataLoad=0;
-    myProcLogs->timeGenSubs=0;
-    myProcLogs->timeRemBlacklist=0; 
-    myProcLogs->timeGenEnvelops=0;
-    myProcLogs->timeDiscovery=0;
-    myProcLogs->timeWriteData=0;
-    myProcLogs->timeTotal=0;
-    myProcLogs->totalPitchSamples=0;
-    myProcLogs->totalPitchNonSilSamples=0;
-    myProcLogs->totalSubsGenerated=0;
-    myProcLogs->totalSubsBlacklisted=0;
-    myProcLogs->totalSubsInterpolated=0;
-    myProcLogs->totalFLDone=0;
-    myProcLogs->totalLBKeoghEQ=0;
-    myProcLogs->totalLBKeoghEC=0;
-    myProcLogs->totalDTWComputations=0;
-    myProcLogs->totalPriorityUpdates=0;
-}
-
-
-
 TSAdataHandler::TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fileExts, procParams_t *pParams)
 {
     
@@ -206,7 +183,7 @@ int TSAdataHandler::genUniScaledSubSeqs()
                 subSeqPtr_new[ind].len = lenMotifReal;
                 cubicInterpolate(subSeqPtr[ii].pData, subSeqPtr_new[ind].pData, indInterp[jj], lenMotifReal);
                 subSeqPtr_new[ind].sTime  = subSeqPtr[ii].pTStamps[0];
-                subSeqPtr_new[ind].eTime  = subSeqPtr[ii].pTStamps[procParams.motifLengths[jj]];
+                subSeqPtr_new[ind].eTime  = subSeqPtr[ii].pTStamps[procParams.motifLengths[jj]-1];
                 ind++;
             }
         }
@@ -453,7 +430,7 @@ int TSAdataHandler::genSlidingWindowSubSeqs()
     while(ind<lenTS)
     {
         subSeqPtr[ind].sTime  = samPtr[ind].tStamp;
-        subSeqPtr[ind].eTime  = samPtr[ind+procParams.motifLengths[procParams.indexMotifLenReal]].tStamp;
+        subSeqPtr[ind].eTime  = samPtr[ind+procParams.motifLengths[procParams.indexMotifLenReal]-1].tStamp;
     
         if (ind < lenTS - lenRawMotifDataM1)
         {
@@ -671,7 +648,7 @@ int TSAdataHandler::readTSData(char *fileName)
     
     //count number of lines in the file specified
     nLinesFile = getNumLines(fHandle.getTSFileName());
-    procLogPtr->totalPitchSamples += nLinesFile;
+    procLogPtr->lenTS += nLinesFile;
     lenTS = nLinesFile;
     
     //allocate memory to store the time series data 
@@ -733,6 +710,23 @@ TSAIND TSAdataHandler::getNumLines(const char *file)
     return line;
     
 }
+
+int TSAdataHandler::dumpDiscMotifInfo(char *motifFile, TSAmotifInfo_t *priorityQDisc, int K, int verbos)
+{
+    FILE *fp;
+    int ii;
+    fp =fopen(motifFile,"w");
+    for(ii=0;ii<K;ii++)
+    {
+        fprintf(fp, "%f\t%f\t%f\t%f\t%lf\t%lld\t%lld\n", subSeqPtr[priorityQDisc[ii].ind1].sTime, subSeqPtr[priorityQDisc[ii].ind1].eTime, subSeqPtr[priorityQDisc[ii].ind2].sTime, subSeqPtr[priorityQDisc[ii].ind2].eTime, priorityQDisc[ii].dist, priorityQDisc[ii].ind1, priorityQDisc[ii].ind2);
+        if (verbos)
+        {
+            printf("motif pair is %f\t%f\t%f\t%lld\t%lld\n", subSeqPtr[priorityQDisc[ii].ind1].sTime,subSeqPtr[priorityQDisc[ii].ind2].sTime, priorityQDisc[ii].dist, priorityQDisc[ii].ind1%3, priorityQDisc[ii].ind2%3);
+        }
+    }
+    fclose(fp);
+}
+
 
 fileNameHandler::fileNameHandler()
 {
