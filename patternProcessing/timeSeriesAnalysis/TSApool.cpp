@@ -42,6 +42,16 @@ int TSApool::initPriorityQSear(TSAIND nQueries)
     for (int ii=0; ii < nQueries; ii++)
     {
         priorityQSear[ii] = (TSAmotifInfoExt_t *)malloc(sizeof(TSAmotifInfoExt_t)*K);
+        for(int jj=0;jj<K;jj++)
+        {
+            priorityQSear[ii][jj].dist=INF;
+            priorityQSear[ii][jj].ind1=0;
+            priorityQSear[ii][jj].ind2=0;
+            priorityQSear[ii][jj].sTime = -1;
+            priorityQSear[ii][jj].eTime = -1;
+            priorityQSear[ii][jj].patternID=PID_DEFAULT2;
+            priorityQSear[ii][jj].searchFileID = FID_DEFAULT1;
+        }
     }
     
     return 1;
@@ -92,6 +102,79 @@ TSADIST TSApool::managePriorityQDisc(TSAsubSeq_t *subSeqPtr, TSAIND ind1, TSAIND
     }
     
     return priorityQDisc[K-1].dist;
+    
+}
+
+
+
+TSADIST TSApool::managePriorityQSear(TSAIND queryInd, TSAsubSeq_t *subSeqPtr, TSAIND ind1, TSAIND ind2, TSADIST dist, int searchFileID)
+{
+    int sortInd=-1, matchInd=-1;
+    
+    for(int ii=0;ii<K;ii++)
+    {
+        if ((priorityQSear[queryInd][ii].dist > dist)&&(sortInd==-1))
+        {
+            sortInd=ii;
+        }
+    }
+    
+    
+    for(int ii=0;ii<K;ii++)
+    {
+        if ((priorityQSear[queryInd][ii].dist > dist)&&(sortInd==-1))
+        {
+            sortInd=ii;
+        }
+
+        // searching if we already have a motif in out top K list which is near to the currently good match
+        if ((priorityQSear[queryInd][ii].searchFileID==searchFileID) && (fabs(priorityQSear[queryInd][ii].sTime -subSeqPtr[ind2].sTime) < blackDur))
+        {
+            matchInd=ii;
+            break;
+        }
+    }
+    
+    if (sortInd==-1)//we couldn't get any satisfactory replacement before we get a close neighbour
+    {
+        return priorityQSear[queryInd][K-1].dist;
+    }
+    //There are threbsfe possibilities
+    //1) There is no match found in the existing top motifs, simplest
+    if (matchInd==-1)
+    {
+        memmove(&priorityQSear[queryInd][sortInd+1], &priorityQSear[queryInd][sortInd], sizeof(TSAmotifInfoExt_t)*(K-(sortInd+1)));
+        priorityQSear[queryInd][sortInd].dist = dist;
+        priorityQSear[queryInd][sortInd].ind1 = ind1;
+        priorityQSear[queryInd][sortInd].ind2 = ind2;
+        priorityQSear[queryInd][sortInd].sTime = subSeqPtr[ind2].sTime;
+        priorityQSear[queryInd][sortInd].eTime = subSeqPtr[ind2].eTime;
+        priorityQSear[queryInd][sortInd].searchFileID = searchFileID;
+        priorityQSear[queryInd][sortInd].patternID = PID_DEFAULT3;
+    }
+    else if (sortInd == matchInd)
+    {
+        priorityQSear[queryInd][sortInd].dist = dist;
+        priorityQSear[queryInd][sortInd].ind1 = ind1;
+        priorityQSear[queryInd][sortInd].ind2 = ind2;
+        priorityQSear[queryInd][sortInd].sTime = subSeqPtr[ind2].sTime;
+        priorityQSear[queryInd][sortInd].eTime = subSeqPtr[ind2].eTime;
+        priorityQSear[queryInd][sortInd].searchFileID = searchFileID;
+        priorityQSear[queryInd][sortInd].patternID = PID_DEFAULT3;
+    }
+    else if (sortInd < matchInd)
+    {
+        memmove(&priorityQSear[queryInd][sortInd+1], &priorityQSear[queryInd][sortInd], sizeof(TSAmotifInfoExt_t)*(matchInd-sortInd));
+        priorityQSear[queryInd][sortInd].dist = dist;
+        priorityQSear[queryInd][sortInd].ind1 = ind1;
+        priorityQSear[queryInd][sortInd].ind2 = ind2;
+        priorityQSear[queryInd][sortInd].sTime = subSeqPtr[ind2].sTime;
+        priorityQSear[queryInd][sortInd].eTime = subSeqPtr[ind2].eTime;
+        priorityQSear[queryInd][sortInd].searchFileID = searchFileID;
+        priorityQSear[queryInd][sortInd].patternID = PID_DEFAULT3;
+    }
+    
+    return priorityQSear[queryInd][K-1].dist;
     
 }
 

@@ -12,6 +12,10 @@ TSAparamHandle::TSAparamHandle()
     memset(fileExts.logFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
     memset(fileExts.paramsDumpExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
     memset(fileExts.outFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
+    memset(fileExts.mappFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
+    memset(fileExts.searchListExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
+    memset(fileExts.queryFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
+
 }
  
 int TSAparamHandle::readParamsFromFile(char *paramFile)
@@ -40,6 +44,7 @@ int TSAparamHandle::readParamsFromFile(char *paramFile)
         if (strcmp(field, "SimMeasuresUsed:")==0){procParams.SimMeasuresUsed=atoi(value);}
         if (strcmp(field, "removeTaniSegs:")==0){procParams.removeTaniSegs=atoi(value);}
         if (strcmp(field, "dumpLogs:")==0){procParams.dumpLogs=atoi(value);}
+        if (strcmp(field, "maxNMotifsPairs:")==0){procParams.maxNMotifsPairs=atoi(value);}
     }
     fclose(fp);
     
@@ -64,6 +69,9 @@ int TSAparamHandle::readFileExtsInfoFile(char *fileExtsFile)
         if (strcmp(field, "logFileExt:")==0){strcat(fileExts.logFileExt, value);}
         if (strcmp(field, "paramsDumpExt:")==0){strcat(fileExts.paramsDumpExt, value);}
         if (strcmp(field, "outFileExt:")==0){strcat(fileExts.outFileExt, value);}
+        if (strcmp(field, "mappFileExt:")==0){strcat(fileExts.mappFileExt, value);}
+        if (strcmp(field, "searchListExt:")==0){strcat(fileExts.searchListExt, value);}
+        if (strcmp(field, "queryFileExt:")==0){strcat(fileExts.queryFileExt, value);}
     }
     fclose(fp);
     
@@ -88,6 +96,90 @@ TSAdataHandler::TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fi
     
     fHandle.initialize(baseName, fileExtPtr);
 	
+}
+int TSAdataHandler::loadMotifDataTemplate1()
+{
+     //read the time series data    
+    readTSData(fHandle.getTSFileName());
+    readHopSizeTS(fHandle.getTSFileName());
+    
+    printf("%lld\n", lenTS);
+    
+    //downsample
+    downSampleTS();
+    
+    printf("%lld\n", lenTS);
+    
+    //remove silence pitch regions
+    filterSamplesTS();
+    
+    printf("%lld\n", lenTS);
+    
+    convertHz2Cents(fHandle.getTonicFileName());
+    
+    printf("Hello1\n");
+    //calculate different motif lengths before doing sliding window candidate generation
+    calculateDiffMotifLengths();
+    
+    
+    readQueryTimeStamps(fHandle.getQueryFileName(), MOTIFPAIR_DUMP_FORMAT);
+    
+    //genSubSeqsByTStamps();
+    
+    //genUniScaledSubSeqs();
+    
+    
+    
+    
+    
+    
+}
+
+int TSAdataHandler::readQueryTimeStamps(char *queryFileName, int format)
+{
+    FILE *fp;
+    TSAseg_t *qTStamps;
+    
+    if (format = MOTIFPAIR_DUMP_FORMAT)
+    {
+        float temp[10]={0};
+        TSAIND ii=0, jj=0;
+        TSADIST temp4;
+        fp = fopen(queryFileName,"r");
+        if (fp==NULL)
+        {
+            printf("Error opening file %s\n", queryFileName);
+            return 0;
+        }
+        //reading number of lines in the file
+        int nLines = getNumLines(queryFileName);
+        qTStamps = (TSAseg_t*)malloc(sizeof(TSAseg_t)*nLines*2);
+        
+        while(fscanf(fp,"%f\t%f\t%f\t%f\t%lf\t%f\t%f\n", &temp[0], &temp[1], &temp[2], &temp[3], &temp4, &temp[5], &temp[6])!=EOF)
+        {
+            if(ii>=nLines)
+                break;
+            
+            if(temp4<INF)
+            {
+                qTStamps[jj].sTime=temp[0];
+                qTStamps[jj].eTime=temp[1];
+                jj++;
+                
+                qTStamps[jj].sTime=temp[2];
+                qTStamps[jj].eTime=temp[3];
+                jj++;
+            }
+            ii++;
+        }
+        fclose(fp);
+        nQueries=jj;
+        queryTStamps = qTStamps;
+    }
+    
+    
+    return 1;
+    
 }
 
 int TSAdataHandler::genTemplate1SubSeqs()
@@ -725,6 +817,34 @@ int TSAdataHandler::dumpDiscMotifInfo(char *motifFile, TSAmotifInfo_t *priorityQ
         }
     }
     fclose(fp);
+    
+    return 1;
+}
+
+int TSAdataHandler::dumpSearMotifInfo(char *motifFile, TSAmotifInfoExt_t **priorityQSear, TSAIND nQueries, int K, int verbos)
+{
+    FILE *fp;
+    fp = fopen(motifFile, "w");
+    
+    for(TSAIND ii=0;ii<K;ii++)
+    {
+        for(TSAIND jj=0;jj < nQueries;jj++)
+        {
+            if ( priorityQSear[jj][ii].dist < INF)
+            {
+                fprintf(fp, "%f\t%f\t%f\t%f\t%f\t%d\t", subSeqPtr[priorityQSear[jj][ii].ind1].sTime, subSeqPtr[priorityQSear[jj][ii].ind1].sTime, priorityQSear[jj][ii].sTime, priorityQSear[jj][ii].eTime, priorityQSear[jj][ii].dist, priorityQSear[jj][ii].searchFileID);
+            }
+            else
+            {
+                fprintf(fp, "%f\t%f\t%f\t%f\t%f\t%d\t", -1.0,-1.0,-1.0,-1.0,-1.0,-1);
+            }
+            
+        }
+        fprintf(fp, "\n");
+    }
+    fclose(fp);
+    
+    return 1;
 }
 
 
@@ -794,5 +914,59 @@ char* fileNameHandler::getOutFileName()
     return fileName;
     
 }
+
+char* fileNameHandler::getMappFileName()
+{
+    memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);
+    strcat(fileName, baseName);
+    strcat(fileName, fileExtPtr->mappFileExt);
+    
+    return fileName;
+    
+}
+
+char* fileNameHandler::getSearchListFileName()
+{
+    memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);
+    strcat(fileName, baseName);
+    strcat(fileName, fileExtPtr->searchListExt);
+    
+    return fileName;
+}
+char* fileNameHandler::getQueryFileName()
+{
+    memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);
+    strcat(fileName, baseName);
+    strcat(fileName, fileExtPtr->queryFileExt);
+    
+    return fileName;
+}
+
+
+
+int fileNameHandler::loadSearchFileList()
+{
+    char tempFilename[MAX_FNAME_CHARS];
+    
+    FILE *fp1 = fopen(getSearchListFileName(), "r");
+    if (fp1==NULL)
+    {
+        printf("Error opening file %s\n", getSearchListFileName());
+        return 0;
+    }
+    int ii=0;
+    searchFileNames = (char **)malloc(sizeof(char *)*MAX_NUM_SEARCHFILES);
+    while(fgets(tempFilename, MAX_FNAME_CHARS, fp1))
+    {
+        searchFileNames[ii] = (char *)malloc(sizeof(char)*MAX_FNAME_CHARS);
+        sscanf(tempFilename, "%[^\n]s\n", searchFileNames[ii]);
+        ii++;
+    }
+    nSearchFiles  = ii;
+    fclose(fp1);
+    return 1;
+}
+
+  
   
 

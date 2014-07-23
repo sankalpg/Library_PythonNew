@@ -48,7 +48,7 @@ int main( int argc , char *argv[])
     //create a data handler object
     TSAdataHandler TSData1(baseName, &logs.procLogs, myFileExtsPtr, myProcParamsPtr);
     
-    TSData1.genTemplate1SubSeqs();
+    TSData1.loadMotifDataTemplate1();
     printf("Hello10\n");
     
     TSAsubSeq_t *subSeqPtr = TSData1.subSeqPtr;
@@ -63,7 +63,7 @@ int main( int argc , char *argv[])
     
     dtwUCR.setQueryPtr(TSData1.subSeqPtr, TSData1.nSubSeqs);
     dtwUCR.computeQueryEnvelops();
-    dtwUCR.copyQueryEnv2Cand();
+    //dtwUCR.copyQueryEnv2Cand();
     
     printf("Hello12\n");
     
@@ -71,50 +71,68 @@ int main( int argc , char *argv[])
     TSADIST LB_kim_FL, LB_Keogh_EQ, LB_Keogh_EC, realDist, bsf=FLT_MAX;
     
     TSApool pool(kNN, myProcParamsPtr->blackDur);
-    pool.initPriorityQDisc();
-    
+    pool.initPriorityQSear(ceil(TSData1.nSubSeqs/nInterFact));
     printf("you have chosen this KNN %d\n", pool.K);
     
     printf("Hello13\n");
     
     // iterating over all files 
-    fp2 = fopen(,"w");
-    searchFileID=0;
+    FILE *fp2 = fopen(fHandle.getMappFileName(),"w");
+    int searchFileID=0;
     
+    fHandle.loadSearchFileList();
+    TSAIND queryInd=0;
     
-    for(TSAIND ii=0;ii< TSData1.nSubSeqs;ii++)
+    for(TSAIND ss=0; ss < fHandle.nSearchFiles; ss++)
     {
-        for(TSAIND jj=ii+1;jj< TSData1.nSubSeqs;jj++)
+        TSAdataHandler TSData2(fHandle.searchFileNames[ss], &logs.procLogs, myFileExtsPtr, myProcParamsPtr);
+        TSData2.genTemplate1SubSeqs();
+        dtwUCR.setCandPtr(TSData2.subSeqPtr, TSData2.nSubSeqs);
+        dtwUCR.computeCandEnvelops();
+        
+        searchFileID = ss;
+        
+        for(TSAIND jj=0;jj< TSData2.nSubSeqs;jj++)
         {
-            if (TSData1.procParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
-                continue;
-            if (fabs(subSeqPtr[ii].sTime-subSeqPtr[jj].sTime)< TSData1.procParams.blackDur)
+            for(TSAIND ii=0;ii< TSData1.nSubSeqs;ii++)
             {
-                continue;
-            }
-            LB_kim_FL = computeLBkimFL(subSeqPtr[ii].pData[0], subSeqPtr[jj].pData[0], subSeqPtr[ii].pData[lenMotifReal-1], subSeqPtr[jj].pData[lenMotifReal-1], SqEuclidean);
-            if (LB_kim_FL< bsf) 
-            {
-                LB_Keogh_EQ = computeKeoghsLB(dtwUCR.envUQueryPtr[ii],dtwUCR.envLQueryPtr[ii],dtwUCR.accLB_Keogh_EQ, subSeqPtr[jj].pData,lenMotifReal, bsf, SqEuclidean);
-                if(LB_Keogh_EQ < bsf)
+                queryInd = (TSAIND)floor(queryInd/nInterFact);
+                if (TSData1.procParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
+                    continue;
+                if (fabs(subSeqPtr[ii].sTime-subSeqPtr[jj].sTime)< TSData1.procParams.blackDur)
                 {
-                    LB_Keogh_EC = computeKeoghsLB(dtwUCR.envUQueryPtr[jj],dtwUCR.envLQueryPtr[jj],dtwUCR.accLB_Keogh_EC, subSeqPtr[ii].pData,lenMotifReal, bsf, SqEuclidean);
-                    if(LB_Keogh_EC < bsf)
+                    continue;
+                }
+                if ((strcmp(baseName, fHandle.searchFileNames[ss])==0)&& (fabs(TSData1.subSeqPtr[ii].sTime-TSData2.subSeqPtr[jj].sTime)< TSData1.procParams.blackDur))
+                    //beware that basename and searchFile name should both have either full path or relative path.
+                {
+                    continue;
+                }
+                LB_kim_FL = computeLBkimFL(TSData1.subSeqPtr[ii].pData[0], TSData2.subSeqPtr[jj].pData[0], TSData1.subSeqPtr[ii].pData[lenMotifReal-1], TSData2.subSeqPtr[jj].pData[lenMotifReal-1], SqEuclidean);
+                if (LB_kim_FL< bsf) 
+                {
+                    LB_Keogh_EQ = computeKeoghsLB(dtwUCR.envUQueryPtr[ii],dtwUCR.envLQueryPtr[ii],dtwUCR.accLB_Keogh_EQ, TSData2.subSeqPtr[jj].pData,lenMotifReal, bsf, SqEuclidean);
+                    if(LB_Keogh_EQ < bsf)
                     {
-                        realDist = dtw1dBandConst(subSeqPtr[ii].pData, subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, bsf, dtwUCR.accLB_Keogh_EQ);
-                        if (realDist <= bsf)
+                        LB_Keogh_EC = computeKeoghsLB(dtwUCR.envUCandPtr[jj],dtwUCR.envLCandPtr[jj],dtwUCR.accLB_Keogh_EC, TSData1.subSeqPtr[ii].pData,lenMotifReal, bsf, SqEuclidean);
+                        if(LB_Keogh_EC < bsf)
                         {
-                            bsf = pool.managePriorityQDisc(subSeqPtr, ii, jj, realDist);
+                            realDist = dtw1dBandConst(TSData1.subSeqPtr[ii].pData, TSData2.subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, bsf, dtwUCR.accLB_Keogh_EQ);
+                            if (realDist <= bsf)
+                            {
+                                bsf = pool.managePriorityQSear(queryInd, subSeqPtr, ii, jj, realDist, searchFileID);
+                            }
                         }
                     }
                 }
             }
         }
     }
+    fclose(fp2);
+        
     
-    
-    TSData1.dumpDiscMotifInfo(TSData1.fHandle.getOutFileName(), pool.priorityQDisc, pool.K, verbos);
-    
+    //TSData1.dumpDiscMotifInfo(TSData1.fHandle.getOutFileName(), pool.priorityQDisc, pool.K, verbos);
+    TSData1.dumpSearMotifInfo(fHandle.getOutFileName(), pool.priorityQSear, TSData1.nSubSeqs/nInterFact, pool.K, verbos);
     //generate pattern sub sequences
     
     

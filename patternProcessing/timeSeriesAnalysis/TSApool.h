@@ -21,6 +21,7 @@ public:
     int initPriorityQSear(TSAIND nQueries);
     
     TSADIST managePriorityQDisc(TSAsubSeq_t *subSeqPtr, TSAIND ind1, TSAIND ind2, TSADIST dist);
+    TSADIST managePriorityQSear(TSAIND queryInd, TSAsubSeq_t *subSeqPtr, TSAIND ind1, TSAIND ind2, TSADIST dist, int searchFileID);
     
     
 };

@@ -55,7 +55,7 @@ int TSAdtwSimilarity::setQueryPtr(TSAsubSeq_t *qPtr, TSAIND nQ)
 int TSAdtwSimilarity::setCandPtr(TSAsubSeq_t *cPtr, TSAIND nC)
 {
     subSeqCandPtr = cPtr;
-    nQuery = nC;
+    nCand = nC;
 }
 
 int TSAdtwSimilarity::computeQueryEnvelops()

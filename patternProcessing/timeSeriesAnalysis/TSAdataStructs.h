@@ -6,6 +6,13 @@
 
 #include "TSAhashDefs.h"
 
+typedef struct TSAseg
+{
+    float sTime;
+    float eTime;
+}TSAseg_t;
+
+
 typedef struct TSAsam
 {
     TSADATA value;
@@ -55,10 +62,12 @@ typedef struct TSAmotifInfoExt
 {
   
     TSADIST dist;
-    TSAIND id1;
-    TSAIND id2;
+    TSAIND ind1;
+    TSAIND ind2;
     int searchFileID;
     TSAIND patternID;
+    float sTime;
+    float eTime;
     TSAmotifDataStorage_t *storagePtr;
 
 }TSAmotifInfoExt_t;
@@ -90,6 +99,7 @@ typedef struct procParams
     int verbos;
     int removeTaniSegs;
     int dumpLogs;
+    int maxNMotifsPairs;
     
     
 }procParams_t;
@@ -102,7 +112,10 @@ typedef struct fileExts
     char logFileExt[MAX_FEXT_CHARS];
     char paramsDumpExt[MAX_FEXT_CHARS];
     char outFileExt[MAX_FEXT_CHARS];
-    fileExts
+    char mappFileExt[MAX_FEXT_CHARS];
+    char searchListExt[MAX_FEXT_CHARS];
+    char queryFileExt[MAX_FEXT_CHARS];
+    
 }fileExts_t;
 
 typedef struct procLogs

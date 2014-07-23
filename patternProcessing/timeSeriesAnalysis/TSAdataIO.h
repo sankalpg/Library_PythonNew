@@ -30,6 +30,8 @@ public:
     char fileName[MAX_FNAME_CHARS];
     fileExts_t *fileExtPtr;
     char *baseName;
+    char **searchFileNames;
+    int nSearchFiles;
     
     fileNameHandler();
     int initialize(char *bName, fileExts_t *fExtPtr);
@@ -39,6 +41,9 @@ public:
     char *getLogFileName();
     char *getParamDumpFileName();
     char *getOutFileName();
+    char *getMappFileName();
+    char *getSearchListFileName();
+    int  loadSearchFileList();
 };
 
 
@@ -61,6 +66,8 @@ public:
     
     int *blacklist;
     
+    TSAseg_t *queryTStamps;
+    TSAIND nQueries;
     
     
     
@@ -89,6 +96,9 @@ public:
     int         filterBlackListedSubSeqs();
     int         genUniScaledSubSeqs();
     int         dumpDiscMotifInfo(char *motifFile, TSAmotifInfo_t *priorityQDisc, int K, int verbos);
+    int         dumpSearMotifInfo(char *motifFile, TSAmotifInfoExt_t **priorityQSear, TSAIND nQueries, int K, int verbos);
+    int         readQueryTimeStamps(char *queryFileName, int format);
+    int         loadMotifDataTemplate1();
     
     TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fileExts, procParams_t *pParams);
 };
