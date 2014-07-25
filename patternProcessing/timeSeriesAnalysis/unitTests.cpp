@@ -51,9 +51,6 @@ int main( int argc , char *argv[])
     TSData1.loadMotifDataTemplate1();
     printf("Hello10\n");
     
-    TSAsubSeq_t *subSeqPtr = TSData1.subSeqPtr;
-    
-    
     TSAdtwSimilarity dtwUCR;
     
     int lenMotifReal = TSData1.procParams.motifLengths[TSData1.procParams.indexMotifLenReal];
@@ -96,13 +93,11 @@ int main( int argc , char *argv[])
         {
             for(TSAIND ii=0;ii< TSData1.nSubSeqs;ii++)
             {
-                queryInd = (TSAIND)floor(queryInd/nInterFact);
+                queryInd = (TSAIND)floor(ii/nInterFact);
+                
                 if (TSData1.procParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
                     continue;
-                if (fabs(subSeqPtr[ii].sTime-subSeqPtr[jj].sTime)< TSData1.procParams.blackDur)
-                {
-                    continue;
-                }
+
                 if ((strcmp(baseName, fHandle.searchFileNames[ss])==0)&& (fabs(TSData1.subSeqPtr[ii].sTime-TSData2.subSeqPtr[jj].sTime)< TSData1.procParams.blackDur))
                     //beware that basename and searchFile name should both have either full path or relative path.
                 {
@@ -120,7 +115,7 @@ int main( int argc , char *argv[])
                             realDist = dtw1dBandConst(TSData1.subSeqPtr[ii].pData, TSData2.subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, bsf, dtwUCR.accLB_Keogh_EQ);
                             if (realDist <= bsf)
                             {
-                                bsf = pool.managePriorityQSear(queryInd, subSeqPtr, ii, jj, realDist, searchFileID);
+                                bsf = pool.managePriorityQSear(queryInd, TSData2.subSeqPtr, ii, jj, realDist, searchFileID);
                             }
                         }
                     }

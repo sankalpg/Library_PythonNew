@@ -121,16 +121,53 @@ int TSAdataHandler::loadMotifDataTemplate1()
     //calculate different motif lengths before doing sliding window candidate generation
     calculateDiffMotifLengths();
     
-    
     readQueryTimeStamps(fHandle.getQueryFileName(), MOTIFPAIR_DUMP_FORMAT);
     
-    //genSubSeqsByTStamps();
+    genSubSeqsWithTStarts(queryTStamps, nQueries);
     
-    //genUniScaledSubSeqs();
-    
-    
+    genUniScaledSubSeqs();
     
     
+}
+
+int TSAdataHandler::genSubSeqsWithTStarts(TSAseg_t *qTStamps, TSAIND nQueries)
+{
+    int lenRawMotifData = procParams.motifLengths[procParams.indexMotifLenLongest];
+    
+    TSAIND *seedMotifInd = (TSAIND*)malloc(sizeof(TSAIND)*nQueries);
+    
+    for(TSAIND ii=0;ii<nQueries;ii++)
+    {
+        TSADIST min_val = INF;
+        for(TSAIND jj=0;jj<lenTS;jj++)
+        {
+            if (fabs(samPtr[jj].tStamp-qTStamps[ii].sTime)<min_val)
+            {
+                min_val = fabs(samPtr[jj].tStamp-qTStamps[ii].sTime);
+                seedMotifInd[ii] = jj;
+            }
+        }
+    }
+    
+    subSeqPtr = (TSAsubSeq_t *)malloc(sizeof(TSAsubSeq_t)*nQueries);
+    
+    for(TSAIND ii=0;ii<nQueries;ii++)
+    {
+        subSeqPtr[ii].pData = (TSADATA *)malloc(sizeof(TSADATA)*lenRawMotifData);
+        subSeqPtr[ii].pTStamps = (float *)malloc(sizeof(float)*lenRawMotifData);
+        
+        subSeqPtr[ii].sTime = samPtr[seedMotifInd[ii]].tStamp;
+        subSeqPtr[ii].eTime = samPtr[seedMotifInd[ii]+lenRawMotifData-1].tStamp;
+        
+        for(TSAIND jj=0;jj<lenRawMotifData;jj++)
+        {
+            subSeqPtr[ii].pData[jj]=samPtr[seedMotifInd[ii]+jj].value;
+            subSeqPtr[ii].pTStamps[jj]=samPtr[seedMotifInd[ii]+jj].tStamp;
+        }
+    }
+    nSubSeqs = nQueries;
+    
+    return 1;
     
     
 }
@@ -140,7 +177,7 @@ int TSAdataHandler::readQueryTimeStamps(char *queryFileName, int format)
     FILE *fp;
     TSAseg_t *qTStamps;
     
-    if (format = MOTIFPAIR_DUMP_FORMAT)
+    if (format == MOTIFPAIR_DUMP_FORMAT)
     {
         float temp[10]={0};
         TSAIND ii=0, jj=0;
@@ -267,6 +304,8 @@ int TSAdataHandler::genUniScaledSubSeqs()
             {
                 subSeqPtr_new[ind] = subSeqPtr[ii];
                 subSeqPtr_new[ind].len = lenMotifReal;
+                subSeqPtr_new[ind].sTime  = subSeqPtr[ii].pTStamps[0];
+                subSeqPtr_new[ind].eTime  = subSeqPtr[ii].pTStamps[lenMotifReal-1];
                 ind++;
             }
             else
@@ -832,7 +871,7 @@ int TSAdataHandler::dumpSearMotifInfo(char *motifFile, TSAmotifInfoExt_t **prior
         {
             if ( priorityQSear[jj][ii].dist < INF)
             {
-                fprintf(fp, "%f\t%f\t%f\t%f\t%f\t%d\t", subSeqPtr[priorityQSear[jj][ii].ind1].sTime, subSeqPtr[priorityQSear[jj][ii].ind1].sTime, priorityQSear[jj][ii].sTime, priorityQSear[jj][ii].eTime, priorityQSear[jj][ii].dist, priorityQSear[jj][ii].searchFileID);
+                fprintf(fp, "%f\t%f\t%f\t%f\t%f\t%d\t", subSeqPtr[priorityQSear[jj][ii].ind1].sTime, subSeqPtr[priorityQSear[jj][ii].ind1].eTime, priorityQSear[jj][ii].sTime, priorityQSear[jj][ii].eTime, priorityQSear[jj][ii].dist, priorityQSear[jj][ii].searchFileID);
             }
             else
             {

@@ -43,6 +43,7 @@ public:
     char *getOutFileName();
     char *getMappFileName();
     char *getSearchListFileName();
+    char* getQueryFileName();
     int  loadSearchFileList();
 };
 
@@ -98,6 +99,7 @@ public:
     int         dumpDiscMotifInfo(char *motifFile, TSAmotifInfo_t *priorityQDisc, int K, int verbos);
     int         dumpSearMotifInfo(char *motifFile, TSAmotifInfoExt_t **priorityQSear, TSAIND nQueries, int K, int verbos);
     int         readQueryTimeStamps(char *queryFileName, int format);
+    int         genSubSeqsWithTStarts(TSAseg_t *queryTStamps, TSAIND nQueries);
     int         loadMotifDataTemplate1();
     
     TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fileExts, procParams_t *pParams);
