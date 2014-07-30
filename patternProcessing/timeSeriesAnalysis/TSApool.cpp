@@ -5,6 +5,7 @@
 TSApool::TSApool()
 {
     K=-1;
+    patternID = 0;
 }
 TSApool::TSApool(int n, float bDur)
 {
@@ -56,6 +57,85 @@ int TSApool::initPriorityQSear(TSAIND nQueries)
     
     return 1;
 }
+
+int TSApool::initPattStorage(TSAIND nQueries, int lenMotifReal)
+{
+    longTermDataStorage = (TSAmotifDataStorage_t **)malloc(sizeof(TSAmotifDataStorage_t*)*nQueries);
+    for(TSAIND jj=0;jj<nQueries;jj++)
+    {
+        longTermDataStorage[jj] = (TSAmotifDataStorage_t *)malloc(sizeof(TSAmotifDataStorage_t)*K);
+        
+        for(TSAIND ii=0;ii<K;ii++)
+        {
+            longTermDataStorage[jj][ii].data = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
+            longTermDataStorage[jj][ii].patternID = PID_DEFAULT1;
+            longTermDataStorage[jj][ii].len = lenMotifReal;
+        }
+        
+    }
+    emptySpaceInd = (int *)malloc(sizeof(int)*K);
+    
+}
+
+int TSApool::updatePattStorageData(motifInfo *topKmotifs, longTermDataStorage_t *longTermDataStorage, DATATYPE** dataInterp, segInfo_t *tStampsInterp, INDTYPE *patternID, int *emptySpaceInd, int lenMotifReal, int K, int searchFileID)
+{
+    int match_found, *emptySpacePtr;
+    int emptySpaceCnt=0;
+    int pp,ss;
+    
+    //Lets find out what patterns are removed from the priority list after processing one seed over entire search file. if patterns are removed, store there location is emptySapceInd buffer which we later use to copy new data (data which is newly added to priority list)
+    match_found=0;
+    for(pp=0;pp<K;pp++)
+    {
+        match_found=0;
+        for (ss=0;ss<K;ss++)
+        {
+            if (longTermDataStorage[pp].patternID == topKmotifs[ss].patternID)
+            {
+                match_found=1;
+                break;
+            }
+        }
+        if(match_found==0)
+        {
+            emptySpaceInd[emptySpaceCnt] = pp;
+            emptySpaceCnt++;
+        }
+    }
+    
+    emptySpacePtr = emptySpaceInd;
+    //After processing every seed motif over a file, check what are the new patterns added in the priority list and store data corresponding to them in the longTermStorage structure and assign them pattern ID so that we can track these patterns in the future
+    for(pp=0;pp<K;pp++)
+    {
+        //newly added patterns will be the ones added from the current search file so just search only in that domain
+        if ((topKmotifs[pp].searchFileID == searchFileID)&&(topKmotifs[pp].patternID==PID_DEFAULT3))
+        {
+            topKmotifs[pp].patternID = *patternID;
+            (*patternID)++;
+            
+            //Also in such case add data to the long term storage;
+            if(emptySpaceCnt>0)
+            {
+                memcpy(longTermDataStorage[emptySpacePtr[0]].data, dataInterp[topKmotifs[pp].ind2], sizeof(DATATYPE)*lenMotifReal);
+                longTermDataStorage[emptySpacePtr[0]].patternID = topKmotifs[pp].patternID;
+                longTermDataStorage[emptySpacePtr[0]].strTime = tStampsInterp[topKmotifs[pp].ind2].str;
+                longTermDataStorage[emptySpacePtr[0]].endTime = tStampsInterp[topKmotifs[pp].ind2].end;
+                topKmotifs[pp].storagePtr = &longTermDataStorage[emptySpacePtr[0]];
+                emptySpacePtr++;
+                emptySpaceCnt--;
+            }
+            else
+            {
+                printf("SOMETHING TERRIBLE HAPPENED");
+                return -1;
+            }
+        }
+    }
+    
+    return 1;
+}
+
+
 
 TSADIST TSApool::managePriorityQDisc(TSAsubSeq_t *subSeqPtr, TSAIND ind1, TSAIND ind2, TSADIST dist)
 {

@@ -50,7 +50,8 @@ typedef struct TSAmotifDataStorage
 {
   
     TSAIND patternID;
-    TSADIST *data;
+    TSADATA *data;
+    int len;
     float strTime;
     float endTime;
     

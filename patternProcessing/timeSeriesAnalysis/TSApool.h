@@ -14,6 +14,9 @@ public:
     float blackDur;
     TSAmotifInfo_t *priorityQDisc;
     TSAmotifInfoExt_t **priorityQSear;
+    TSAmotifDataStorage_t **longTermDataStorage;
+    TSAIND patternID;
+    int *emptySpaceInd;
     
     TSApool();
     TSApool(int K, float blackDur);
