@@ -77,7 +77,7 @@ int TSApool::initPattStorage(TSAIND nQueries, int lenMotifReal)
     
 }
 
-int TSApool::updatePattStorageData(motifInfo *topKmotifs, longTermDataStorage_t *longTermDataStorage, DATATYPE** dataInterp, segInfo_t *tStampsInterp, INDTYPE *patternID, int *emptySpaceInd, int lenMotifReal, int K, int searchFileID)
+int TSApool::updatePattStorageData(TSAmotifInfoExt_t *priorityQSear, TSAsubSeq_t *subSeqPtr, int lenMotifReal, int searchFileID)
 {
     int match_found, *emptySpacePtr;
     int emptySpaceCnt=0;
@@ -90,7 +90,7 @@ int TSApool::updatePattStorageData(motifInfo *topKmotifs, longTermDataStorage_t 
         match_found=0;
         for (ss=0;ss<K;ss++)
         {
-            if (longTermDataStorage[pp].patternID == topKmotifs[ss].patternID)
+            if (longTermDataStorage[pp].patternID == priorityQSear[ss].patternID)
             {
                 match_found=1;
                 break;
@@ -108,19 +108,19 @@ int TSApool::updatePattStorageData(motifInfo *topKmotifs, longTermDataStorage_t 
     for(pp=0;pp<K;pp++)
     {
         //newly added patterns will be the ones added from the current search file so just search only in that domain
-        if ((topKmotifs[pp].searchFileID == searchFileID)&&(topKmotifs[pp].patternID==PID_DEFAULT3))
+        if ((priorityQSear[pp].searchFileID == searchFileID)&&(priorityQSear[pp].patternID==PID_DEFAULT3))
         {
-            topKmotifs[pp].patternID = *patternID;
-            (*patternID)++;
+            priorityQSear[pp].patternID = patternID;
+            patternID++;
             
             //Also in such case add data to the long term storage;
             if(emptySpaceCnt>0)
             {
-                memcpy(longTermDataStorage[emptySpacePtr[0]].data, dataInterp[topKmotifs[pp].ind2], sizeof(DATATYPE)*lenMotifReal);
-                longTermDataStorage[emptySpacePtr[0]].patternID = topKmotifs[pp].patternID;
-                longTermDataStorage[emptySpacePtr[0]].strTime = tStampsInterp[topKmotifs[pp].ind2].str;
-                longTermDataStorage[emptySpacePtr[0]].endTime = tStampsInterp[topKmotifs[pp].ind2].end;
-                topKmotifs[pp].storagePtr = &longTermDataStorage[emptySpacePtr[0]];
+                memcpy(longTermDataStorage[emptySpacePtr[0]].data, subSeqPtr[priorityQSear[pp].ind2].pData, sizeof(DATATYPE)*lenMotifReal);
+                longTermDataStorage[emptySpacePtr[0]].patternID = priorityQSear[pp].patternID;
+                longTermDataStorage[emptySpacePtr[0]].sTime = subSeqPtr[priorityQSear[pp].ind2].sTime;
+                longTermDataStorage[emptySpacePtr[0]].eTime = subSeqPtr[priorityQSear[pp].ind2].eTime;
+                priorityQSear[pp].storagePtr = &longTermDataStorage[emptySpacePtr[0]];
                 emptySpacePtr++;
                 emptySpaceCnt--;
             }

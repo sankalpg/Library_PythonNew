@@ -52,8 +52,8 @@ typedef struct TSAmotifDataStorage
     TSAIND patternID;
     TSADATA *data;
     int len;
-    float strTime;
-    float endTime;
+    float sTime;
+    float eTime;
     
     
     
