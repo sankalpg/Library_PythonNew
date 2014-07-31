@@ -1,0 +1,25 @@
+
+Commit Id of the code used for processing:	6f58f1c6eba3b863ba7945e4bc0a8cd997e84f97
+
+#################### TIME RELATED STATS ####################
+Time taken to load the pitch data:	0.020005
+Time taken to generate subsequences:	0.000000
+Time taken to remove blacklisted subsequences:	0.004745
+Time taken to generate envelops:	0.009700
+Time taken to discover patterns:	62.583359
+Time taken to write data:	0.000000
+Total time taken by the process:	0.000000
+
+#################### DATA POINTS RELATED STATS ####################
+Total number of pitch samples in the file:	33751
+Total number of non zero pitch samples in the file:	5338
+Total number of subsequences generated originally:	5238
+Total number of subsequences blacklisted:	3954
+Total number of subsequences after interpolation:	6420
+
+#################### FNC CALLS RELATED STATS ####################
+Number of FL lowerbound is computed:	6854103
+Number of LB_Keogh_EQ computed:	6854103
+Number of LB_Keogh_EC computed:	6854103
+Number of times DTW computed:	6854103
+Number of updates of priority list:	6854103
