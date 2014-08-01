@@ -7,10 +7,36 @@ TSApool::TSApool()
     K=-1;
     patternID = 0;
 }
+TSApool::~TSApool()
+{
+    if (discOrSear==0)
+    {
+        free(priorityQDisc);
+    }
+    else if (discOrSear==1)
+    {
+        for(TSAIND ii=0;ii<numQueries; ii++)
+        {
+            free(priorityQSear[ii]);
+            
+        }
+        free(priorityQSear);
+    }
+    if(useLTStorage==1)
+    {
+        for(TSAIND ii=0;ii<numQueries; ii++)
+        {
+            free(longTermDataStorage[ii]);
+        }
+        free(longTermDataStorage);
+    }
+}
 TSApool::TSApool(int n, float bDur)
 {
     K=n;
     blackDur = bDur;
+    discOrSear=-1;
+    useLTStorage=-1;
 }
 
 int TSApool::initPriorityQDisc()
@@ -28,11 +54,13 @@ int TSApool::initPriorityQDisc()
         priorityQDisc[ii].ind2=0;
         
     }
+    discOrSear=0;
     
     return 1;    
 }
 int TSApool::initPriorityQSear(TSAIND nQueries)
 {
+    discOrSear=1;
     if(K==-1)
     {
         printf("Initialize the number of elements in priority Queue first");
@@ -54,6 +82,7 @@ int TSApool::initPriorityQSear(TSAIND nQueries)
             priorityQSear[ii][jj].searchFileID = FID_DEFAULT1;
         }
     }
+    numQueries = nQueries;
     
     return 1;
 }
@@ -73,6 +102,7 @@ int TSApool::initPattStorage(TSAIND nQueries, int lenMotifReal)
         
     }
     emptySpaceInd = (int *)malloc(sizeof(int)*K);
+    useLTStorage=1;
     
 }
 

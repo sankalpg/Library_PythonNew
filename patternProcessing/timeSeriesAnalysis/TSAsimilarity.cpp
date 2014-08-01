@@ -11,9 +11,8 @@ TSAdtwSimilarity::TSAdtwSimilarity()
     
 }
 
-int TSAdtwSimilarity::configureTSASimilarity(int lenQ, int lenC, float globalConst)
+TSAdtwSimilarity::~TSAdtwSimilarity()
 {
-    
     if ((lenQuery!=-1)||(lenCand!=-1))
     {
         //free memory before reconfigure
@@ -24,8 +23,24 @@ int TSAdtwSimilarity::configureTSASimilarity(int lenQ, int lenC, float globalCon
             free(costMTX[ii]);
         }
         free(costMTX);
-        
-      }
+        free(bsfArray);
+    }
+}
+
+int TSAdtwSimilarity::deleteQueryEnvMem()
+{
+    for(TSAIND ii=0; ii< nCand; ii++)
+    {
+        free(envLCandPtr[ii]);
+        free(envUCandPtr[ii]);
+    }
+    free(envLCandPtr);
+    free(envUCandPtr);
+}
+
+
+int TSAdtwSimilarity::configureTSASimilarity(int lenQ, int lenC, float globalConst)
+{
     
     lenQuery = lenQ;
     lenCand = lenC;

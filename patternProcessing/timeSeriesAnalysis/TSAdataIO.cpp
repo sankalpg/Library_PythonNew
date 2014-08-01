@@ -113,6 +113,15 @@ TSAdataHandler::TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fi
     fHandle.initialize(baseName, fileExtPtr);
 	
 }
+TSAdataHandler::~TSAdataHandler()
+{
+    free(samPtr);
+    for(TSAIND ii=0; ii< nSubSeqs; ii++)
+    {
+        free(subSeqPtr[ii].pData);
+        free(subSeqPtr[ii].pTStamps);
+    }
+}
 int TSAdataHandler::loadMotifDataTemplate1()
 {
      //read the time series data    
@@ -327,6 +336,7 @@ int TSAdataHandler::genUniScaledSubSeqs()
             else
             {
                 subSeqPtr_new[ind].pData = (TSADATA *)malloc(sizeof(TSADATA)*lenMotifReal);
+                subSeqPtr_new[ind].pTStamps = (float *)malloc(sizeof(float)*1); //just a dummy allocation
                 subSeqPtr_new[ind].len = lenMotifReal;
                 cubicInterpolate(subSeqPtr[ii].pData, subSeqPtr_new[ind].pData, indInterp[jj], lenMotifReal);
                 subSeqPtr_new[ind].sTime  = subSeqPtr[ii].pTStamps[0];
@@ -524,7 +534,8 @@ int TSAdataHandler::updateBLStdThsld()
         }
        ind++;        
     }
-    
+     
+    free(stdVec);
     return 1;
 }
 

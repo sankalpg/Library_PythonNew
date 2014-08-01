@@ -103,6 +103,7 @@ public:
     int         loadMotifDataTemplate1();
     
     TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fileExts, procParams_t *pParams);
+    ~TSAdataHandler();
 };
 
 

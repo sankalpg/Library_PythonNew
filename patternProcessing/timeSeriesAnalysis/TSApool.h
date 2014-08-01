@@ -12,6 +12,9 @@ public:
     
     int K;
     float blackDur;
+    TSAIND numQueries;
+    int discOrSear;
+    int useLTStorage;
     TSAmotifInfo_t *priorityQDisc;
     TSAmotifInfoExt_t **priorityQSear;
     TSAmotifDataStorage_t **longTermDataStorage;
@@ -19,6 +22,7 @@ public:
     int *emptySpaceInd;
     
     TSApool();
+    ~TSApool();
     TSApool(int K, float blackDur);
     int initPriorityQDisc();
     int initPriorityQSear(TSAIND nQueries);

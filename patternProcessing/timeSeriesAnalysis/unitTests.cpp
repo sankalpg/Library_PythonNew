@@ -46,22 +46,22 @@ int main( int argc , char *argv[])
     fHandle.initialize(baseName, myFileExtsPtr);
     
     //create a data handler object
-    TSAdataHandler TSData1(baseName, &logs.procLogs, myFileExtsPtr, myProcParamsPtr);
+    TSAdataHandler *TSData1 = new TSAdataHandler(baseName, &logs.procLogs, myFileExtsPtr, myProcParamsPtr);
     
-    TSData1.loadMotifDataTemplate1();
+    TSData1->loadMotifDataTemplate1();
     printf("Hello10\n");
     
     TSAdtwSimilarity dtwUCR;
     
-    int lenMotifReal = TSData1.procParams.motifLengths[TSData1.procParams.indexMotifLenReal];
-    int nInterFact = TSData1.procParams.nInterpFac;
-    dtwUCR.configureTSASimilarity(lenMotifReal, lenMotifReal, TSData1.procParams.DTWBand);
+    int lenMotifReal = TSData1->procParams.motifLengths[TSData1->procParams.indexMotifLenReal];
+    int nInterFact = TSData1->procParams.nInterpFac;
+    dtwUCR.configureTSASimilarity(lenMotifReal, lenMotifReal, TSData1->procParams.DTWBand);
     
     printf("Hello11\n");
     
-    dtwUCR.setQueryPtr(TSData1.subSeqPtr, TSData1.nSubSeqs);
+    dtwUCR.setQueryPtr(TSData1->subSeqPtr, TSData1->nSubSeqs);
     dtwUCR.computeQueryEnvelops();
-    dtwUCR.initArrayBSF(ceil(TSData1.nSubSeqs/nInterFact));
+    dtwUCR.initArrayBSF(ceil(TSData1->nSubSeqs/nInterFact));
     //dtwUCR.copyQueryEnv2Cand();
     
     printf("Hello12\n");
@@ -70,8 +70,8 @@ int main( int argc , char *argv[])
     TSADIST LB_kim_FL, LB_Keogh_EQ, LB_Keogh_EC, realDist, bsf=FLT_MAX;
     
     TSApool pool(kNN, myProcParamsPtr->blackDur);
-    pool.initPriorityQSear(ceil(TSData1.nSubSeqs/nInterFact));
-    pool.initPattStorage(ceil(TSData1.nSubSeqs/nInterFact), lenMotifReal);
+    pool.initPriorityQSear(ceil(TSData1->nSubSeqs/nInterFact));
+    pool.initPattStorage(ceil(TSData1->nSubSeqs/nInterFact), lenMotifReal);
     printf("you have chosen this KNN %d\n", pool.K);
     
     printf("Hello13\n");
@@ -85,50 +85,52 @@ int main( int argc , char *argv[])
     
     for(TSAIND ss=0; ss < fHandle.nSearchFiles; ss++)
     {
-        TSAdataHandler TSData2(fHandle.searchFileNames[ss], &logs.procLogs, myFileExtsPtr, myProcParamsPtr);
-        TSData2.genTemplate1SubSeqs();
-        dtwUCR.setCandPtr(TSData2.subSeqPtr, TSData2.nSubSeqs);
+        TSAdataHandler *TSData2 = new TSAdataHandler(fHandle.searchFileNames[ss], &logs.procLogs, myFileExtsPtr, myProcParamsPtr);
+        TSData2->genTemplate1SubSeqs();
+        dtwUCR.setCandPtr(TSData2->subSeqPtr, TSData2->nSubSeqs);
         dtwUCR.computeCandEnvelops();
         
         searchFileID = ss;
         
-        for(TSAIND jj=0;jj< TSData2.nSubSeqs;jj++)
+        for(TSAIND jj=0;jj< TSData2->nSubSeqs;jj++)
         {
-            for(TSAIND ii=0;ii< TSData1.nSubSeqs;ii++)
+            for(TSAIND ii=0;ii< TSData1->nSubSeqs;ii++)
             {
                 queryInd = (TSAIND)floor(ii/nInterFact);
                 
-                if (TSData1.procParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
+                if (TSData1->procParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
                     continue;
 
-                if ((strcmp(baseName, fHandle.searchFileNames[ss])==0)&& (fabs(TSData1.subSeqPtr[ii].sTime-TSData2.subSeqPtr[jj].sTime)< TSData1.procParams.blackDur))
+                if ((strcmp(baseName, fHandle.searchFileNames[ss])==0)&& (fabs(TSData1->subSeqPtr[ii].sTime-TSData2->subSeqPtr[jj].sTime)< TSData1->procParams.blackDur))
                     //beware that basename and searchFile name should both have either full path or relative path.
                 {
                     continue;
                 }
-                LB_kim_FL = computeLBkimFL(TSData1.subSeqPtr[ii].pData[0], TSData2.subSeqPtr[jj].pData[0], TSData1.subSeqPtr[ii].pData[lenMotifReal-1], TSData2.subSeqPtr[jj].pData[lenMotifReal-1], SqEuclidean);
+                LB_kim_FL = computeLBkimFL(TSData1->subSeqPtr[ii].pData[0], TSData2->subSeqPtr[jj].pData[0], TSData1->subSeqPtr[ii].pData[lenMotifReal-1], TSData2->subSeqPtr[jj].pData[lenMotifReal-1], SqEuclidean);
                 if (LB_kim_FL< dtwUCR.bsfArray[queryInd]) 
                 {
-                    LB_Keogh_EQ = computeKeoghsLB(dtwUCR.envUQueryPtr[ii],dtwUCR.envLQueryPtr[ii],dtwUCR.accLB_Keogh_EQ, TSData2.subSeqPtr[jj].pData,lenMotifReal, bsf, SqEuclidean);
+                    LB_Keogh_EQ = computeKeoghsLB(dtwUCR.envUQueryPtr[ii],dtwUCR.envLQueryPtr[ii],dtwUCR.accLB_Keogh_EQ, TSData2->subSeqPtr[jj].pData,lenMotifReal, bsf, SqEuclidean);
                     if(LB_Keogh_EQ < dtwUCR.bsfArray[queryInd])
                     {
-                        LB_Keogh_EC = computeKeoghsLB(dtwUCR.envUCandPtr[jj],dtwUCR.envLCandPtr[jj],dtwUCR.accLB_Keogh_EC, TSData1.subSeqPtr[ii].pData,lenMotifReal, bsf, SqEuclidean);
+                        LB_Keogh_EC = computeKeoghsLB(dtwUCR.envUCandPtr[jj],dtwUCR.envLCandPtr[jj],dtwUCR.accLB_Keogh_EC, TSData1->subSeqPtr[ii].pData,lenMotifReal, bsf, SqEuclidean);
                         if(LB_Keogh_EC < dtwUCR.bsfArray[queryInd])
                         {
-                            realDist = dtw1dBandConst(TSData1.subSeqPtr[ii].pData, TSData2.subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, bsf, dtwUCR.accLB_Keogh_EQ);
+                            realDist = dtw1dBandConst(TSData1->subSeqPtr[ii].pData, TSData2->subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, bsf, dtwUCR.accLB_Keogh_EQ);
                             if (realDist <= dtwUCR.bsfArray[queryInd])
                             {
-                                dtwUCR.bsfArray[queryInd] = pool.managePriorityQSear(queryInd, TSData2.subSeqPtr, ii, jj, realDist, searchFileID);
+                                dtwUCR.bsfArray[queryInd] = pool.managePriorityQSear(queryInd, TSData2->subSeqPtr, ii, jj, realDist, searchFileID);
                             }
                         }
                     }
                 }
             }
         }
-        for(TSAIND jj=0;jj< ceil(TSData1.nSubSeqs/nInterFact);jj++)
+        for(TSAIND jj=0;jj< ceil(TSData1->nSubSeqs/nInterFact);jj++)
         {
-            pool.updatePattStorageData(jj, TSData2.subSeqPtr, lenMotifReal, searchFileID);
+            pool.updatePattStorageData(jj, TSData2->subSeqPtr, lenMotifReal, searchFileID);
         }
+        delete TSData2;
+        dtwUCR.deleteQueryEnvMem();
         
     }
     fclose(fp2);
@@ -140,13 +142,13 @@ int main( int argc , char *argv[])
             // Since there can be multiple similarity measure used for rank refinement (mainly during experiment phase) this rank refinement step should be in loop, no need to loop rest of the steps
             
             //recomputing the distance
-            for(TSAIND ii=0;ii<ceil(TSData1.nSubSeqs/nInterFact);ii++)
+            for(TSAIND ii=0;ii<ceil(TSData1->nSubSeqs/nInterFact);ii++)
             {
                 for(TSAIND jj=0;jj<pool.K;jj++)
                 {
                     if (pool.priorityQSear[ii][jj].dist < INF)   //do refinement only for a valid top entry, leave the infinites!!
                     {
-                        pool.priorityQSear[ii][jj].dist = dtw1dBandConst_localConst(TSData1.subSeqPtr[pool.priorityQSear[ii][jj].ind1].pData, pool.priorityQSear[ii][jj].storagePtr->data, lenMotifReal, lenMotifReal, dtwUCR.costMTX, paramHand.procParams.simMeasureRankRefinement[mm], dtwUCR.bandDTW, INF, dtwUCR.accLB_Keogh_EQ);
+                        pool.priorityQSear[ii][jj].dist = dtw1dBandConst_localConst(TSData1->subSeqPtr[pool.priorityQSear[ii][jj].ind1].pData, pool.priorityQSear[ii][jj].storagePtr->data, lenMotifReal, lenMotifReal, dtwUCR.costMTX, paramHand.procParams.simMeasureRankRefinement[mm], dtwUCR.bandDTW, INF, dtwUCR.accLB_Keogh_EQ);
                     }
                     else
                     {
@@ -162,11 +164,11 @@ int main( int argc , char *argv[])
             }   
                 
             
-            TSData1.dumpSearMotifInfo(fHandle.getOutFileName(), pool.priorityQSear, TSData1.nSubSeqs/nInterFact, pool.K, verbos);
+            TSData1->dumpSearMotifInfo(fHandle.getOutFileName(), pool.priorityQSear, TSData1->nSubSeqs/nInterFact, pool.K, verbos);
     
     }    
-    //TSData1.dumpDiscMotifInfo(TSData1.fHandle.getOutFileName(), pool.priorityQDisc, pool.K, verbos);
-    //TSData1.dumpSearMotifInfo(fHandle.getOutFileName(), pool.priorityQSear, TSData1.nSubSeqs/nInterFact, pool.K, verbos);
+    //TSData1->dumpDiscMotifInfo(TSData1->fHandle.getOutFileName(), pool.priorityQDisc, pool.K, verbos);
+    //TSData1->dumpSearMotifInfo(fHandle.getOutFileName(), pool.priorityQSear, TSData1->nSubSeqs/nInterFact, pool.K, verbos);
     //generate pattern sub sequences
     
     
@@ -177,6 +179,7 @@ int main( int argc , char *argv[])
     //free memories
     
     //dump the generate data
+    delete TSData1;
     
     
     if (verbos){printf("Processing done!\n");}

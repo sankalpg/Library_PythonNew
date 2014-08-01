@@ -33,6 +33,7 @@ public:
     TSADIST *bsfArray;
     
     TSAdtwSimilarity();
+    ~TSAdtwSimilarity();
     
     int     configureTSASimilarity(int lenQ, int lenC, float globalConst);
     int     setQueryPtr(TSAsubSeq_t *qPtr, TSAIND nQ);
@@ -41,6 +42,8 @@ public:
     int     computeCandEnvelops();
     int     copyQueryEnv2Cand();
     int     initArrayBSF(TSAIND len);
+    int     deleteQueryEnvMem();
+    
     
     
 };
