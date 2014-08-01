@@ -146,7 +146,7 @@ int main( int argc , char *argv[])
                 {
                     if (pool.priorityQSear[ii][jj].dist < INF)   //do refinement only for a valid top entry, leave the infinites!!
                     {
-                        //pool.priorityQSear[ii][jj].dist = dtw1dBandConst_localConst(TSData1.subSeqPtr[pool.priorityQSear[ii][jj].ind1].pData, pool.priorityQSear[ii][jj].storagePtr->data, lenMotifReal, lenMotifReal, dtwUCR.costMTX, paramHand.procParams.simMeasureRankRefinement[mm], dtwUCR.bandDTW, INF, dtwUCR.accLB_Keogh_EQ);
+                        pool.priorityQSear[ii][jj].dist = dtw1dBandConst_localConst(TSData1.subSeqPtr[pool.priorityQSear[ii][jj].ind1].pData, pool.priorityQSear[ii][jj].storagePtr->data, lenMotifReal, lenMotifReal, dtwUCR.costMTX, paramHand.procParams.simMeasureRankRefinement[mm], dtwUCR.bandDTW, INF, dtwUCR.accLB_Keogh_EQ);
                     }
                     else
                     {
