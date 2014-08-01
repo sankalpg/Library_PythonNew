@@ -1,0 +1,15 @@
+durMotif: 2.0
+blackDurFactor: 1
+dsFactor: 5
+binsPOct: 1200
+minPossiblePitch: 60.0
+varDur: 0.1
+threshold: 45.0
+flatThreshold: 0.8
+maxPauseDur: 0.5
+DTWBand: 0.1
+nInterpFac: 5
+SimMeasuresUsed: 1
+removeTaniSegs: 1
+dumpLogs: 1
+maxNMotifsPairs: 25

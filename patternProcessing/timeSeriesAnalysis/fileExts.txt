@@ -1,0 +1,9 @@
+tsFileExt: .pitch
+tonicExt: .tonic
+blackTimeExt: .taniSegKNN
+logFileExt: .logs_CONF1
+paramsDumpExt: .params
+outFileExt: .MotifsSearch
+mappFileExt: .SearchMapp
+searchListExt: .flist
+queryFileExt: .2s25Motif_REF
