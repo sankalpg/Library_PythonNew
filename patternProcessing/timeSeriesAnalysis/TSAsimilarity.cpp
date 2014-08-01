@@ -46,6 +46,15 @@ int TSAdtwSimilarity::configureTSASimilarity(int lenQ, int lenC, float globalCon
     
 }
 
+int TSAdtwSimilarity::initArrayBSF(TSAIND len)
+{
+    bsfArray = (TSADIST *)malloc(sizeof(TSADIST)*len);
+    for (TSAIND ii=0;ii<len;ii++)
+    {
+        bsfArray[ii] = INF;
+    }
+}
+
 int TSAdtwSimilarity::setQueryPtr(TSAsubSeq_t *qPtr, TSAIND nQ)
 {
     subSeqQueryPtr = qPtr;

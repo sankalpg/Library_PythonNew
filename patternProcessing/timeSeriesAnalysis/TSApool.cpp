@@ -57,7 +57,6 @@ int TSApool::initPriorityQSear(TSAIND nQueries)
     
     return 1;
 }
-
 int TSApool::initPattStorage(TSAIND nQueries, int lenMotifReal)
 {
     longTermDataStorage = (TSAmotifDataStorage_t **)malloc(sizeof(TSAmotifDataStorage_t*)*nQueries);
@@ -67,7 +66,7 @@ int TSApool::initPattStorage(TSAIND nQueries, int lenMotifReal)
         
         for(TSAIND ii=0;ii<K;ii++)
         {
-            longTermDataStorage[jj][ii].data = (DATATYPE *)malloc(sizeof(DATATYPE)*lenMotifReal);
+            longTermDataStorage[jj][ii].data = (TSADATA *)malloc(sizeof(TSADATA)*lenMotifReal);
             longTermDataStorage[jj][ii].patternID = PID_DEFAULT1;
             longTermDataStorage[jj][ii].len = lenMotifReal;
         }
@@ -77,7 +76,7 @@ int TSApool::initPattStorage(TSAIND nQueries, int lenMotifReal)
     
 }
 
-int TSApool::updatePattStorageData(TSAmotifInfoExt_t *priorityQSear, TSAsubSeq_t *subSeqPtr, int lenMotifReal, int searchFileID)
+int TSApool::updatePattStorageData(TSAIND queryInd, TSAsubSeq_t *subSeqPtr, int lenMotifReal, int searchFileID)
 {
     int match_found, *emptySpacePtr;
     int emptySpaceCnt=0;
@@ -90,7 +89,7 @@ int TSApool::updatePattStorageData(TSAmotifInfoExt_t *priorityQSear, TSAsubSeq_t
         match_found=0;
         for (ss=0;ss<K;ss++)
         {
-            if (longTermDataStorage[pp].patternID == priorityQSear[ss].patternID)
+            if (longTermDataStorage[queryInd][pp].patternID == priorityQSear[queryInd][ss].patternID)
             {
                 match_found=1;
                 break;
@@ -108,19 +107,19 @@ int TSApool::updatePattStorageData(TSAmotifInfoExt_t *priorityQSear, TSAsubSeq_t
     for(pp=0;pp<K;pp++)
     {
         //newly added patterns will be the ones added from the current search file so just search only in that domain
-        if ((priorityQSear[pp].searchFileID == searchFileID)&&(priorityQSear[pp].patternID==PID_DEFAULT3))
+        if ((priorityQSear[queryInd][pp].searchFileID == searchFileID)&&(priorityQSear[queryInd][pp].patternID==PID_DEFAULT3))
         {
-            priorityQSear[pp].patternID = patternID;
+            priorityQSear[queryInd][pp].patternID = patternID;
             patternID++;
             
             //Also in such case add data to the long term storage;
             if(emptySpaceCnt>0)
             {
-                memcpy(longTermDataStorage[emptySpacePtr[0]].data, subSeqPtr[priorityQSear[pp].ind2].pData, sizeof(DATATYPE)*lenMotifReal);
-                longTermDataStorage[emptySpacePtr[0]].patternID = priorityQSear[pp].patternID;
-                longTermDataStorage[emptySpacePtr[0]].sTime = subSeqPtr[priorityQSear[pp].ind2].sTime;
-                longTermDataStorage[emptySpacePtr[0]].eTime = subSeqPtr[priorityQSear[pp].ind2].eTime;
-                priorityQSear[pp].storagePtr = &longTermDataStorage[emptySpacePtr[0]];
+                memcpy(longTermDataStorage[queryInd][emptySpacePtr[0]].data, subSeqPtr[priorityQSear[queryInd][pp].ind2].pData, sizeof(TSADATA)*lenMotifReal);
+                longTermDataStorage[queryInd][emptySpacePtr[0]].patternID = priorityQSear[queryInd][pp].patternID;
+                longTermDataStorage[queryInd][emptySpacePtr[0]].sTime = subSeqPtr[priorityQSear[queryInd][pp].ind2].sTime;
+                longTermDataStorage[queryInd][emptySpacePtr[0]].eTime = subSeqPtr[priorityQSear[queryInd][pp].ind2].eTime;
+                priorityQSear[queryInd][pp].storagePtr = &longTermDataStorage[queryInd][emptySpacePtr[0]];
                 emptySpacePtr++;
                 emptySpaceCnt--;
             }
@@ -258,3 +257,21 @@ TSADIST TSApool::managePriorityQSear(TSAIND queryInd, TSAsubSeq_t *subSeqPtr, TS
     
 }
 
+int compareSearchMotifInfo(const void *a, const void *b)
+{
+    if (((TSAmotifInfoExt_t*)a)->dist > ((TSAmotifInfoExt_t*)b)->dist)
+    {
+        return 1;
+    }
+    else if (((TSAmotifInfoExt_t*)a)->dist < ((TSAmotifInfoExt_t*)b)->dist)
+    {
+        return -1;
+    }
+    return 0;
+}
+
+int TSApool::sortQSearch(TSAIND queryInd)
+{
+    qsort(priorityQSear[queryInd], K, sizeof(TSAmotifInfoExt_t), compareSearchMotifInfo);
+    
+}

@@ -30,6 +30,8 @@ public:
     
     TSADIST **costMTX;
     
+    TSADIST *bsfArray;
+    
     TSAdtwSimilarity();
     
     int     configureTSASimilarity(int lenQ, int lenC, float globalConst);
@@ -38,6 +40,7 @@ public:
     int     computeQueryEnvelops();
     int     computeCandEnvelops();
     int     copyQueryEnv2Cand();
+    int     initArrayBSF(TSAIND len);
     
     
 };

@@ -54,21 +54,24 @@ int main( int argc , char *argv[])
     TSAdtwSimilarity dtwUCR;
     
     int lenMotifReal = TSData1.procParams.motifLengths[TSData1.procParams.indexMotifLenReal];
+    int nInterFact = TSData1.procParams.nInterpFac;
     dtwUCR.configureTSASimilarity(lenMotifReal, lenMotifReal, TSData1.procParams.DTWBand);
     
     printf("Hello11\n");
     
     dtwUCR.setQueryPtr(TSData1.subSeqPtr, TSData1.nSubSeqs);
     dtwUCR.computeQueryEnvelops();
+    dtwUCR.initArrayBSF(ceil(TSData1.nSubSeqs/nInterFact));
     //dtwUCR.copyQueryEnv2Cand();
     
     printf("Hello12\n");
     
-    int nInterFact = TSData1.procParams.nInterpFac;
+    
     TSADIST LB_kim_FL, LB_Keogh_EQ, LB_Keogh_EC, realDist, bsf=FLT_MAX;
     
     TSApool pool(kNN, myProcParamsPtr->blackDur);
     pool.initPriorityQSear(ceil(TSData1.nSubSeqs/nInterFact));
+    pool.initPattStorage(ceil(TSData1.nSubSeqs/nInterFact), lenMotifReal);
     printf("you have chosen this KNN %d\n", pool.K);
     
     printf("Hello13\n");
@@ -104,30 +107,66 @@ int main( int argc , char *argv[])
                     continue;
                 }
                 LB_kim_FL = computeLBkimFL(TSData1.subSeqPtr[ii].pData[0], TSData2.subSeqPtr[jj].pData[0], TSData1.subSeqPtr[ii].pData[lenMotifReal-1], TSData2.subSeqPtr[jj].pData[lenMotifReal-1], SqEuclidean);
-                if (LB_kim_FL< bsf) 
+                if (LB_kim_FL< dtwUCR.bsfArray[queryInd]) 
                 {
                     LB_Keogh_EQ = computeKeoghsLB(dtwUCR.envUQueryPtr[ii],dtwUCR.envLQueryPtr[ii],dtwUCR.accLB_Keogh_EQ, TSData2.subSeqPtr[jj].pData,lenMotifReal, bsf, SqEuclidean);
-                    if(LB_Keogh_EQ < bsf)
+                    if(LB_Keogh_EQ < dtwUCR.bsfArray[queryInd])
                     {
                         LB_Keogh_EC = computeKeoghsLB(dtwUCR.envUCandPtr[jj],dtwUCR.envLCandPtr[jj],dtwUCR.accLB_Keogh_EC, TSData1.subSeqPtr[ii].pData,lenMotifReal, bsf, SqEuclidean);
-                        if(LB_Keogh_EC < bsf)
+                        if(LB_Keogh_EC < dtwUCR.bsfArray[queryInd])
                         {
                             realDist = dtw1dBandConst(TSData1.subSeqPtr[ii].pData, TSData2.subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, bsf, dtwUCR.accLB_Keogh_EQ);
-                            if (realDist <= bsf)
+                            if (realDist <= dtwUCR.bsfArray[queryInd])
                             {
-                                bsf = pool.managePriorityQSear(queryInd, TSData2.subSeqPtr, ii, jj, realDist, searchFileID);
+                                dtwUCR.bsfArray[queryInd] = pool.managePriorityQSear(queryInd, TSData2.subSeqPtr, ii, jj, realDist, searchFileID);
                             }
                         }
                     }
                 }
             }
         }
+        for(TSAIND jj=0;jj< ceil(TSData1.nSubSeqs/nInterFact);jj++)
+        {
+            pool.updatePattStorageData(jj, TSData2.subSeqPtr, lenMotifReal, searchFileID);
+        }
+        
     }
     fclose(fp2);
-        
     
+    //lets do rank refinement
+    //############## Rank Refinement using sophisticated DTW ########################
+    for (int mm=0;mm<paramHand.procParams.nSimMeasuresUsed;mm++)
+    {
+            // Since there can be multiple similarity measure used for rank refinement (mainly during experiment phase) this rank refinement step should be in loop, no need to loop rest of the steps
+            
+            //recomputing the distance
+            for(TSAIND ii=0;ii<ceil(TSData1.nSubSeqs/nInterFact);ii++)
+            {
+                for(TSAIND jj=0;jj<pool.K;jj++)
+                {
+                    if (pool.priorityQSear[ii][jj].dist < INF)   //do refinement only for a valid top entry, leave the infinites!!
+                    {
+                        //pool.priorityQSear[ii][jj].dist = dtw1dBandConst_localConst(TSData1.subSeqPtr[pool.priorityQSear[ii][jj].ind1].pData, pool.priorityQSear[ii][jj].storagePtr->data, lenMotifReal, lenMotifReal, dtwUCR.costMTX, paramHand.procParams.simMeasureRankRefinement[mm], dtwUCR.bandDTW, INF, dtwUCR.accLB_Keogh_EQ);
+                    }
+                    else
+                    {
+                        if (verbos)
+                        {
+                            printf("There is some serious problem in rank refinement step %lld,%lld",jj,ii);
+                        }
+                    }
+                    
+                }
+                //sorting the priority list
+                pool.sortQSearch(ii);
+            }   
+                
+            
+            TSData1.dumpSearMotifInfo(fHandle.getOutFileName(), pool.priorityQSear, TSData1.nSubSeqs/nInterFact, pool.K, verbos);
+    
+    }    
     //TSData1.dumpDiscMotifInfo(TSData1.fHandle.getOutFileName(), pool.priorityQDisc, pool.K, verbos);
-    TSData1.dumpSearMotifInfo(fHandle.getOutFileName(), pool.priorityQSear, TSData1.nSubSeqs/nInterFact, pool.K, verbos);
+    //TSData1.dumpSearMotifInfo(fHandle.getOutFileName(), pool.priorityQSear, TSData1.nSubSeqs/nInterFact, pool.K, verbos);
     //generate pattern sub sequences
     
     

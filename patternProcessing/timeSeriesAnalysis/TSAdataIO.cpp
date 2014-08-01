@@ -48,6 +48,22 @@ int TSAparamHandle::readParamsFromFile(char *paramFile)
     }
     fclose(fp);
     
+    if (procParams.SimMeasuresUsed>0)
+    {
+        procParams.simMeasureRankRefinement = (int*)malloc(sizeof(int)*1);
+        procParams.simMeasureRankRefinement[0] = procParams.SimMeasuresUsed;
+        procParams.nSimMeasuresUsed =1;
+    }
+    else    //In such case use 4 different similarity measures needed for experimentation
+    {
+        procParams.simMeasureRankRefinement = (int*)malloc(sizeof(int)*4);
+        procParams.simMeasureRankRefinement[0] = SqEuclidean;
+        procParams.simMeasureRankRefinement[1] = CityBlock;
+        procParams.simMeasureRankRefinement[2] = ShiftCityBlock;
+        procParams.simMeasureRankRefinement[3] = ShiftLinExp;
+        procParams.nSimMeasuresUsed =4;
+    }
+    
     return 1;
 }
 

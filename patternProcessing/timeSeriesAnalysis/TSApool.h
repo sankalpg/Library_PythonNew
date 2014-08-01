@@ -26,6 +26,11 @@ public:
     TSADIST managePriorityQDisc(TSAsubSeq_t *subSeqPtr, TSAIND ind1, TSAIND ind2, TSADIST dist);
     TSADIST managePriorityQSear(TSAIND queryInd, TSAsubSeq_t *subSeqPtr, TSAIND ind1, TSAIND ind2, TSADIST dist, int searchFileID);
     
+    int     updatePattStorageData(TSAIND queryInd, TSAsubSeq_t *subSeqPtr, int lenMotifReal, int searchFileID);
+    int     initPattStorage(TSAIND nQueries, int lenMotifReal);
+    
+    int     sortQSearch(TSAIND queryInd);
+    
     
 };
 
