@@ -47,9 +47,7 @@ int main( int argc , char *argv[])
     
     //create a data handler object
     TSAdataHandler *TSData1 = new TSAdataHandler(baseName, &logs.procLogs, myFileExtsPtr, myProcParamsPtr);
-    
     TSData1->loadMotifDataTemplate1();
-    printf("Hello10\n");
     
     TSAdtwSimilarity dtwUCR;
     
@@ -57,24 +55,15 @@ int main( int argc , char *argv[])
     int nInterFact = TSData1->procParams.nInterpFac;
     dtwUCR.configureTSASimilarity(lenMotifReal, lenMotifReal, TSData1->procParams.DTWBand);
     
-    printf("Hello11\n");
-    
     dtwUCR.setQueryPtr(TSData1->subSeqPtr, TSData1->nSubSeqs);
     dtwUCR.computeQueryEnvelops();
     dtwUCR.initArrayBSF(ceil(TSData1->nSubSeqs/nInterFact));
     //dtwUCR.copyQueryEnv2Cand();
     
-    printf("Hello12\n");
-    
-    
     TSADIST LB_kim_FL, LB_Keogh_EQ, LB_Keogh_EC, realDist, bsf=FLT_MAX;
-    
     TSApool pool(kNN, myProcParamsPtr->blackDur);
     pool.initPriorityQSear(ceil(TSData1->nSubSeqs/nInterFact));
     pool.initPattStorage(ceil(TSData1->nSubSeqs/nInterFact), lenMotifReal);
-    printf("you have chosen this KNN %d\n", pool.K);
-    
-    printf("Hello13\n");
     
     // iterating over all files 
     FILE *fp2 = fopen(fHandle.getMappFileName(),"w");
@@ -98,7 +87,7 @@ int main( int argc , char *argv[])
             {
                 queryInd = (TSAIND)floor(ii/nInterFact);
                 
-                if (TSData1->procParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
+                if (paramHand.procParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
                     continue;
 
                 if ((strcmp(baseName, fHandle.searchFileNames[ss])==0)&& (fabs(TSData1->subSeqPtr[ii].sTime-TSData2->subSeqPtr[jj].sTime)< TSData1->procParams.blackDur))
@@ -109,13 +98,13 @@ int main( int argc , char *argv[])
                 LB_kim_FL = computeLBkimFL(TSData1->subSeqPtr[ii].pData[0], TSData2->subSeqPtr[jj].pData[0], TSData1->subSeqPtr[ii].pData[lenMotifReal-1], TSData2->subSeqPtr[jj].pData[lenMotifReal-1], SqEuclidean);
                 if (LB_kim_FL< dtwUCR.bsfArray[queryInd]) 
                 {
-                    LB_Keogh_EQ = computeKeoghsLB(dtwUCR.envUQueryPtr[ii],dtwUCR.envLQueryPtr[ii],dtwUCR.accLB_Keogh_EQ, TSData2->subSeqPtr[jj].pData,lenMotifReal, bsf, SqEuclidean);
+                    LB_Keogh_EQ = computeKeoghsLB(dtwUCR.envUQueryPtr[ii],dtwUCR.envLQueryPtr[ii],dtwUCR.accLB_Keogh_EQ, TSData2->subSeqPtr[jj].pData,lenMotifReal, dtwUCR.bsfArray[queryInd], SqEuclidean);
                     if(LB_Keogh_EQ < dtwUCR.bsfArray[queryInd])
                     {
-                        LB_Keogh_EC = computeKeoghsLB(dtwUCR.envUCandPtr[jj],dtwUCR.envLCandPtr[jj],dtwUCR.accLB_Keogh_EC, TSData1->subSeqPtr[ii].pData,lenMotifReal, bsf, SqEuclidean);
+                        LB_Keogh_EC = computeKeoghsLB(dtwUCR.envUCandPtr[jj],dtwUCR.envLCandPtr[jj],dtwUCR.accLB_Keogh_EC, TSData1->subSeqPtr[ii].pData,lenMotifReal, dtwUCR.bsfArray[queryInd], SqEuclidean);
                         if(LB_Keogh_EC < dtwUCR.bsfArray[queryInd])
                         {
-                            realDist = dtw1dBandConst(TSData1->subSeqPtr[ii].pData, TSData2->subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, bsf, dtwUCR.accLB_Keogh_EQ);
+                            realDist = dtw1dBandConst(TSData1->subSeqPtr[ii].pData, TSData2->subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, dtwUCR.bsfArray[queryInd], dtwUCR.accLB_Keogh_EQ);
                             if (realDist <= dtwUCR.bsfArray[queryInd])
                             {
                                 dtwUCR.bsfArray[queryInd] = pool.managePriorityQSear(queryInd, TSData2->subSeqPtr, ii, jj, realDist, searchFileID);
@@ -130,7 +119,7 @@ int main( int argc , char *argv[])
             pool.updatePattStorageData(jj, TSData2->subSeqPtr, lenMotifReal, searchFileID);
         }
         delete TSData2;
-        dtwUCR.deleteQueryEnvMem();
+        dtwUCR.deleteCandEnvMem();
         
     }
     fclose(fp2);
@@ -164,7 +153,7 @@ int main( int argc , char *argv[])
             }   
                 
             
-            TSData1->dumpSearMotifInfo(fHandle.getOutFileName(), pool.priorityQSear, TSData1->nSubSeqs/nInterFact, pool.K, verbos);
+            TSData1->dumpSearMotifInfo(fHandle.getOutFileNamePostRR(paramHand.procParams.simMeasureRankRefinement[mm]), pool.priorityQSear, TSData1->nSubSeqs/nInterFact, pool.K, verbos);
     
     }    
     //TSData1->dumpDiscMotifInfo(TSData1->fHandle.getOutFileName(), pool.priorityQDisc, pool.K, verbos);

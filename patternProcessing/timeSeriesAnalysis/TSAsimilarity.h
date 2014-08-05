@@ -31,6 +31,7 @@ public:
     TSADIST **costMTX;
     
     TSADIST *bsfArray;
+    int isBSFArrayInit;
     
     TSAdtwSimilarity();
     ~TSAdtwSimilarity();
@@ -42,7 +43,7 @@ public:
     int     computeCandEnvelops();
     int     copyQueryEnv2Cand();
     int     initArrayBSF(TSAIND len);
-    int     deleteQueryEnvMem();
+    int     deleteCandEnvMem();
     
     
     

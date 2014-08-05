@@ -26,9 +26,14 @@ TSApool::~TSApool()
     {
         for(TSAIND ii=0;ii<numQueries; ii++)
         {
+            for(TSAIND jj=0;jj<K;jj++)
+            {
+                free(longTermDataStorage[ii][jj].data);
+            }
             free(longTermDataStorage[ii]);
         }
         free(longTermDataStorage);
+        free(emptySpaceInd);
     }
 }
 TSApool::TSApool(int n, float bDur)

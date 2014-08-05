@@ -15,12 +15,14 @@ public:
     fileExts_t fileExts;
     
     TSAparamHandle();
+    ~TSAparamHandle();
     
     int readParamsFromFile(char *paramFile);
     int readFileExtsInfoFile(char* infoFileExts);
     
     procParams_t* getParamPtr();
     fileExts_t* getExtPtr();
+    
 };
 
 class fileNameHandler
@@ -34,6 +36,7 @@ public:
     int nSearchFiles;
     
     fileNameHandler();
+    ~fileNameHandler();
     int initialize(char *bName, fileExts_t *fExtPtr);
     char *getTSFileName();
     char *getTonicFileName();
@@ -45,6 +48,7 @@ public:
     char *getSearchListFileName();
     char* getQueryFileName();
     int  loadSearchFileList();
+    char  *getOutFileNamePostRR(int similarityMeasure);
 };
 
 
@@ -66,6 +70,7 @@ public:
     
     
     int *blacklist;
+    int isBlackListAlloc;
     
     TSAseg_t *queryTStamps;
     TSAIND nQueries;
@@ -100,10 +105,13 @@ public:
     int         dumpSearMotifInfo(char *motifFile, TSAmotifInfoExt_t **priorityQSear, TSAIND nQueries, int K, int verbos);
     int         readQueryTimeStamps(char *queryFileName, int format);
     int         genSubSeqsWithTStarts(TSAseg_t *queryTStamps, TSAIND nQueries);
+    int         genSubSeqsWithTStamps(TSAseg_t *qTStamps, TSAIND nQueries);
     int         loadMotifDataTemplate1();
+    int         freeSubSeqsMem();
     
     TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fileExts, procParams_t *pParams);
     ~TSAdataHandler();
+    
 };
 
 

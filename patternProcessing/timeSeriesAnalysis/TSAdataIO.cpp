@@ -17,6 +17,16 @@ TSAparamHandle::TSAparamHandle()
     memset(fileExts.queryFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
 
 }
+
+TSAparamHandle::~TSAparamHandle()
+{
+    free(procParams.simMeasureRankRefinement);
+    for(int ii=0; ii< procParams.nInterpFac; ii++)
+    {
+        free(procParams.combMTX[ii]);
+    }
+    free(procParams.combMTX);
+}
  
 int TSAparamHandle::readParamsFromFile(char *paramFile)
 {
@@ -62,6 +72,59 @@ int TSAparamHandle::readParamsFromFile(char *paramFile)
         procParams.simMeasureRankRefinement[2] = ShiftCityBlock;
         procParams.simMeasureRankRefinement[3] = ShiftLinExp;
         procParams.nSimMeasuresUsed =4;
+    }
+    
+    int ii, jj;
+    
+    if (procParams.nInterpFac==1)
+    {
+        procParams.interpFac[0]=1.0;
+        
+        procParams.combMTX = (int **)malloc(sizeof(int*)*procParams.nInterpFac);
+        for(ii=0;ii<procParams.nInterpFac;ii++)
+        {
+            procParams.combMTX[ii] =  (int *)malloc(sizeof(int)*procParams.nInterpFac);
+            for(jj=0;jj<procParams.nInterpFac;jj++)
+            {
+                procParams.combMTX[ii][jj] = 1;
+            }
+        }
+    }
+    else if (procParams.nInterpFac==3)
+    {
+        procParams.interpFac[0]=0.9;
+        procParams.interpFac[1]=1.0;
+        procParams.interpFac[2]=1.1;
+        
+        procParams.combMTX = (int **)malloc(sizeof(int*)*procParams.nInterpFac);
+        for(ii=0;ii<procParams.nInterpFac;ii++)
+        {
+            procParams.combMTX[ii] =  (int *)malloc(sizeof(int)*procParams.nInterpFac);
+            for(jj=0;jj<procParams.nInterpFac;jj++)
+            {
+                procParams.combMTX[ii][jj] = combAllwd_3[ii][jj];
+            }
+        }
+        
+        
+    }
+    else if (procParams.nInterpFac==5)
+    {
+        procParams.interpFac[0]=0.9;
+        procParams.interpFac[1]=0.95;
+        procParams.interpFac[2]=1.0;
+        procParams.interpFac[3]=1.05;
+        procParams.interpFac[4]=1.1;
+        
+        procParams.combMTX = (int **)malloc(sizeof(int*)*procParams.nInterpFac);
+        for(ii=0;ii<procParams.nInterpFac;ii++)
+        {
+            procParams.combMTX[ii] =  (int *)malloc(sizeof(int)*procParams.nInterpFac);
+            for(jj=0;jj<procParams.nInterpFac;jj++)
+            {
+                procParams.combMTX[ii][jj] = combAllwd_5[ii][jj];
+            }
+        }
     }
     
     return 1;
@@ -111,6 +174,9 @@ TSAdataHandler::TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fi
     baseName = bName;
     
     fHandle.initialize(baseName, fileExtPtr);
+    
+    isBlackListAlloc=-1;
+    nQueries=-1;
 	
 }
 TSAdataHandler::~TSAdataHandler()
@@ -121,28 +187,39 @@ TSAdataHandler::~TSAdataHandler()
         free(subSeqPtr[ii].pData);
         free(subSeqPtr[ii].pTStamps);
     }
+    free(subSeqPtr);
+    if (isBlackListAlloc==1)
+    {free(blacklist);}
+    if(nQueries>0)
+    {free(queryTStamps);}
+    
 }
+
+int TSAdataHandler::freeSubSeqsMem()
+{
+    for(TSAIND ii=0; ii< nSubSeqs; ii++)
+    {
+        free(subSeqPtr[ii].pData);
+        free(subSeqPtr[ii].pTStamps);
+    }
+    free(subSeqPtr);
+}
+
+
 int TSAdataHandler::loadMotifDataTemplate1()
 {
      //read the time series data    
     readTSData(fHandle.getTSFileName());
     readHopSizeTS(fHandle.getTSFileName());
     
-    printf("%lld\n", lenTS);
-    
     //downsample
     downSampleTS();
-    
-    printf("%lld\n", lenTS);
     
     //remove silence pitch regions
     filterSamplesTS();
     
-    printf("%lld\n", lenTS);
-    
     convertHz2Cents(fHandle.getTonicFileName());
     
-    printf("Hello1\n");
     //calculate different motif lengths before doing sliding window candidate generation
     calculateDiffMotifLengths();
     
@@ -151,6 +228,61 @@ int TSAdataHandler::loadMotifDataTemplate1()
     genSubSeqsWithTStarts(queryTStamps, nQueries);
     
     genUniScaledSubSeqs();
+    
+    
+}
+
+int TSAdataHandler::genSubSeqsWithTStamps(TSAseg_t *qTStamps, TSAIND nQueries)
+{
+    TSAIND *seedMotifStrInd = (TSAIND*)malloc(sizeof(TSAIND)*nQueries);
+    TSAIND *seedMotifEndInd = (TSAIND*)malloc(sizeof(TSAIND)*nQueries);
+    
+    for(TSAIND ii=0;ii<nQueries;ii++)
+    {
+        TSADIST min_valS = INF;
+        TSADIST min_valE = INF;
+        for(TSAIND jj=0;jj<lenTS;jj++)
+        {
+            if (fabs(samPtr[jj].tStamp-qTStamps[ii].sTime) < min_valS)
+            {
+                min_valS = fabs(samPtr[jj].tStamp-qTStamps[ii].sTime);
+                seedMotifStrInd[ii] = jj;
+            }
+            if (fabs(samPtr[jj].tStamp-qTStamps[ii].eTime) < min_valE)
+            {
+                min_valE = fabs(samPtr[jj].tStamp-qTStamps[ii].eTime);
+                seedMotifEndInd[ii] = jj;
+            }
+        }
+    }
+    subSeqPtr = (TSAsubSeq_t *)malloc(sizeof(TSAsubSeq_t)*nQueries);
+    
+    for(TSAIND ii=0;ii<nQueries;ii++)
+    {
+                
+        //whats the length of this motif
+        procParams.durMotif = samPtr[seedMotifEndInd[ii]].tStamp - samPtr[seedMotifStrInd[ii]].tStamp;
+        calculateDiffMotifLengths();
+        int lenRawMotifData = procParams.motifLengths[procParams.indexMotifLenLongest];
+        
+        subSeqPtr[ii].pData = (TSADATA *)malloc(sizeof(TSADATA)*lenRawMotifData);
+        subSeqPtr[ii].pTStamps = (float *)malloc(sizeof(float)*lenRawMotifData);
+        
+        //at this point in time just store the original length start end without uniform scaling
+        subSeqPtr[ii].sTime = samPtr[seedMotifStrInd[ii]].tStamp;
+        subSeqPtr[ii].eTime = samPtr[seedMotifEndInd[ii]].tStamp;
+        
+        for(TSAIND jj=0;jj<lenRawMotifData;jj++)
+        {
+            subSeqPtr[ii].pData[jj]=samPtr[seedMotifStrInd[ii]+jj].value;
+            subSeqPtr[ii].pTStamps[jj]=samPtr[seedMotifStrInd[ii]+jj].tStamp;
+        }
+    }
+    nSubSeqs = nQueries;
+    free(seedMotifStrInd);
+    free(seedMotifEndInd);
+    
+    return 1;
     
     
 }
@@ -178,6 +310,7 @@ int TSAdataHandler::genSubSeqsWithTStarts(TSAseg_t *qTStamps, TSAIND nQueries)
     
     for(TSAIND ii=0;ii<nQueries;ii++)
     {
+        
         subSeqPtr[ii].pData = (TSADATA *)malloc(sizeof(TSADATA)*lenRawMotifData);
         subSeqPtr[ii].pTStamps = (float *)malloc(sizeof(float)*lenRawMotifData);
         
@@ -191,6 +324,7 @@ int TSAdataHandler::genSubSeqsWithTStarts(TSAseg_t *qTStamps, TSAIND nQueries)
         }
     }
     nSubSeqs = nQueries;
+    free(seedMotifInd);
     
     return 1;
     
@@ -238,6 +372,31 @@ int TSAdataHandler::readQueryTimeStamps(char *queryFileName, int format)
         nQueries=jj;
         queryTStamps = qTStamps;
     }
+    else if (format == VIGNESH_MOTIF_ANNOT_FORMAT)
+    {
+        float temp[10]={0};
+        TSAIND ii=0, jj=0;
+        char temp4[10]={'\0'};
+        fp = fopen(queryFileName,"r");
+        if (fp==NULL)
+        {
+            printf("Error opening file %s\n", queryFileName);
+            return 0;
+        }
+        //reading number of lines in the file
+        int nLines = getNumLines(queryFileName);
+        qTStamps = (TSAseg_t*)malloc(sizeof(TSAseg_t)*nLines*1);
+        
+        while(fscanf(fp,"%f %f %s\n", &temp[0], &temp[1], temp4)!=EOF)
+        {
+            qTStamps[jj].sTime=temp[0];
+            qTStamps[jj].eTime=temp[1]+qTStamps[jj].sTime;
+            jj++;
+        }
+        fclose(fp);
+        nQueries=jj;
+        queryTStamps = qTStamps;
+    }    
     
     
     return 1;
@@ -250,54 +409,31 @@ int TSAdataHandler::genTemplate1SubSeqs()
     readTSData(fHandle.getTSFileName());
     readHopSizeTS(fHandle.getTSFileName());
     
-    printf("%lld\n", lenTS);
-    
     //downsample
     downSampleTS();
-    
-    printf("%lld\n", lenTS);
     
     //remove silence pitch regions
     filterSamplesTS();
     
-    printf("%lld\n", lenTS);
-    
     convertHz2Cents(fHandle.getTonicFileName());
 	
-    printf("Hello1\n");
-	//calculate different motif lengths before doing sliding window candidate generation
+    //calculate different motif lengths before doing sliding window candidate generation
 	calculateDiffMotifLengths();
     
-    printf("Hello2\n");
     genSlidingWindowSubSeqs();
     
-    printf("%lld\n", nSubSeqs);
-    
-    printf("Hello3\n");
     initializeBlackList();
     
-    printf("Hello4\n");
     updateBLDurThsld();
     
-    printf("Hello5\n");
     updateBLStdThsld();
     
-    printf("Hello6\n");
     updateBLInvalidSegment(fHandle.getBlackListSegFileName());
     
-    printf("Hello7\n");
-    printf("%lld\n", nSubSeqs);
-    
     filterBlackListedSubSeqs();
-    printf("%lld\n", nSubSeqs);
-    
-    printf("Hello8\n");
     
     genUniScaledSubSeqs();
-    
-    printf("Hello9\n");
-    printf("%lld\n", nSubSeqs);
-    
+
 }
 
 int TSAdataHandler::genUniScaledSubSeqs()
@@ -568,7 +704,7 @@ int TSAdataHandler::initializeBlackList()
     {
         blacklist[ii]=0;
     }
-    
+    isBlackListAlloc=1;
     return 1;
 }
 
@@ -587,11 +723,12 @@ int TSAdataHandler::genSlidingWindowSubSeqs()
     //############################## generating subsequences ##########################################
     while(ind<lenTS)
     {
-        subSeqPtr[ind].sTime  = samPtr[ind].tStamp;
-        subSeqPtr[ind].eTime  = samPtr[ind+procParams.motifLengths[procParams.indexMotifLenReal]-1].tStamp;
     
         if (ind < lenTS - lenRawMotifDataM1)
         {
+            subSeqPtr[ind].sTime  = samPtr[ind].tStamp;
+            subSeqPtr[ind].eTime  = samPtr[ind+procParams.motifLengths[procParams.indexMotifLenReal]-1].tStamp;
+
             subSeqPtr[ind].pData = (TSADATA *)malloc(sizeof(TSADATA)*lenRawMotifData);
             subSeqPtr[ind].len = lenRawMotifData;
             subSeqPtr[ind].pTStamps = (float *)malloc(sizeof(float)*lenRawMotifData);
@@ -613,60 +750,7 @@ int TSAdataHandler::genSlidingWindowSubSeqs()
 
 int TSAdataHandler::calculateDiffMotifLengths()
 {
-    int ii, jj;
-    
-    if (procParams.nInterpFac==1)
-    {
-        procParams.interpFac[0]=1.0;
-        
-        procParams.combMTX = (int **)malloc(sizeof(int*)*procParams.nInterpFac);
-        for(ii=0;ii<procParams.nInterpFac;ii++)
-        {
-            procParams.combMTX[ii] =  (int *)malloc(sizeof(int)*procParams.nInterpFac);
-            for(jj=0;jj<procParams.nInterpFac;jj++)
-            {
-                procParams.combMTX[ii][jj] = 1;
-            }
-        }
-    }
-    else if (procParams.nInterpFac==3)
-    {
-        procParams.interpFac[0]=0.9;
-        procParams.interpFac[1]=1.0;
-        procParams.interpFac[2]=1.1;
-        
-        procParams.combMTX = (int **)malloc(sizeof(int*)*procParams.nInterpFac);
-        for(ii=0;ii<procParams.nInterpFac;ii++)
-        {
-            procParams.combMTX[ii] =  (int *)malloc(sizeof(int)*procParams.nInterpFac);
-            for(jj=0;jj<procParams.nInterpFac;jj++)
-            {
-                procParams.combMTX[ii][jj] = combAllwd_3[ii][jj];
-            }
-        }
-        
-        
-    }
-    else if (procParams.nInterpFac==5)
-    {
-        procParams.interpFac[0]=0.9;
-        procParams.interpFac[1]=0.95;
-        procParams.interpFac[2]=1.0;
-        procParams.interpFac[3]=1.05;
-        procParams.interpFac[4]=1.1;
-        
-        procParams.combMTX = (int **)malloc(sizeof(int*)*procParams.nInterpFac);
-        for(ii=0;ii<procParams.nInterpFac;ii++)
-        {
-            procParams.combMTX[ii] =  (int *)malloc(sizeof(int)*procParams.nInterpFac);
-            for(jj=0;jj<procParams.nInterpFac;jj++)
-            {
-                procParams.combMTX[ii][jj] = combAllwd_5[ii][jj];
-            }
-        }
-    }
-    
-    
+    int ii,jj;
     //######### computing all the motif lengths for several interpolation factors ##############
     int max_factor=-1;
     for (ii=0;ii<procParams.nInterpFac; ii++)
@@ -724,7 +808,7 @@ int TSAdataHandler::filterSamplesTS()
     TSAIND nValidSamples = 0;
     TSAIND *validSampleInd = (TSAIND *)malloc(sizeof(TSAIND)*lenTS);
     //store all locations which have valid samples
-    for(int ii=0;ii<lenTS; ii++)
+    for(TSAIND ii=0;ii<lenTS; ii++)
     {
         if(samPtr[ii].value > procParams.minPossiblePitch)
         {
@@ -735,7 +819,7 @@ int TSAdataHandler::filterSamplesTS()
     // just copy valid samples to another location
     TSAIND lenTS_new = nValidSamples;
     TSAsam_t * samPtr_new = (TSAsam_t *)malloc(sizeof(TSAsam_t)*lenTS_new);
-    for (int ii=0;ii<lenTS_new; ii++)
+    for (TSAIND ii=0;ii<lenTS_new; ii++)
     {
         samPtr_new[ii] = samPtr[validSampleInd[ii]];
     }
@@ -916,8 +1000,20 @@ int TSAdataHandler::dumpSearMotifInfo(char *motifFile, TSAmotifInfoExt_t **prior
 
 fileNameHandler::fileNameHandler()
 {
-
+    nSearchFiles=-1;
 }
+fileNameHandler::~fileNameHandler()
+{
+    if(nSearchFiles>0)
+    {
+        for(int ii=0; ii< nSearchFiles; ii++)
+        {
+            free(searchFileNames[ii]);
+        }
+        free(searchFileNames);
+    }
+}
+
 int fileNameHandler::initialize(char *bName, fileExts_t *fExtPtr)
 {
     baseName = bName;
@@ -976,6 +1072,16 @@ char* fileNameHandler::getOutFileName()
     memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);
     strcat(fileName, baseName);
     strcat(fileName, fileExtPtr->outFileExt);
+    
+    return fileName;
+    
+}
+char* fileNameHandler::getOutFileNamePostRR(int similarityMeasure)
+{
+    memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);
+    strcat(fileName, baseName);
+    strcat(fileName, fileExtPtr->outFileExt);
+    strcat(fileName, SimMeasureNames[similarityMeasure]);
     
     return fileName;
     

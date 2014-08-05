@@ -41,28 +41,23 @@ int main( int argc , char *argv[])
     myFileExtsPtr = paramHand.getExtPtr();
     
     //create a data handler object
-    TSAdataHandler TSData1(baseName, &logs.procLogs, myFileExtsPtr, myProcParamsPtr);
+    TSAdataHandler *TSData1 = new TSAdataHandler(baseName, &logs.procLogs, myFileExtsPtr, myProcParamsPtr);
     
-    TSData1.genTemplate1SubSeqs();
-    printf("Hello10\n");
+    TSData1->genTemplate1SubSeqs();
     
-    TSAsubSeq_t *subSeqPtr = TSData1.subSeqPtr;
+    TSAsubSeq_t *subSeqPtr = TSData1->subSeqPtr;
     
     
     TSAdtwSimilarity dtwUCR;
     
-    int lenMotifReal = TSData1.procParams.motifLengths[TSData1.procParams.indexMotifLenReal];
-    dtwUCR.configureTSASimilarity(lenMotifReal, lenMotifReal, TSData1.procParams.DTWBand);
+    int lenMotifReal = TSData1->procParams.motifLengths[TSData1->procParams.indexMotifLenReal];
+    dtwUCR.configureTSASimilarity(lenMotifReal, lenMotifReal, TSData1->procParams.DTWBand);
     
-    printf("Hello11\n");
-    
-    dtwUCR.setQueryPtr(TSData1.subSeqPtr, TSData1.nSubSeqs);
+    dtwUCR.setQueryPtr(TSData1->subSeqPtr, TSData1->nSubSeqs);
     dtwUCR.computeQueryEnvelops();
     dtwUCR.copyQueryEnv2Cand();
     
-    printf("Hello12\n");
-    
-    int nInterFact = TSData1.procParams.nInterpFac;
+    int nInterFact = TSData1->procParams.nInterpFac;
     TSADIST LB_kim_FL, LB_Keogh_EQ, LB_Keogh_EC, realDist, bsf=FLT_MAX;
     TSADATA **U, **L, *accLB1, *accLB2;
     
@@ -71,20 +66,16 @@ int main( int argc , char *argv[])
     accLB1 = dtwUCR.accLB_Keogh_EQ;
     accLB2 = dtwUCR.accLB_Keogh_EC;
     
-    TSApool pool(kNN, myProcParamsPtr->blackDur);
-    pool.initPriorityQDisc();
+    TSApool *pool = new TSApool(kNN, myProcParamsPtr->blackDur);
+    pool->initPriorityQDisc();
     
-    printf("you have chosen this KNN %d\n", pool.K);
-    
-    printf("Hello13\n");
-    
-    for(TSAIND ii=0;ii< TSData1.nSubSeqs;ii++)
+    for(TSAIND ii=0;ii< TSData1->nSubSeqs;ii++)
     {
-        for(TSAIND jj=ii+1;jj< TSData1.nSubSeqs;jj++)
+        for(TSAIND jj=ii+1;jj< TSData1->nSubSeqs;jj++)
         {
-            if (TSData1.procParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
+            if (paramHand.procParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
                 continue;
-            if (fabs(subSeqPtr[ii].sTime-subSeqPtr[jj].sTime)< TSData1.procParams.blackDur)
+            if (fabs(subSeqPtr[ii].sTime-subSeqPtr[jj].sTime)< TSData1->procParams.blackDur)
             {
                 continue;
             }
@@ -100,7 +91,7 @@ int main( int argc , char *argv[])
                         realDist = dtw1dBandConst(subSeqPtr[ii].pData, subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, bsf, accLB1);
                         if (realDist <= bsf)
                         {
-                            bsf = pool.managePriorityQDisc(subSeqPtr, ii, jj, realDist);
+                            bsf = pool->managePriorityQDisc(subSeqPtr, ii, jj, realDist);
                         }
                     }
                 }
@@ -109,7 +100,7 @@ int main( int argc , char *argv[])
     }
     
     
-    TSData1.dumpDiscMotifInfo(TSData1.fHandle.getOutFileName(), pool.priorityQDisc, pool.K, verbos);
+    TSData1->dumpDiscMotifInfo(TSData1->fHandle.getOutFileName(), pool->priorityQDisc, pool->K, verbos);
     
     //generate pattern sub sequences
     
@@ -122,8 +113,11 @@ int main( int argc , char *argv[])
     
     //dump the generate data
     
+    delete TSData1;
+    delete pool;
     
     if (verbos){printf("Processing done!\n");}
+    
     return 1;
 }
 

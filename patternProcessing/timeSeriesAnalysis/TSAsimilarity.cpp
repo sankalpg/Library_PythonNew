@@ -9,11 +9,13 @@ TSAdtwSimilarity::TSAdtwSimilarity()
     nCand=-1;
     lenCand=-1;
     
+    isBSFArrayInit=-1;
+    
 }
 
 TSAdtwSimilarity::~TSAdtwSimilarity()
 {
-    if ((lenQuery!=-1)||(lenCand!=-1))
+    if ((lenQuery!=-1))
     {
         //free memory before reconfigure
         free(accLB_Keogh_EQ);
@@ -23,11 +25,25 @@ TSAdtwSimilarity::~TSAdtwSimilarity()
             free(costMTX[ii]);
         }
         free(costMTX);
+        
+        
+        for(TSAIND ii=0; ii< nQuery; ii++)
+        {
+            free(envLQueryPtr[ii]);
+            free(envUQueryPtr[ii]);
+        }
+        free(envLQueryPtr);
+        free(envUQueryPtr);
+        
+    }
+    if(isBSFArrayInit==1)
+    {
         free(bsfArray);
     }
+    
 }
 
-int TSAdtwSimilarity::deleteQueryEnvMem()
+int TSAdtwSimilarity::deleteCandEnvMem()
 {
     for(TSAIND ii=0; ii< nCand; ii++)
     {
@@ -47,6 +63,12 @@ int TSAdtwSimilarity::configureTSASimilarity(int lenQ, int lenC, float globalCon
     accLB_Keogh_EQ = (TSADATA*)malloc(sizeof(TSADATA)*lenQuery);
     accLB_Keogh_EC = (TSADATA*)malloc(sizeof(TSADATA)*lenCand);
     
+    for(int ii=0; ii< lenQuery; ii++)
+    {
+        accLB_Keogh_EQ[ii]=0;
+        accLB_Keogh_EC[ii]=0;
+    }
+    
     costMTX = (TSADIST **)malloc(sizeof(TSADIST *)*lenQuery);
     for(int ii=0; ii<lenQuery;ii++)
     {
@@ -64,6 +86,7 @@ int TSAdtwSimilarity::configureTSASimilarity(int lenQ, int lenC, float globalCon
 int TSAdtwSimilarity::initArrayBSF(TSAIND len)
 {
     bsfArray = (TSADIST *)malloc(sizeof(TSADIST)*len);
+    isBSFArrayInit=1;
     for (TSAIND ii=0;ii<len;ii++)
     {
         bsfArray[ii] = INF;
