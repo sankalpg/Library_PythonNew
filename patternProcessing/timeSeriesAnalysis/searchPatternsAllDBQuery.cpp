@@ -20,7 +20,7 @@ int main( int argc , char *argv[])
     fileExts_t *myFileExtsPtr;
     TSAparamHandle paramHand;
     TSAlogs logs;
-    fileNameHandler fHandle;
+    fileNameHandler fHandleTemp, fHandle;
     
     
     //checking if the number of input arguments are correct 
@@ -46,7 +46,21 @@ int main( int argc , char *argv[])
     paramHand.readFileExtsInfoFile(fileExtFile);
     myFileExtsPtr = paramHand.getExtPtr();
     
-    fHandle.initialize(baseName, myFileExtsPtr);
+    //lets use this to read the search file names
+    fHandleTemp.initialize(baseName, myFileExtsPtr);
+    fHandleTemp.loadSearchFileList();
+    
+    for(int ff=0; ff< fHandleTemp.nSearchFiles; ff++)
+    {
+        for(int ff=0; ff< fHandleTemp.nSearchFiles; ff++)
+        {
+            
+            
+        }
+        
+    }
+    
+    fHandle.searchFileNames[ii]
     
     //create a data handler object
     TSAdataHandler *TSData1 = new TSAdataHandler(baseName, &logs.procLogs, myFileExtsPtr, myProcParamsPtr);
