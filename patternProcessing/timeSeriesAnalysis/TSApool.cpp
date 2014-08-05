@@ -39,7 +39,6 @@ TSApool::~TSApool()
 TSApool::TSApool(int n, float bDur)
 {
     K=n;
-    blackDur = bDur;
     discOrSear=-1;
     useLTStorage=-1;
 }
@@ -171,7 +170,7 @@ int TSApool::updatePattStorageData(TSAIND queryInd, TSAsubSeq_t *subSeqPtr, int 
 
 
 
-TSADIST TSApool::managePriorityQDisc(TSAsubSeq_t *subSeqPtr, TSAIND ind1, TSAIND ind2, TSADIST dist)
+TSADIST TSApool::managePriorityQDisc(TSAsubSeq_t *subSeqPtr, TSAIND ind1, TSAIND ind2, TSADIST dist, float blackDur)
 {
     int sortInd=-1, matchInd=-1;
     
@@ -221,7 +220,7 @@ TSADIST TSApool::managePriorityQDisc(TSAsubSeq_t *subSeqPtr, TSAIND ind1, TSAIND
 
 
 
-TSADIST TSApool::managePriorityQSear(TSAIND queryInd, TSAsubSeq_t *subSeqPtr, TSAIND ind1, TSAIND ind2, TSADIST dist, int searchFileID)
+TSADIST TSApool::managePriorityQSear(TSAIND queryInd, TSAsubSeq_t *subSeqPtr, TSAIND ind1, TSAIND ind2, TSADIST dist, int searchFileID, float blackDur)
 {
     int sortInd=-1, matchInd=-1;
     
