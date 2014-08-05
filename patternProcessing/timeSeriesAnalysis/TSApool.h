@@ -22,7 +22,7 @@ public:
     
     TSApool();
     ~TSApool();
-    TSApool(int K, float blackDur);
+    TSApool(int K);
     int initPriorityQDisc();
     int initPriorityQSear(TSAIND nQueries);
     

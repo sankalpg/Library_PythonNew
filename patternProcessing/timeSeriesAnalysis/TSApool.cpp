@@ -36,7 +36,7 @@ TSApool::~TSApool()
         free(emptySpaceInd);
     }
 }
-TSApool::TSApool(int n, float bDur)
+TSApool::TSApool(int n)
 {
     K=n;
     discOrSear=-1;

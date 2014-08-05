@@ -25,8 +25,10 @@ TSAdtwSimilarity::~TSAdtwSimilarity()
             free(costMTX[ii]);
         }
         free(costMTX);
-        
-        
+        lenQuery=-1;
+    }
+    if (nQuery!=-1)    
+    {
         for(TSAIND ii=0; ii< nQuery; ii++)
         {
             free(envLQueryPtr[ii]);
@@ -34,7 +36,11 @@ TSAdtwSimilarity::~TSAdtwSimilarity()
         }
         free(envLQueryPtr);
         free(envUQueryPtr);
-        
+        nQuery=-1;
+    }
+    if (nCand!=-1)
+    {
+        deleteCandEnvMem();
     }
     if(isBSFArrayInit==1)
     {
@@ -52,6 +58,7 @@ int TSAdtwSimilarity::deleteCandEnvMem()
     }
     free(envLCandPtr);
     free(envUCandPtr);
+    nCand=-1;
 }
 
 

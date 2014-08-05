@@ -177,19 +177,20 @@ TSAdataHandler::TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fi
     
     isBlackListAlloc=-1;
     nQueries=-1;
+    nSubSeqs=-1;
 	
 }
 TSAdataHandler::~TSAdataHandler()
 {
     free(samPtr);
-    for(TSAIND ii=0; ii< nSubSeqs; ii++)
+    if(nSubSeqs!=-1)
     {
-        free(subSeqPtr[ii].pData);
-        free(subSeqPtr[ii].pTStamps);
+        freeSubSeqsMem();
     }
-    free(subSeqPtr);
+    
     if (isBlackListAlloc==1)
     {free(blacklist);}
+    
     if(nQueries>0)
     {free(queryTStamps);}
     
@@ -203,6 +204,7 @@ int TSAdataHandler::freeSubSeqsMem()
         free(subSeqPtr[ii].pTStamps);
     }
     free(subSeqPtr);
+    nSubSeqs=-1;
 }
 
 
