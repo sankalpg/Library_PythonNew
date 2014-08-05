@@ -67,7 +67,15 @@ int main( int argc , char *argv[])
     
     // iterating over all files 
     FILE *fp2 = fopen(fHandle.getMappFileName(),"w");
+    for(int ii=0;ii<fHandle.nSearchFiles;ii++)
+    {
+        fprintf(fp2, "%d\t%s\n", ii, fHandle.searchFileNames[ii]);
+    }
+    fclose(fp2);
     int searchFileID=0;
+    
+    FILE *fp = fopen(TSData1->fHandle.getOutFileName(), "w");
+    fclose(fp);
     
     
     printf("Hello1\n");
@@ -124,7 +132,7 @@ int main( int argc , char *argv[])
             searchFileID = ss;
             printf("Hello3\n");
        
-            /*for(TSAIND jj=0;jj< TSData2->nSubSeqs;jj++)
+            for(TSAIND jj=0;jj< TSData2->nSubSeqs;jj++)
             {
                 for(TSAIND ii=0;ii< TSData1->nSubSeqs;ii++)
                 {
@@ -133,11 +141,18 @@ int main( int argc , char *argv[])
                     if (paramHand.procParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
                         continue;
 
-                    if ((strcmp(baseName, fHandle.searchFileNames[ss])==0)&& (fabs(TSData1->subSeqPtr[ii].sTime-TSData2->subSeqPtr[jj].sTime)< TSData1->procParams.blackDur))
+                    if (TSData2->subSeqPtr[jj].sTime>77.0)
+                    {
+                        TSData2->subSeqPtr[jj].sTime=TSData2->subSeqPtr[jj].sTime;
+                    }
+                    
+                    if ((strcmp(baseName, fHandle.searchFileNames[ss])==0)&& (fabs(TSData1->subSeqPtr[ii].sTime-TSData2->subSeqPtr[jj].sTime)< TSData1->procParams.durMotif))
                         //beware that basename and searchFile name should both have either full path or relative path.
                     {
                         continue;
                     }
+
+                    
                     LB_kim_FL = computeLBkimFL(TSData1->subSeqPtr[ii].pData[0], TSData2->subSeqPtr[jj].pData[0], TSData1->subSeqPtr[ii].pData[lenMotifReal-1], TSData2->subSeqPtr[jj].pData[lenMotifReal-1], SqEuclidean);
                     if (LB_kim_FL< dtwUCR->bsfArray[queryInd]) 
                     {
@@ -150,17 +165,41 @@ int main( int argc , char *argv[])
                                 realDist = dtw1dBandConst(TSData1->subSeqPtr[ii].pData, TSData2->subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR->costMTX, SqEuclidean, dtwUCR->bandDTW, dtwUCR->bsfArray[queryInd], dtwUCR->accLB_Keogh_EQ);
                                 if (realDist <= dtwUCR->bsfArray[queryInd])
                                 {
-                                    dtwUCR->bsfArray[queryInd] = pool.managePriorityQSear(queryInd, TSData2->subSeqPtr, ii, jj, realDist, searchFileID);
+                                    dtwUCR->bsfArray[queryInd] = pool.managePriorityQSear(qq, TSData2->subSeqPtr, ii, jj, realDist, searchFileID, TSData1->procParams.durMotif);
                                 }
                             }
                         }
                     }
                 }
-            }*/
+            }
             dtwUCR->deleteCandEnvMem();
+            /*if(qq==0)
+            {FILE *fp;
+            fp = fopen("tempData.bin", "wb");
+            
+            fwrite(TSData1->subSeqPtr[2].pData,sizeof(TSADATA), lenMotifReal, fp);
+            fwrite(TSData2->subSeqPtr[2920].pData,sizeof(TSADATA), lenMotifReal, fp);
+            fwrite(TSData2->subSeqPtr[24664].pData,sizeof(TSADATA), lenMotifReal, fp);
+            fclose(fp);}*/
             delete TSData2;
             printf("Hello4\n");
         }
+        {
+            FILE *fp;
+            fp = fopen(TSData1->fHandle.getOutFileName(), "ab");
+            
+            for(TSAIND ii=0;ii<kNN;ii++)
+            {
+                fprintf(fp, "%d\t%d\t%f\t%f\t%lld\t%f\n", qq, pool.priorityQSear[qq][ii].searchFileID, pool.priorityQSear[qq][ii].sTime, pool.priorityQSear[qq][ii].eTime,pool.priorityQSear[qq][ii].ind2, pool.priorityQSear[qq][ii].dist);
+            }
+            fclose(fp);
+            
+            
+            
+        }
+        
+        
+        
         delete dtwUCR;
         if (qq <TSData1->nQueries-1)
         {TSData1->freeSubSeqsMem();}
