@@ -79,6 +79,7 @@ typedef struct procParams
     //params used for preprocessing
     float durMotif;
     float blackDur;
+    float blackDurFact;
     int dsFactor;
     int binsPOct;    
     float minPossiblePitch;

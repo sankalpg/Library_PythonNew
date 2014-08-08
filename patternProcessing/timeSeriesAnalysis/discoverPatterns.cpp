@@ -6,6 +6,7 @@
 
 
 using namespace std;
+float t1,t2, ti,tf;
 
 
 int main( int argc , char *argv[])
@@ -24,6 +25,9 @@ int main( int argc , char *argv[])
         printf("\nInvalid number of arguments!!!\n");
         exit(1);
     }
+    
+    ti = clock();
+    
     //reading commandline parameters
     char *baseName = argv[1];
     char *paramFile = argv[2];
@@ -48,7 +52,7 @@ int main( int argc , char *argv[])
     TSAsubSeq_t *subSeqPtr = TSData1->subSeqPtr;
     
     
-    TSAdtwSimilarity dtwUCR;
+    TSAdtwSimilarity dtwUCR( &logs.procLogs);
     
     int lenMotifReal = TSData1->procParams.motifLengths[TSData1->procParams.indexMotifLenReal];
     dtwUCR.configureTSASimilarity(lenMotifReal, lenMotifReal, TSData1->procParams.DTWBand);
@@ -66,7 +70,7 @@ int main( int argc , char *argv[])
     accLB1 = dtwUCR.accLB_Keogh_EQ;
     accLB2 = dtwUCR.accLB_Keogh_EC;
     
-    TSApool *pool = new TSApool(kNN, myProcParamsPtr->blackDur);
+    TSApool *pool = new TSApool(kNN);
     pool->initPriorityQDisc();
     
     for(TSAIND ii=0;ii< TSData1->nSubSeqs;ii++)
@@ -91,16 +95,25 @@ int main( int argc , char *argv[])
                         realDist = dtw1dBandConst(subSeqPtr[ii].pData, subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, bsf, accLB1);
                         if (realDist <= bsf)
                         {
-                            bsf = pool->managePriorityQDisc(subSeqPtr, ii, jj, realDist);
+                            bsf = pool->managePriorityQDisc(subSeqPtr, ii, jj, realDist, TSData1->procParams.blackDur);
                         }
                     }
                 }
             }
         }
     }
+    tf = clock();
     
+    logs.procLogs.tTotal += (tf-ti)/CLOCKS_PER_SEC;
+    
+    t1 = clock();
     
     TSData1->dumpDiscMotifInfo(TSData1->fHandle.getOutFileName(), pool->priorityQDisc, pool->K, verbos);
+    
+    t2 = clock();
+    logs.procLogs.tDump += (t2-t1)/CLOCKS_PER_SEC;
+    
+    
     
     //generate pattern sub sequences
     
@@ -117,6 +130,7 @@ int main( int argc , char *argv[])
     delete pool;
     
     if (verbos){printf("Processing done!\n");}
+    logs.dumpProcLogs(TSData1->fHandle.getLogFileName(), verbos);
     
     return 1;
 }

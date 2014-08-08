@@ -115,10 +115,4 @@ public:
 };
 
 
-
-//MISC functions
-int initializeLogCounts(procLogs_t *myProcLogs);
-
-
-
 #endif //TSA_DATAIO_H

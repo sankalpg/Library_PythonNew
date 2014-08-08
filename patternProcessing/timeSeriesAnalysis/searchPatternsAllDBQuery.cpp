@@ -90,7 +90,7 @@ int main( int argc , char *argv[])
                 TSData1->genUniScaledSubSeqs();
                 
                 TSData2->procParams.durMotif = TSData1->procParams.durMotif;
-                blackDur = TSData1->procParams.durMotif*TSData1->procParams.blackDur; //blackDur is black dur factor w.r.t. motif length
+                blackDur = TSData1->procParams.durMotif*TSData1->procParams.blackDurFact; //blackDur is black dur factor w.r.t. motif length
                 
                 TSData2->calculateDiffMotifLengths();
                 TSData2->genSlidingWindowSubSeqs();
@@ -151,11 +151,11 @@ int main( int argc , char *argv[])
         {
             {
                 FILE *fp;
-                fp = fopen(TSData1->fHandle.getOutFileName(), "ab");
+                fp = fopen(fHandleTemp.getOutFileName(), "ab");
                 
                 for(TSAIND ii=0;ii<kNN;ii++)
                 {
-                    fprintf(fp, "%d\t%d\t%f\t%f\t%lld\t%f\n", qq, pool->priorityQSear[qq][ii].searchFileID, pool->priorityQSear[qq][ii].sTime, pool->priorityQSear[qq][ii].eTime,pool->priorityQSear[qq][ii].ind2, pool->priorityQSear[qq][ii].dist);
+                    fprintf(fp, "%d\t%d\t%d\t%f\t%f\t%f\n", ff1, qq, pool->priorityQSear[qq][ii].searchFileID, pool->priorityQSear[qq][ii].sTime, pool->priorityQSear[qq][ii].eTime, pool->priorityQSear[qq][ii].dist);
                 }
                 fclose(fp);
             }

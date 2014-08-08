@@ -61,7 +61,7 @@ int main( int argc , char *argv[])
     //dtwUCR.copyQueryEnv2Cand();
     
     TSADIST LB_kim_FL, LB_Keogh_EQ, LB_Keogh_EC, realDist, bsf=FLT_MAX;
-    TSApool pool(kNN, myProcParamsPtr->blackDur);
+    TSApool pool(kNN);
     pool.initPriorityQSear(ceil(TSData1->nSubSeqs/nInterFact));
     pool.initPattStorage(ceil(TSData1->nSubSeqs/nInterFact), lenMotifReal);
     
@@ -107,7 +107,7 @@ int main( int argc , char *argv[])
                             realDist = dtw1dBandConst(TSData1->subSeqPtr[ii].pData, TSData2->subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, dtwUCR.bsfArray[queryInd], dtwUCR.accLB_Keogh_EQ);
                             if (realDist <= dtwUCR.bsfArray[queryInd])
                             {
-                                dtwUCR.bsfArray[queryInd] = pool.managePriorityQSear(queryInd, TSData2->subSeqPtr, ii, jj, realDist, searchFileID);
+                                dtwUCR.bsfArray[queryInd] = pool.managePriorityQSear(queryInd, TSData2->subSeqPtr, ii, jj, realDist, searchFileID, TSData1->procParams.blackDur);
                             }
                         }
                     }

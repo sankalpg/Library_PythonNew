@@ -41,7 +41,11 @@ int TSAparamHandle::readParamsFromFile(char *paramFile)
     {
         sscanf(tempFilename, "%s %s\n", field, value);
         if (strcmp(field, "durMotif:")==0){procParams.durMotif=atof(value);}
-        if (strcmp(field, "blackDurFactor:")==0){procParams.blackDur=atof(value)*procParams.durMotif;}
+        if (strcmp(field, "blackDurFactor:")==0)
+        {
+            procParams.blackDurFact=atof(value);
+            procParams.blackDur=atof(value)*procParams.durMotif;
+        }
         if (strcmp(field, "dsFactor:")==0){procParams.dsFactor=atoi(value);}
         if (strcmp(field, "binsPOct:")==0){procParams.binsPOct=atoi(value);}
         if (strcmp(field, "minPossiblePitch:")==0){procParams.minPossiblePitch=atof(value);}
@@ -440,6 +444,9 @@ int TSAdataHandler::genTemplate1SubSeqs()
 
 int TSAdataHandler::genUniScaledSubSeqs()
 {
+    float t1,t2;
+    t1 = clock();
+    
     int nInterpFac = procParams.nInterpFac;
     int lenMotifReal = procParams.motifLengths[procParams.indexMotifLenReal];
     
@@ -493,6 +500,11 @@ int TSAdataHandler::genUniScaledSubSeqs()
     free(subSeqPtr);
     subSeqPtr = subSeqPtr_new;
     nSubSeqs = nSubSeqs_new;
+    
+    t2 = clock();
+    procLogPtr->tGenUniScal += (t2-t1)/CLOCKS_PER_SEC;
+    
+    return 1;
     
 }
 
@@ -712,7 +724,9 @@ int TSAdataHandler::initializeBlackList()
 
 int TSAdataHandler::genSlidingWindowSubSeqs()
 {
+    float t1,t2;
     
+    t1 = clock();
     
     int lenRawMotifData = procParams.motifLengths[procParams.indexMotifLenLongest];
     int lenRawMotifDataM1 = lenRawMotifData-1;
@@ -746,6 +760,9 @@ int TSAdataHandler::genSlidingWindowSubSeqs()
     }
     nSubSeqs = lenTS - lenRawMotifDataM1;
     
+    t2 = clock();
+    procLogPtr->tGenUniScal += (t2-t1)/CLOCKS_PER_SEC;
+    
     return 1;
 
 }
@@ -753,6 +770,9 @@ int TSAdataHandler::genSlidingWindowSubSeqs()
 int TSAdataHandler::calculateDiffMotifLengths()
 {
     int ii,jj;
+    float t1,t2;
+    
+    t1 = clock();
     //######### computing all the motif lengths for several interpolation factors ##############
     int max_factor=-1;
     for (ii=0;ii<procParams.nInterpFac; ii++)
@@ -774,12 +794,18 @@ int TSAdataHandler::calculateDiffMotifLengths()
     {
         procParams.motifLengths[procParams.indexMotifLenLongest]+=1;
     }
+    t2 = clock();
+    procLogPtr->tProcTS += (t2-t1)/CLOCKS_PER_SEC;
+    
+    return 1;
     
 }
 
 int TSAdataHandler::convertHz2Cents(char *tonicFileName)
 {
-    float tonic;
+    float tonic, t1,t2;
+    
+    t1 = clock();
     
     //Opening tonic file
     FILE *fp =fopen(tonicFileName,"r");
@@ -798,12 +824,18 @@ int TSAdataHandler::convertHz2Cents(char *tonicFileName)
         samPtr[ii].value = (TSADATA)(temp1*log((samPtr[ii].value+EPS)/tonic));
     }
     
+    t2 = clock();
+    procLogPtr->tProcTS += (t2-t1)/CLOCKS_PER_SEC;
+    
     return 1;
 }
 
 
 int TSAdataHandler::filterSamplesTS()
 {
+    float t1,t2;
+    
+    t1 = clock();
     
     // There can be many filtering criterion. Currently what is implemented is to filter out silence regions of pitch sequence. 
     
@@ -832,6 +864,9 @@ int TSAdataHandler::filterSamplesTS()
     samPtr = samPtr_new;
     lenTS = lenTS_new;
     
+    t2 = clock();
+    procLogPtr->tProcTS += (t2-t1)/CLOCKS_PER_SEC;
+    
     return 1;
 }
 
@@ -859,6 +894,8 @@ int TSAdataHandler::readHopSizeTS(char *fileName)
 }
 int TSAdataHandler::downSampleTS()
 {
+    float t1,t2;
+    t1 = clock();
     if (procParams.dsFactor <=0)
     {
         return 1;
@@ -879,17 +916,20 @@ int TSAdataHandler::downSampleTS()
     samPtr = samPtr_new;
     lenTS = lenTS_new;
     
+    t2 = clock();
+    procLogPtr->tProcTS += (t2-t1)/CLOCKS_PER_SEC;
+    
     return 1;
 }
 
 int TSAdataHandler::readTSData(char *fileName)
 {
     FILE *fp;
-    float tsData;
+    float tsData, t1,t2;
     float tsTime;
     TSAIND cnt;
     
-    
+    t1 = clock();
     //count number of lines in the file specified
     nLinesFile = getNumLines(fHandle.getTSFileName());
     procLogPtr->lenTS += nLinesFile;
@@ -911,6 +951,8 @@ int TSAdataHandler::readTSData(char *fileName)
         cnt++;
     }
     fclose(fp);
+    t2 = clock();
+    procLogPtr->tLoadTS += (t2-t1)/CLOCKS_PER_SEC;
     
     return 1;
 }
@@ -1140,7 +1182,3 @@ int fileNameHandler::loadSearchFileList()
     fclose(fp1);
     return 1;
 }
-
-  
-  
-
