@@ -402,7 +402,32 @@ int TSAdataHandler::readQueryTimeStamps(char *queryFileName, int format)
         fclose(fp);
         nQueries=jj;
         queryTStamps = qTStamps;
-    }    
+    } 
+    else if (format == MY_MOTIF_ANNOT_FORMAT)
+    {
+        float temp[10]={0};
+        TSAIND ii=0, jj=0;
+        int temp4;
+        fp = fopen(queryFileName,"r");
+        if (fp==NULL)
+        {
+            printf("Error opening file %s\n", queryFileName);
+            return 0;
+        }
+        //reading number of lines in the file
+        int nLines = getNumLines(queryFileName);
+        qTStamps = (TSAseg_t*)malloc(sizeof(TSAseg_t)*nLines*1);
+        
+        while(fscanf(fp,"%f\t%f\t%d\n", &temp[0], &temp[1], &temp4)!=EOF)
+        {
+            qTStamps[jj].sTime=temp[0];
+            qTStamps[jj].eTime=temp[1];
+            jj++;
+        }
+        fclose(fp);
+        nQueries=jj;
+        queryTStamps = qTStamps;
+    } 
     
     
     return 1;

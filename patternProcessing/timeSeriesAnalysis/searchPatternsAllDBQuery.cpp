@@ -50,6 +50,10 @@ int main( int argc , char *argv[])
     fHandleTemp.initialize(baseName, myFileExtsPtr);
     fHandleTemp.loadSearchFileList();
     
+    FILE *fp10;
+    fp10 = fopen(fHandleTemp.getOutFileName(), "w");
+    fclose(fp10);
+    
     int nInterFact = myProcParamsPtr->nInterpFac;
     float blackDur=0;
     
@@ -61,16 +65,14 @@ int main( int argc , char *argv[])
         TSData1->readHopSizeTS(TSData1->fHandle.getTSFileName());
         TSData1->downSampleTS();
         TSData1->convertHz2Cents(TSData1->fHandle.getTonicFileName());
-        TSData1->readQueryTimeStamps(TSData1->fHandle.getQueryFileName(), VIGNESH_MOTIF_ANNOT_FORMAT);
+        TSData1->readQueryTimeStamps(TSData1->fHandle.getQueryFileName(), MY_MOTIF_ANNOT_FORMAT);
         
         TSAIND qq=0;
         int searchFileID=0;
         TSApool *pool = new TSApool(kNN);
         pool->initPriorityQSear(TSData1->nQueries);
         
-        FILE *fp = fopen(TSData1->fHandle.getOutFileName(), "w");
-        fclose(fp);
-        TSAdtwSimilarity *dtwUCRTemp = new TSAdtwSimilarity();
+        TSAdtwSimilarity *dtwUCRTemp = new TSAdtwSimilarity(&logs.procLogs);    //only for managing bsf array
         dtwUCRTemp->configureTSASimilarity(1, 1, myProcParamsPtr->DTWBand);
         dtwUCRTemp->initArrayBSF(TSData1->nQueries);
         
@@ -99,7 +101,7 @@ int main( int argc , char *argv[])
                 int lenMotifReal = TSData1->procParams.motifLengths[TSData1->procParams.indexMotifLenReal];
                 int nQueues = ceil(TSData1->nSubSeqs/nInterFact);
                 
-                TSAdtwSimilarity *dtwUCR = new TSAdtwSimilarity();
+                TSAdtwSimilarity *dtwUCR = new TSAdtwSimilarity(&logs.procLogs);
                 dtwUCR->configureTSASimilarity(lenMotifReal, lenMotifReal, myProcParamsPtr->DTWBand);
                 
                 dtwUCR->setQueryPtr(TSData1->subSeqPtr, TSData1->nSubSeqs);
