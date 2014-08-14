@@ -81,7 +81,8 @@ typedef struct procParams
     float blackDur;
     float blackDurFact;
     int dsFactor;
-    int binsPOct;    
+    int binsPOct;
+    int quantPOct;
     float minPossiblePitch;
     float varDur;
     float threshold;

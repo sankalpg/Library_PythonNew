@@ -50,6 +50,15 @@ VIGNESH_MOTIF_ANNOT_FORMAT,
 MY_MOTIF_ANNOT_FORMAT,//which is basically edited vbersion of vignesh's annotation with start and end and id instead of start duration and id
 };
 
+enum 
+{
+NO_NORM=0,
+Z_NORM,
+MAD_NORM,
+MEAN_SUB_NORM,
+MEDIAN_SUB_NORM,
+QMEDIAN_SUB_NORM,
+};
 
 //Extern declarations
 extern const int combAllwd_5[5][5];

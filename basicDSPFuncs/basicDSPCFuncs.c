@@ -173,4 +173,63 @@ void quadraticInterpolate(double *dataInp, double *dataOut, float *indInt, int N
 
 }
 
+double quantizePitch(double pitchCents, int binsPDiv)
+{
+    
+    double pitchOut;
+    
+    pitchOut = floor((pitchCents/binsPDiv)+0.5)*binsPDiv;
+    
+    return pitchOut;
+}
+
+double computeMean(double* data, int len)
+{
+    int ii;
+    double m = 0;
+    for(ii=0;ii<len;ii++)
+    {
+        m+=data[ii];
+    }
+    return m/len;
+}
+
+double computeSTD(double *data, int len, double mean)
+{
+    double diffSq = 0;
+    int ii;
+    double diff;
+    
+    for(ii=0;ii<len;ii++)
+    {
+        diff = (data[ii]-mean);
+        diffSq+=diff*diff;
+    }
+    return sqrt(diffSq/len);
+}
+
+
+int compare (const void * a, const void * b)
+{
+  return ( *(int*)a - *(int*)b );
+}
+
+double computeMedian(double* data, int len)
+{
+    int ii;
+    int median;
+
+    qsort (data, len, sizeof(double), compare);
+    
+    if (len%2==0)
+    {
+        median = (data[(int)floor(len/2)-1] + data[(int)ceil(len/2)-1])/2;
+    }
+    else
+    {
+        median = data[(int)ceil(len/2)-1];
+    }
+    
+    return median;
+}
 

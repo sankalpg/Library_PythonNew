@@ -48,6 +48,7 @@ int TSAparamHandle::readParamsFromFile(char *paramFile)
         }
         if (strcmp(field, "dsFactor:")==0){procParams.dsFactor=atoi(value);}
         if (strcmp(field, "binsPOct:")==0){procParams.binsPOct=atoi(value);}
+        if (strcmp(field, "quantPOct:")==0){procParams.quantPOct=atoi(value);}
         if (strcmp(field, "minPossiblePitch:")==0){procParams.minPossiblePitch=atof(value);}
         if (strcmp(field, "varDur:")==0){procParams.varDur=atof(value);}
         if (strcmp(field, "threshold:")==0){procParams.threshold=atof(value);}
@@ -59,6 +60,7 @@ int TSAparamHandle::readParamsFromFile(char *paramFile)
         if (strcmp(field, "removeTaniSegs:")==0){procParams.removeTaniSegs=atoi(value);}
         if (strcmp(field, "dumpLogs:")==0){procParams.dumpLogs=atoi(value);}
         if (strcmp(field, "maxNMotifsPairs:")==0){procParams.maxNMotifsPairs=atoi(value);}
+        
     }
     fclose(fp);
     
@@ -917,6 +919,88 @@ int TSAdataHandler::readHopSizeTS(char *fileName)
     fclose(fp);
     return 1;
 }
+
+int TSAdataHandler::quantizeSampleTS(int quantizationType)
+{
+    float t1,t2;
+    t1 = clock();
+    float temp = floor(procParams.binsPOct/procParams.quantPOct);
+
+    for (int ii=0;ii<lenTS; ii++)
+    {
+        samPtr[ii].value = quantizePitch(samPtr[ii].value, temp);
+    }
+    
+    t2 = clock();
+    procLogPtr->tProcTS += (t2-t1)/CLOCKS_PER_SEC;
+    
+    return 1;
+}
+
+int TSAdataHandler::normalizeSubSeqs(int normType)
+{
+    float t1,t2;
+    t1 = clock();
+
+    if (normType==NO_NORM)
+    {
+        return 1;
+    }
+    else if(normType==Z_NORM)
+    {
+        float mu, std;
+        for(int ii=0; ii<nSubSeqs; ii++)
+        {
+            mu = computeMean(subSeqPtr[ii].pData, subSeqPtr[ii].len);
+            std = computeSTD(subSeqPtr[ii].pData, subSeqPtr[ii].len, mu);
+            
+            for (int jj=0;jj<subSeqPtr[ii].len;jj++)
+            {
+                subSeqPtr[ii].pData[jj] = (subSeqPtr[ii].pData[jj]-mu)/std;
+            }
+            
+        }
+    }
+    else if(normType==MEAN_SUB_NORM)
+    {
+        float mu;
+        for(int ii=0; ii<nSubSeqs; ii++)
+        {
+            mu = computeMean(subSeqPtr[ii].pData, subSeqPtr[ii].len);
+            
+            for (int jj=0;jj<subSeqPtr[ii].len;jj++)
+            {
+                subSeqPtr[ii].pData[jj] = (subSeqPtr[ii].pData[jj]-mu);
+            }
+            
+        }
+    }
+    else if(normType==MEDIAN_SUB_NORM)
+    {
+        float median;
+        TSADATA *tempStr = (TSADATA *)malloc(sizeof(TSADATA)*subSeqPtr[0].len*2);
+        
+        for(int ii=0; ii<nSubSeqs; ii++)
+        {
+            memcpy(tempStr, subSeqPtr[ii].pData, sizeof(TSADATA)*subSeqPtr[ii].len);
+            median = computeMedian(tempStr, subSeqPtr[ii].len);
+            
+            for (int jj=0;jj<subSeqPtr[ii].len;jj++)
+            {
+                subSeqPtr[ii].pData[jj] = (subSeqPtr[ii].pData[jj]-median);
+            }
+            
+        }
+    }
+    
+    
+    
+    t2 = clock();
+    procLogPtr->tProcTS += (t2-t1)/CLOCKS_PER_SEC;
+    
+    return 1;
+}
+
 int TSAdataHandler::downSampleTS()
 {
     float t1,t2;
