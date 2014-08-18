@@ -54,10 +54,10 @@ enum
 {
 NO_NORM=0,
 Z_NORM,
-MAD_NORM,
 MEAN_SUB_NORM,
 MEDIAN_SUB_NORM,
 QMEDIAN_SUB_NORM,
+MAD_NORM,
 };
 
 //Extern declarations

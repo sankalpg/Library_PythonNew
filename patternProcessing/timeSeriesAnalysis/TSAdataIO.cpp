@@ -992,6 +992,45 @@ int TSAdataHandler::normalizeSubSeqs(int normType)
             
         }
     }
+    else if(normType==QMEDIAN_SUB_NORM)
+    {
+        float median;
+        TSADATA *tempStr = (TSADATA *)malloc(sizeof(TSADATA)*subSeqPtr[0].len*2);
+        float binsPSemiTone = (procParams.binsPOct/12);
+        
+        for(int ii=0; ii<nSubSeqs; ii++)
+        {
+            memcpy(tempStr, subSeqPtr[ii].pData, sizeof(TSADATA)*subSeqPtr[ii].len);
+            median = computeMedian(tempStr, subSeqPtr[ii].len);
+            median = floor((median/binsPSemiTone)+0.5)*binsPSemiTone;
+            
+            for (int jj=0;jj<subSeqPtr[ii].len;jj++)
+            {
+                subSeqPtr[ii].pData[jj] = (subSeqPtr[ii].pData[jj]-median);
+            }
+            
+        }
+    }   
+    
+    else if(normType==MAD_NORM)
+    {
+        float median, mad;
+        TSADATA *tempStr = (TSADATA *)malloc(sizeof(TSADATA)*subSeqPtr[0].len*2);
+        
+        
+        for(int ii=0; ii<nSubSeqs; ii++)
+        {
+            memcpy(tempStr, subSeqPtr[ii].pData, sizeof(TSADATA)*subSeqPtr[ii].len);
+            median = computeMedian(tempStr, subSeqPtr[ii].len);
+            mad = computeMAD(tempStr, subSeqPtr[ii].len, median);
+            
+            for (int jj=0;jj<subSeqPtr[ii].len;jj++)
+            {
+                subSeqPtr[ii].pData[jj] = (subSeqPtr[ii].pData[jj]-median)/mad;
+            }
+            
+        }
+    }    
     
     
     

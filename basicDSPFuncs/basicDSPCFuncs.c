@@ -211,7 +211,7 @@ double computeSTD(double *data, int len, double mean)
 
 int compare (const void * a, const void * b)
 {
-  return ( *(int*)a - *(int*)b );
+  return ( *(double*)a - *(double*)b );
 }
 
 double computeMedian(double* data, int len)
@@ -231,5 +231,29 @@ double computeMedian(double* data, int len)
     }
     
     return median;
+}
+
+double computeMAD(double* data, int len, double median)
+{
+    int ii;
+    int mad;
+    
+    for(ii=0; ii<len; ii++)
+    {
+        data[ii] = abs(data[ii]-median);
+    }
+
+    qsort (data, len, sizeof(double), compare);
+    
+    if (len%2==0)
+    {
+        mad = (data[(int)floor(len/2)-1] + data[(int)ceil(len/2)-1])/2;
+    }
+    else
+    {
+        mad = data[(int)ceil(len/2)-1];
+    }
+    
+    return mad;
 }
 
