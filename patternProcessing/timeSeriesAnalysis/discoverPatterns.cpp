@@ -55,13 +55,13 @@ int main( int argc , char *argv[])
     TSAdtwSimilarity dtwUCR( &logs.procLogs);
     
     int lenMotifReal = TSData1->procParams.motifLengths[TSData1->procParams.indexMotifLenReal];
-    dtwUCR.configureTSASimilarity(lenMotifReal, lenMotifReal, TSData1->procParams.DTWBand);
+    dtwUCR.configureTSASimilarity(lenMotifReal, lenMotifReal, TSData1->procParams.distParams.DTWBand);
     
     dtwUCR.setQueryPtr(TSData1->subSeqPtr, TSData1->nSubSeqs);
     dtwUCR.computeQueryEnvelops();
     dtwUCR.copyQueryEnv2Cand();
     
-    int nInterFact = TSData1->procParams.nInterpFac;
+    int nInterFact = TSData1->procParams.pattParams.nInterpFac;
     TSADIST LB_kim_FL, LB_Keogh_EQ, LB_Keogh_EC, realDist, bsf=FLT_MAX;
     TSADATA **U, **L, *accLB1, *accLB2;
     
@@ -79,7 +79,7 @@ int main( int argc , char *argv[])
         {
             if (paramHand.procParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
                 continue;
-            if (fabs(subSeqPtr[ii].sTime-subSeqPtr[jj].sTime)< TSData1->procParams.blackDur)
+            if (fabs(subSeqPtr[ii].sTime-subSeqPtr[jj].sTime)< TSData1->procParams.pattParams.blackDur)
             {
                 continue;
             }
@@ -95,7 +95,7 @@ int main( int argc , char *argv[])
                         realDist = dtw1dBandConst(subSeqPtr[ii].pData, subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, bsf, accLB1);
                         if (realDist <= bsf)
                         {
-                            bsf = pool->managePriorityQDisc(subSeqPtr, ii, jj, realDist, TSData1->procParams.blackDur);
+                            bsf = pool->managePriorityQDisc(subSeqPtr, ii, jj, realDist, TSData1->procParams.pattParams.blackDur);
                         }
                     }
                 }

@@ -73,24 +73,52 @@ typedef struct TSAmotifInfoExt
 
 }TSAmotifInfoExt_t;
 
-
-typedef struct procParams
+typedef struct TSADistParams
 {
-    //params used for preprocessing
-    float durMotif;
-    float blackDur;
-    float blackDurFact;
-    int dsFactor;
+    int distType;
+    int DTWBand;
+    int DTWType;
+    int rankRefDistType;
+    
+
+}TSADistParams_t;
+
+typedef struct TSARepParams
+{
+    int TSRepType;
+    int quantSize;
+    int sampleRate;
+    int normType;
     int binsPOct;
-    int quantPOct;
     float minPossiblePitch;
+    int removeTaniSegs;
     float varDur;
     float threshold;
     float flatThreshold;
     float maxPauseDur;
-    float DTWBand;
+    int dsFactor;
+
+}TSARepParams_t;
+
+typedef struct TSAPattParams
+{
+    float durMotif;
+    float blackDurFact;
+    float blackDur;
+    int maxNMotifsPairs;
+    int nInterpFac;
+
+}TSAPattParams_t;
+
+
+typedef struct procParams
+{
+    //params used for preprocessing
+    TSADistParams_t distParams;
+    TSARepParams_t  repParams;
+    TSAPattParams_t pattParams;
+    
     float interpFac[MAXNTEMPOFACTORS];
-    int nInterpFac; 
     int motifLengths[MAXNTEMPOFACTORS];
     int motifLengthsM1[MAXNTEMPOFACTORS];
     int indexMotifLenReal;
@@ -98,12 +126,8 @@ typedef struct procParams
     int **combMTX;
     int *simMeasureRankRefinement;
     int nSimMeasuresUsed;
-    int SimMeasuresUsed;
     int verbos;
-    int removeTaniSegs;
     int dumpLogs;
-    int maxNMotifsPairs;
-    
     
 }procParams_t;
 

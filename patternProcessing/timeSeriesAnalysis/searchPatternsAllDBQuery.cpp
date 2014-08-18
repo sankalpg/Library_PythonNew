@@ -54,7 +54,7 @@ int main( int argc , char *argv[])
     fp10 = fopen(fHandleTemp.getOutFileName(), "w");
     fclose(fp10);
     
-    int nInterFact = myProcParamsPtr->nInterpFac;
+    int nInterFact = myProcParamsPtr->pattParams.nInterpFac;
     float blackDur=0;
     
     for(int ff1=0; ff1< fHandleTemp.nSearchFiles; ff1++)
@@ -73,7 +73,7 @@ int main( int argc , char *argv[])
         pool->initPriorityQSear(TSData1->nQueries);
         
         TSAdtwSimilarity *dtwUCRTemp = new TSAdtwSimilarity(&logs.procLogs);    //only for managing bsf array
-        dtwUCRTemp->configureTSASimilarity(1, 1, myProcParamsPtr->DTWBand);
+        dtwUCRTemp->configureTSASimilarity(1, 1, myProcParamsPtr->distParams.DTWBand);
         dtwUCRTemp->initArrayBSF(TSData1->nQueries);
         
         for(int ff2=0; ff2< fHandleTemp.nSearchFiles; ff2++)
@@ -102,7 +102,7 @@ int main( int argc , char *argv[])
                 int nQueues = ceil(TSData1->nSubSeqs/nInterFact);
                 
                 TSAdtwSimilarity *dtwUCR = new TSAdtwSimilarity(&logs.procLogs);
-                dtwUCR->configureTSASimilarity(lenMotifReal, lenMotifReal, myProcParamsPtr->DTWBand);
+                dtwUCR->configureTSASimilarity(lenMotifReal, lenMotifReal, myProcParamsPtr->distParams.DTWBand);
                 
                 dtwUCR->setQueryPtr(TSData1->subSeqPtr, TSData1->nSubSeqs);
                 dtwUCR->setCandPtr(TSData2->subSeqPtr, TSData2->nSubSeqs);

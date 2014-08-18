@@ -21,7 +21,7 @@ TSAparamHandle::TSAparamHandle()
 TSAparamHandle::~TSAparamHandle()
 {
     free(procParams.simMeasureRankRefinement);
-    for(int ii=0; ii< procParams.nInterpFac; ii++)
+    for(int ii=0; ii< procParams.pattParams.nInterpFac; ii++)
     {
         free(procParams.combMTX[ii]);
     }
@@ -40,34 +40,44 @@ int TSAparamHandle::readParamsFromFile(char *paramFile)
     while(fgets(tempFilename, 400, fp))
     {
         sscanf(tempFilename, "%s %s\n", field, value);
-        if (strcmp(field, "durMotif:")==0){procParams.durMotif=atof(value);}
-        if (strcmp(field, "blackDurFactor:")==0)
-        {
-            procParams.blackDurFact=atof(value);
-            procParams.blackDur=atof(value)*procParams.durMotif;
-        }
-        if (strcmp(field, "dsFactor:")==0){procParams.dsFactor=atoi(value);}
-        if (strcmp(field, "binsPOct:")==0){procParams.binsPOct=atoi(value);}
-        if (strcmp(field, "quantPOct:")==0){procParams.quantPOct=atoi(value);}
-        if (strcmp(field, "minPossiblePitch:")==0){procParams.minPossiblePitch=atof(value);}
-        if (strcmp(field, "varDur:")==0){procParams.varDur=atof(value);}
-        if (strcmp(field, "threshold:")==0){procParams.threshold=atof(value);}
-        if (strcmp(field, "flatThreshold:")==0){procParams.flatThreshold=atof(value);}
-        if (strcmp(field, "maxPauseDur:")==0){procParams.maxPauseDur=atof(value);}
-        if (strcmp(field, "DTWBand:")==0){procParams.DTWBand=atof(value);}
-        if (strcmp(field, "nInterpFac:")==0){procParams.nInterpFac=atoi(value);}
-        if (strcmp(field, "SimMeasuresUsed:")==0){procParams.SimMeasuresUsed=atoi(value);}
-        if (strcmp(field, "removeTaniSegs:")==0){procParams.removeTaniSegs=atoi(value);}
+        /*Distane related parameters*/
+        if (strcmp(field, "distType:")==0){procParams.distParams.distType=atoi(value);}
+        if (strcmp(field, "DTWBand:")==0){procParams.distParams.DTWBand=atof(value);}
+        if (strcmp(field, "DTWType:")==0){procParams.distParams.DTWType=atoi(value);}
+        if (strcmp(field, "rankRefDistType:")==0){procParams.distParams.DTWType=atoi(value);}
+        /*representation related parameters*/
+        if (strcmp(field, "TSRepType:")==0){procParams.repParams.TSRepType=atoi(value);}
+        if (strcmp(field, "quantSize:")==0){procParams.repParams.quantSize=atoi(value);}
+        if (strcmp(field, "normType:")==0){procParams.repParams.normType=atoi(value);}
+        if (strcmp(field, "sampleRate:")==0){procParams.repParams.sampleRate=atof(value);}
+        if (strcmp(field, "binsPOct:")==0){procParams.repParams.binsPOct=atoi(value);}
+        if (strcmp(field, "minPossiblePitch:")==0){procParams.repParams.minPossiblePitch=atof(value);}
+        if (strcmp(field, "removeTaniSegs:")==0){procParams.repParams.removeTaniSegs=atoi(value);}
+        if (strcmp(field, "varDur:")==0){procParams.repParams.varDur=atof(value);}
+        if (strcmp(field, "threshold:")==0){procParams.repParams.threshold=atof(value);}
+        if (strcmp(field, "flatThreshold:")==0){procParams.repParams.flatThreshold=atof(value);}
+        if (strcmp(field, "maxPauseDur:")==0){procParams.repParams.maxPauseDur=atof(value);}
+        /*pattern processing parameters*/
+        if (strcmp(field, "durMotif:")==0){procParams.pattParams.durMotif=atof(value);}
+        if (strcmp(field, "blackDurFact:")==0){procParams.pattParams.blackDurFact=atof(value);}
+        if (strcmp(field, "maxNMotifsPairs:")==0){procParams.pattParams.maxNMotifsPairs=atoi(value);}
+        if (strcmp(field, "nInterpFac:")==0){procParams.pattParams.nInterpFac=atoi(value);}
+        
         if (strcmp(field, "dumpLogs:")==0){procParams.dumpLogs=atoi(value);}
-        if (strcmp(field, "maxNMotifsPairs:")==0){procParams.maxNMotifsPairs=atoi(value);}
+        
+        
+        if (procParams.pattParams.durMotif>0)
+        {
+            procParams.pattParams.blackDur=procParams.pattParams.blackDurFact*procParams.pattParams.durMotif;
+        }
         
     }
     fclose(fp);
     
-    if (procParams.SimMeasuresUsed>0)
+    if (procParams.distParams.rankRefDistType>0)
     {
         procParams.simMeasureRankRefinement = (int*)malloc(sizeof(int)*1);
-        procParams.simMeasureRankRefinement[0] = procParams.SimMeasuresUsed;
+        procParams.simMeasureRankRefinement[0] = procParams.distParams.rankRefDistType;
         procParams.nSimMeasuresUsed =1;
     }
     else    //In such case use 4 different similarity measures needed for experimentation
@@ -82,31 +92,31 @@ int TSAparamHandle::readParamsFromFile(char *paramFile)
     
     int ii, jj;
     
-    if (procParams.nInterpFac==1)
+    if (procParams.pattParams.nInterpFac==1)
     {
         procParams.interpFac[0]=1.0;
         
-        procParams.combMTX = (int **)malloc(sizeof(int*)*procParams.nInterpFac);
-        for(ii=0;ii<procParams.nInterpFac;ii++)
+        procParams.combMTX = (int **)malloc(sizeof(int*)*procParams.pattParams.nInterpFac);
+        for(ii=0;ii<procParams.pattParams.nInterpFac;ii++)
         {
-            procParams.combMTX[ii] =  (int *)malloc(sizeof(int)*procParams.nInterpFac);
-            for(jj=0;jj<procParams.nInterpFac;jj++)
+            procParams.combMTX[ii] =  (int *)malloc(sizeof(int)*procParams.pattParams.nInterpFac);
+            for(jj=0;jj<procParams.pattParams.nInterpFac;jj++)
             {
                 procParams.combMTX[ii][jj] = 1;
             }
         }
     }
-    else if (procParams.nInterpFac==3)
+    else if (procParams.pattParams.nInterpFac==3)
     {
         procParams.interpFac[0]=0.9;
         procParams.interpFac[1]=1.0;
         procParams.interpFac[2]=1.1;
         
-        procParams.combMTX = (int **)malloc(sizeof(int*)*procParams.nInterpFac);
-        for(ii=0;ii<procParams.nInterpFac;ii++)
+        procParams.combMTX = (int **)malloc(sizeof(int*)*procParams.pattParams.nInterpFac);
+        for(ii=0;ii<procParams.pattParams.nInterpFac;ii++)
         {
-            procParams.combMTX[ii] =  (int *)malloc(sizeof(int)*procParams.nInterpFac);
-            for(jj=0;jj<procParams.nInterpFac;jj++)
+            procParams.combMTX[ii] =  (int *)malloc(sizeof(int)*procParams.pattParams.nInterpFac);
+            for(jj=0;jj<procParams.pattParams.nInterpFac;jj++)
             {
                 procParams.combMTX[ii][jj] = combAllwd_3[ii][jj];
             }
@@ -114,7 +124,7 @@ int TSAparamHandle::readParamsFromFile(char *paramFile)
         
         
     }
-    else if (procParams.nInterpFac==5)
+    else if (procParams.pattParams.nInterpFac==5)
     {
         procParams.interpFac[0]=0.9;
         procParams.interpFac[1]=0.95;
@@ -122,11 +132,11 @@ int TSAparamHandle::readParamsFromFile(char *paramFile)
         procParams.interpFac[3]=1.05;
         procParams.interpFac[4]=1.1;
         
-        procParams.combMTX = (int **)malloc(sizeof(int*)*procParams.nInterpFac);
-        for(ii=0;ii<procParams.nInterpFac;ii++)
+        procParams.combMTX = (int **)malloc(sizeof(int*)*procParams.pattParams.nInterpFac);
+        for(ii=0;ii<procParams.pattParams.nInterpFac;ii++)
         {
-            procParams.combMTX[ii] =  (int *)malloc(sizeof(int)*procParams.nInterpFac);
-            for(jj=0;jj<procParams.nInterpFac;jj++)
+            procParams.combMTX[ii] =  (int *)malloc(sizeof(int)*procParams.pattParams.nInterpFac);
+            for(jj=0;jj<procParams.pattParams.nInterpFac;jj++)
             {
                 procParams.combMTX[ii][jj] = combAllwd_5[ii][jj];
             }
@@ -269,7 +279,7 @@ int TSAdataHandler::genSubSeqsWithTStamps(TSAseg_t *qTStamps, TSAIND nQueries)
     {
                 
         //whats the length of this motif
-        procParams.durMotif = samPtr[seedMotifEndInd[ii]].tStamp - samPtr[seedMotifStrInd[ii]].tStamp;
+        procParams.pattParams.durMotif = samPtr[seedMotifEndInd[ii]].tStamp - samPtr[seedMotifStrInd[ii]].tStamp;
         calculateDiffMotifLengths();
         int lenRawMotifData = procParams.motifLengths[procParams.indexMotifLenLongest];
         
@@ -474,7 +484,7 @@ int TSAdataHandler::genUniScaledSubSeqs()
     float t1,t2;
     t1 = clock();
     
-    int nInterpFac = procParams.nInterpFac;
+    int nInterpFac = procParams.pattParams.nInterpFac;
     int lenMotifReal = procParams.motifLengths[procParams.indexMotifLenReal];
     
     TSAIND nSubSeqs_new = nSubSeqs*nInterpFac;
@@ -669,13 +679,13 @@ int TSAdataHandler::updateBLStdThsld()
 {
     //computing standard deviation
     float *stdVec;
-    int varSam = (int)round(procParams.varDur/pHop);
+    int varSam = (int)round(procParams.repParams.varDur/pHop);
     computeStdTSLocal(&stdVec, varSam);
     
     // Assigning weather a point belongs to a flat region or non flar region based on a threhsold
     for(int ii=varSam;ii<lenTS-varSam;ii++)
     {
-        if (stdVec[ii]>procParams.threshold)
+        if (stdVec[ii]>procParams.repParams.threshold)
         {
             stdVec[ii] = 1;
         }
@@ -700,7 +710,7 @@ int TSAdataHandler::updateBLStdThsld()
         {
             if (blacklist[ind-lenRawMotifDataM1]==0)
             {
-                if(ex < procParams.flatThreshold*(float)lenRawMotifData)
+                if(ex < procParams.repParams.flatThreshold*(float)lenRawMotifData)
                 {
                     
                     blacklist[ind-lenRawMotifDataM1]=1;
@@ -720,7 +730,7 @@ int TSAdataHandler::updateBLDurThsld()
 {
     float start, end, maxMotifDur;
     
-    maxMotifDur = (procParams.durMotif*procParams.interpFac[procParams.indexMotifLenLongest]) + procParams.maxPauseDur ; 
+    maxMotifDur = (procParams.pattParams.durMotif*procParams.interpFac[procParams.indexMotifLenLongest]) + procParams.repParams.maxPauseDur ; 
     
     for(int ind=0; ind<nSubSeqs; ind++)
     {
@@ -802,9 +812,9 @@ int TSAdataHandler::calculateDiffMotifLengths()
     t1 = clock();
     //######### computing all the motif lengths for several interpolation factors ##############
     int max_factor=-1;
-    for (ii=0;ii<procParams.nInterpFac; ii++)
+    for (ii=0;ii<procParams.pattParams.nInterpFac; ii++)
     {
-        procParams.motifLengths[ii] = (int)ceil((procParams.durMotif*procParams.interpFac[ii])/pHop);
+        procParams.motifLengths[ii] = (int)ceil((procParams.pattParams.durMotif*procParams.interpFac[ii])/pHop);
         if (procParams.interpFac[ii]==1)
         {
             procParams.indexMotifLenReal = ii;
@@ -817,7 +827,7 @@ int TSAdataHandler::calculateDiffMotifLengths()
     }
     
     //CRUCIAL POINT !!! since cubic interpolation needs 4 points (2 ahead) just store
-    if (procParams.nInterpFac >1)
+    if (procParams.pattParams.nInterpFac >1)
     {
         procParams.motifLengths[procParams.indexMotifLenLongest]+=1;
     }
@@ -844,7 +854,7 @@ int TSAdataHandler::convertHz2Cents(char *tonicFileName)
     int nRead = fscanf(fp, "%f\n",&tonic);
     fclose(fp);
     
-    float temp1 = ((float)procParams.binsPOct)/LOG2;
+    float temp1 = ((float)procParams.repParams.binsPOct)/LOG2;
     
     for(int ii=0;ii<lenTS;ii++)
     {
@@ -871,7 +881,7 @@ int TSAdataHandler::filterSamplesTS()
     //store all locations which have valid samples
     for(TSAIND ii=0;ii<lenTS; ii++)
     {
-        if(samPtr[ii].value > procParams.minPossiblePitch)
+        if(samPtr[ii].value > procParams.repParams.minPossiblePitch)
         {
             validSampleInd[nValidSamples]=ii;
             nValidSamples++;
@@ -916,6 +926,9 @@ int TSAdataHandler::readHopSizeTS(char *fileName)
     nRead = fscanf(fp, "%f\t%f\n",&tsTime2, &tsData);
     
     pHop = (tsTime2-tsTime1);
+    
+    procParams.repParams.dsFactor = floor((procParams.repParams.sampleRate/(pHop*1000))+0.5);
+    
     fclose(fp);
     return 1;
 }
@@ -924,7 +937,7 @@ int TSAdataHandler::quantizeSampleTS(int quantizationType)
 {
     float t1,t2;
     t1 = clock();
-    float temp = floor(procParams.binsPOct/procParams.quantPOct);
+    float temp = floor(procParams.repParams.binsPOct/procParams.repParams.quantSize);
 
     for (int ii=0;ii<lenTS; ii++)
     {
@@ -996,7 +1009,7 @@ int TSAdataHandler::normalizeSubSeqs(int normType)
     {
         float median;
         TSADATA *tempStr = (TSADATA *)malloc(sizeof(TSADATA)*subSeqPtr[0].len*2);
-        float binsPSemiTone = (procParams.binsPOct/12);
+        float binsPSemiTone = (procParams.repParams.binsPOct/12);
         
         for(int ii=0; ii<nSubSeqs; ii++)
         {
@@ -1044,20 +1057,20 @@ int TSAdataHandler::downSampleTS()
 {
     float t1,t2;
     t1 = clock();
-    if (procParams.dsFactor <=0)
+    if (procParams.repParams.dsFactor <=0)
     {
         return 1;
     }
     
-    TSAIND lenTS_new = ceil(lenTS/procParams.dsFactor);
+    TSAIND lenTS_new = ceil(lenTS/procParams.repParams.dsFactor);
     TSAsam_t * samPtr_new = (TSAsam_t *)malloc(sizeof(TSAsam_t)*lenTS_new);
     for (int ii=0;ii<lenTS_new; ii++)
     {
-        samPtr_new[ii] = samPtr[ii*procParams.dsFactor];
+        samPtr_new[ii] = samPtr[ii*procParams.repParams.dsFactor];
     }
     
     //correcting hop size as well
-    pHop = pHop*procParams.dsFactor;
+    pHop = pHop*procParams.repParams.dsFactor;
     
     //free old memory
     free(samPtr);

@@ -49,11 +49,11 @@ int main( int argc , char *argv[])
     TSAdataHandler *TSData1 = new TSAdataHandler(baseName, &logs.procLogs, myFileExtsPtr, myProcParamsPtr);
     TSData1->loadMotifDataTemplate1();
     
-    TSAdtwSimilarity dtwUCR;
+    TSAdtwSimilarity dtwUCR( &logs.procLogs);
     
     int lenMotifReal = TSData1->procParams.motifLengths[TSData1->procParams.indexMotifLenReal];
-    int nInterFact = TSData1->procParams.nInterpFac;
-    dtwUCR.configureTSASimilarity(lenMotifReal, lenMotifReal, TSData1->procParams.DTWBand);
+    int nInterFact = TSData1->procParams.pattParams.nInterpFac;
+    dtwUCR.configureTSASimilarity(lenMotifReal, lenMotifReal, TSData1->procParams.distParams.DTWBand);
     
     dtwUCR.setQueryPtr(TSData1->subSeqPtr, TSData1->nSubSeqs);
     dtwUCR.computeQueryEnvelops();
@@ -90,7 +90,7 @@ int main( int argc , char *argv[])
                 if (paramHand.procParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
                     continue;
 
-                if ((strcmp(baseName, fHandle.searchFileNames[ss])==0)&& (fabs(TSData1->subSeqPtr[ii].sTime-TSData2->subSeqPtr[jj].sTime)< TSData1->procParams.blackDur))
+                if ((strcmp(baseName, fHandle.searchFileNames[ss])==0)&& (fabs(TSData1->subSeqPtr[ii].sTime-TSData2->subSeqPtr[jj].sTime)< TSData1->procParams.pattParams.blackDur))
                     //beware that basename and searchFile name should both have either full path or relative path.
                 {
                     continue;
@@ -107,7 +107,7 @@ int main( int argc , char *argv[])
                             realDist = dtw1dBandConst(TSData1->subSeqPtr[ii].pData, TSData2->subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, dtwUCR.bsfArray[queryInd], dtwUCR.accLB_Keogh_EQ);
                             if (realDist <= dtwUCR.bsfArray[queryInd])
                             {
-                                dtwUCR.bsfArray[queryInd] = pool.managePriorityQSear(queryInd, TSData2->subSeqPtr, ii, jj, realDist, searchFileID, TSData1->procParams.blackDur);
+                                dtwUCR.bsfArray[queryInd] = pool.managePriorityQSear(queryInd, TSData2->subSeqPtr, ii, jj, realDist, searchFileID, TSData1->procParams.pattParams.blackDur);
                             }
                         }
                     }
