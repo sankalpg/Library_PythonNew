@@ -57,12 +57,12 @@ int main( int argc , char *argv[])
     TSData1->downSampleTS();
     //TSData1->filterSamplesTS();
     TSData1->convertHz2Cents(fHandle.getTonicFileName());
-    TSData1->readQueryTimeStamps(fHandle.getQueryFileName(), VIGNESH_MOTIF_ANNOT_FORMAT);
+    TSData1->readQueryTimeStamps(fHandle.getQueryFileName(), MY_MOTIF_ANNOT_FORMAT);
     
     fHandle.loadSearchFileList();
     TSAIND queryInd=0;
     
-    TSApool pool(kNN, myProcParamsPtr->blackDur);
+    TSApool pool(kNN);
     pool.initPriorityQSear(TSData1->nQueries);
     
     // iterating over all files 
@@ -88,18 +88,18 @@ int main( int argc , char *argv[])
         TSData1->genUniScaledSubSeqs();
         printf("Hello1.3\n");
         printf("Hello1.4\n");
-        TSData1->procParams.durMotif = TSData1->subSeqPtr[TSData1->procParams.indexMotifLenReal].eTime-TSData1->subSeqPtr[TSData1->procParams.indexMotifLenReal].sTime;
-        printf("%f\t%f\n", TSData1->pHop, TSData1->procParams.durMotif);
+        TSData1->procParams.pattParams.durMotif = TSData1->subSeqPtr[TSData1->procParams.indexMotifLenReal].eTime-TSData1->subSeqPtr[TSData1->procParams.indexMotifLenReal].sTime;
+        printf("%f\t%f\n", TSData1->pHop, TSData1->procParams.pattParams.durMotif);
         printf("Hello1.5\n");
         TSData1->calculateDiffMotifLengths();
         int lenMotifReal = TSData1->procParams.motifLengths[TSData1->procParams.indexMotifLenReal];
-        int nInterFact = TSData1->procParams.nInterpFac;
+        int nInterFact = TSData1->procParams.pattParams.nInterpFac;
         
         printf("Hello1.6\n");
-        TSAdtwSimilarity *dtwUCR = new TSAdtwSimilarity();
+        TSAdtwSimilarity *dtwUCR = new TSAdtwSimilarity(&logs.procLogs);
         printf("Hello1.7\n");
         printf("motif len %d\n", lenMotifReal);
-        dtwUCR->configureTSASimilarity(lenMotifReal, lenMotifReal, TSData1->procParams.DTWBand);
+        dtwUCR->configureTSASimilarity(lenMotifReal, lenMotifReal, TSData1->procParams.distParams.DTWBand);
         printf("Hello1.8\n");
         dtwUCR->setQueryPtr(TSData1->subSeqPtr, TSData1->nSubSeqs);
         printf("Hello1.9\n");
@@ -140,13 +140,8 @@ int main( int argc , char *argv[])
                     
                     if (paramHand.procParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
                         continue;
-
-                    if (TSData2->subSeqPtr[jj].sTime>77.0)
-                    {
-                        TSData2->subSeqPtr[jj].sTime=TSData2->subSeqPtr[jj].sTime;
-                    }
                     
-                    if ((strcmp(baseName, fHandle.searchFileNames[ss])==0)&& (fabs(TSData1->subSeqPtr[ii].sTime-TSData2->subSeqPtr[jj].sTime)< TSData1->procParams.durMotif))
+                    if ((strcmp(baseName, fHandle.searchFileNames[ss])==0)&& (fabs(TSData1->subSeqPtr[ii].sTime-TSData2->subSeqPtr[jj].sTime)< TSData1->procParams.pattParams.durMotif))
                         //beware that basename and searchFile name should both have either full path or relative path.
                     {
                         continue;
@@ -165,7 +160,7 @@ int main( int argc , char *argv[])
                                 realDist = dtw1dBandConst(TSData1->subSeqPtr[ii].pData, TSData2->subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR->costMTX, SqEuclidean, dtwUCR->bandDTW, dtwUCR->bsfArray[queryInd], dtwUCR->accLB_Keogh_EQ);
                                 if (realDist <= dtwUCR->bsfArray[queryInd])
                                 {
-                                    dtwUCR->bsfArray[queryInd] = pool.managePriorityQSear(qq, TSData2->subSeqPtr, ii, jj, realDist, searchFileID, TSData1->procParams.durMotif);
+                                    dtwUCR->bsfArray[queryInd] = pool.managePriorityQSear(qq, TSData2->subSeqPtr, ii, jj, realDist, searchFileID, TSData1->procParams.pattParams.durMotif);
                                 }
                             }
                         }
