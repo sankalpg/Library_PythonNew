@@ -74,12 +74,14 @@ int main( int argc , char *argv[])
     
     for(TSAIND ss=0; ss < fHandle.nSearchFiles; ss++)
     {
+        searchFileID = ss;
+        fprintf(fp2, "%d\t%s\n",searchFileID, fHandle.searchFileNames[ss]);
         TSAdataHandler *TSData2 = new TSAdataHandler(fHandle.searchFileNames[ss], &logs.procLogs, myFileExtsPtr, myProcParamsPtr);
         TSData2->genTemplate1SubSeqs();
         dtwUCR.setCandPtr(TSData2->subSeqPtr, TSData2->nSubSeqs);
         dtwUCR.computeCandEnvelops();
         
-        searchFileID = ss;
+        
         
         for(TSAIND jj=0;jj< TSData2->nSubSeqs;jj++)
         {

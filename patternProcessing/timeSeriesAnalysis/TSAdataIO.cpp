@@ -44,7 +44,7 @@ int TSAparamHandle::readParamsFromFile(char *paramFile)
         if (strcmp(field, "distType:")==0){procParams.distParams.distType=atoi(value);}
         if (strcmp(field, "DTWBand:")==0){procParams.distParams.DTWBand=atof(value);}
         if (strcmp(field, "DTWType:")==0){procParams.distParams.DTWType=atoi(value);}
-        if (strcmp(field, "rankRefDistType:")==0){procParams.distParams.DTWType=atoi(value);}
+        if (strcmp(field, "rankRefDistType:")==0){procParams.distParams.rankRefDistType=atoi(value);}
         /*representation related parameters*/
         if (strcmp(field, "TSRepType:")==0){procParams.repParams.TSRepType=atoi(value);}
         if (strcmp(field, "quantSize:")==0){procParams.repParams.quantSize=atoi(value);}
@@ -476,6 +476,8 @@ int TSAdataHandler::genTemplate1SubSeqs()
     filterBlackListedSubSeqs();
     
     genUniScaledSubSeqs();
+    
+    procLogPtr->nProcSubSeq+=nSubSeqs;
 
 }
 
@@ -927,7 +929,7 @@ int TSAdataHandler::readHopSizeTS(char *fileName)
     
     pHop = (tsTime2-tsTime1);
     
-    procParams.repParams.dsFactor = floor((procParams.repParams.sampleRate/(pHop*1000))+0.5);
+    procParams.repParams.dsFactor = (int)floor((procParams.repParams.sampleRate/(pHop*1000))+0.5);
     
     fclose(fp);
     return 1;

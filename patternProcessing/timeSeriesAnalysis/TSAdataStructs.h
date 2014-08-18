@@ -76,7 +76,7 @@ typedef struct TSAmotifInfoExt
 typedef struct TSADistParams
 {
     int distType;
-    int DTWBand;
+    float DTWBand;
     int DTWType;
     int rankRefDistType;
     
