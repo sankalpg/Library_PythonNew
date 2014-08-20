@@ -91,8 +91,8 @@ int main( int argc , char *argv[])
                 TSData1->genSubSeqsWithTStamps(&TSData1->queryTStamps[qq], 1);
                 TSData1->genUniScaledSubSeqs();
                 
-                TSData2->procParams.durMotif = TSData1->procParams.durMotif;
-                blackDur = TSData1->procParams.durMotif*TSData1->procParams.blackDurFact; //blackDur is black dur factor w.r.t. motif length
+                TSData2->procParams.pattParams.durMotif = TSData1->procParams.pattParams.durMotif;
+                blackDur = TSData1->procParams.pattParams.durMotif*TSData1->procParams.pattParams.blackDurFact; //blackDur is black dur factor w.r.t. motif length
                 
                 TSData2->calculateDiffMotifLengths();
                 TSData2->genSlidingWindowSubSeqs();

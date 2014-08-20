@@ -18,3 +18,13 @@ Search Current
 ./searchPatterns_O3 "testCases/03_Teliyaleru_Rama/03_Teliyaleru_Rama" "testCases/procParamsSearch.txt" "testCases/fileExtensionsSearch.txt" 50 -1 1
 
 
+Running a variable length query search
+
+./searchPatternsVarLen_O3 "/home/sankalp/Work/Work_PhD/library_pythonnew/patternProcessing/timeSeriesAnalysis/testCases/TestVigAnnot/ALB_Kamboji3_06ALB" "testCases/procParamsSearch_NEW.txt" "testCases/fileExtensionsSearch_VigDB.txt"
+
+
+Running all DB in one shot (supervised) 
+
+
+
+
