@@ -61,6 +61,7 @@ int main( int argc , char *argv[])
     {
         //create a data handler object
         TSAdataHandler *TSData1 = new TSAdataHandler(fHandleTemp.searchFileNames[ff1], &logs.procLogs, myFileExtsPtr, myProcParamsPtr);
+		TSData1->fHandle.loadSearchFileList();
         TSData1->readTSData(TSData1->fHandle.getTSFileName());
         TSData1->readHopSizeTS(TSData1->fHandle.getTSFileName());
         TSData1->downSampleTS();
@@ -76,11 +77,11 @@ int main( int argc , char *argv[])
         dtwUCRTemp->configureTSASimilarity(1, 1, myProcParamsPtr->distParams.DTWBand);
         dtwUCRTemp->initArrayBSF(TSData1->nQueries);
         
-        for(int ff2=0; ff2< fHandleTemp.nSearchFiles; ff2++)
+        for(int ff2=0; ff2< TSData1->fHandle.nSearchFiles; ff2++)
         {
             searchFileID = ff2;
             
-            TSAdataHandler *TSData2 = new TSAdataHandler(fHandleTemp.searchFileNames[ff2], &logs.procLogs, myFileExtsPtr, myProcParamsPtr);
+            TSAdataHandler *TSData2 = new TSAdataHandler(TSData1->fHandle.searchFileNames[ff2], &logs.procLogs, myFileExtsPtr, myProcParamsPtr);
             TSData2->readTSData(TSData2->fHandle.getTSFileName());
             TSData2->readHopSizeTS(TSData2->fHandle.getTSFileName());
             TSData2->downSampleTS();
@@ -117,7 +118,7 @@ int main( int argc , char *argv[])
                         if (paramHand.procParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
                             continue;
                         
-                        if ((strcmp(fHandleTemp.searchFileNames[ff1], fHandleTemp.searchFileNames[ff2])==0)&& (fabs(TSData1->subSeqPtr[ii].sTime-TSData2->subSeqPtr[jj].sTime)< blackDur))
+                        if ((strcmp(fHandleTemp.searchFileNames[ff1], TSData1->fHandle.searchFileNames[ff2])==0)&& (fabs(TSData1->subSeqPtr[ii].sTime-TSData2->subSeqPtr[jj].sTime)< blackDur))
                             //beware that basename and searchFile name should both have either full path or relative path.
                         {
                             continue;
