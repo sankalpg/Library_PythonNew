@@ -122,6 +122,24 @@ if (c < a)
 return a;
 }
 
+/*Euclidean distance between two sequences*/
+
+double euclideanSeq(double *x, double*y, int x_len, int y_len, double**cost, int dist_type, int bandwidth, double bsf, double *accLB)
+{
+    int ii;
+    double dist=0;
+    
+    for (ii=0;ii<min(x_len, y_len);ii++)
+    {
+        dist+=mySimMeasure[dist_type](x[ii], y[ii]);
+    }
+    
+    return dist;
+}
+
+
+
+
 
 /*
  * All the DTW variants for one dimensional time series

@@ -194,7 +194,7 @@ TSAdataHandler::TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fi
     isBlackListAlloc=-1;
     nQueries=-1;
     nSubSeqs=-1;
-	
+    
 }
 TSAdataHandler::~TSAdataHandler()
 {
@@ -459,9 +459,9 @@ int TSAdataHandler::genTemplate1SubSeqs()
     filterSamplesTS();
     
     convertHz2Cents(fHandle.getTonicFileName());
-	
+    
     //calculate different motif lengths before doing sliding window candidate generation
-	calculateDiffMotifLengths();
+    calculateDiffMotifLengths();
     
     genSlidingWindowSubSeqs();
     
@@ -940,10 +940,18 @@ int TSAdataHandler::quantizeSampleTS(int quantizationType)
     float t1,t2;
     t1 = clock();
     float temp = floor(procParams.repParams.binsPOct/procParams.repParams.quantSize);
-
-    for (int ii=0;ii<lenTS; ii++)
+    
+    if (quantizationType == NO_QUANT)
     {
-        samPtr[ii].value = quantizePitch(samPtr[ii].value, temp);
+        return 1;
+    }
+
+    if (quantizationType == NEAREST_NOTE_QUANT)
+    {
+        for (int ii=0;ii<lenTS; ii++)
+        {
+            samPtr[ii].value = quantizePitch(samPtr[ii].value, temp);
+        }
     }
     
     t2 = clock();

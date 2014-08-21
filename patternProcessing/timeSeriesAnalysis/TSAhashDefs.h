@@ -60,6 +60,13 @@ QMEDIAN_SUB_NORM,
 MAD_NORM,
 };
 
+enum 
+{
+NO_QUANT=0,
+NEAREST_NOTE_QUANT,
+};
+
+
 //Extern declarations
 extern const int combAllwd_5[5][5];
 extern const int combAllwd_3[3][3];
