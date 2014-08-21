@@ -392,18 +392,18 @@ def testFileExist(fileList, Extension):
     print "total non existing files are %d"%(len(nonExist))
     print nonExist
     
-def copyFileListForSearchingMotifs(root_dir, fileList, extOut):
+def copyFileListForSearchingMotifs(root_dir, fileList, extOut, ext = '.wav'):
     
-    filenames = GetFileNamesInDir(root_dir, '.mp3')
+    filenames = GetFileNamesInDir(root_dir, ext)
     
     for f in filenames:
         filename, ext = os.path.splitext(f)
         filename = filename + extOut        
         shutil.copy(fileList, filename)
 
-def generateFileList(root_dir, fileOut):
+def generateFileList(root_dir,fileOut,ext = '.wav'):
     
-    filenames = GetFileNamesInDir(root_dir, '.mp3')
+    filenames = GetFileNamesInDir(root_dir, ext)
     
     fid = open(fileOut, "w")
     for f in filenames:
