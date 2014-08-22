@@ -126,11 +126,14 @@ int main( int argc , char *argv[])
     
     //dump the generate data
     
+    logs.dumpProcLogs(TSData1->fHandle.getLogFileName(), verbos);
+    
     delete TSData1;
     delete pool;
-    
     if (verbos){printf("Processing done!\n");}
-    logs.dumpProcLogs(TSData1->fHandle.getLogFileName(), verbos);
+    
+    
+    
     
     return 1;
 }
