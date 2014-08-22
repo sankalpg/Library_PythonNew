@@ -84,18 +84,23 @@ int main( int argc , char *argv[])
                 continue;
             }
             LB_kim_FL = computeLBkimFL(subSeqPtr[ii].pData[0], subSeqPtr[jj].pData[0], subSeqPtr[ii].pData[lenMotifReal-1], subSeqPtr[jj].pData[lenMotifReal-1], SqEuclidean);
+            logs.procLogs.nLB_KIM_FL++;
             if (LB_kim_FL< bsf) 
             {
                 LB_Keogh_EQ = computeKeoghsLB(U[ii],L[ii],accLB1, subSeqPtr[jj].pData,lenMotifReal, bsf, SqEuclidean);
+                logs.procLogs.nLB_Keogh_EQ++;
                 if(LB_Keogh_EQ < bsf)
                 {
                     LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB2, subSeqPtr[ii].pData,lenMotifReal, bsf, SqEuclidean);
+                    logs.procLogs.nLB_Keogh_EC++;
                     if(LB_Keogh_EC < bsf)
                     {
                         realDist = dtw1dBandConst(subSeqPtr[ii].pData, subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, bsf, accLB1);
+                        logs.procLogs.nDTW_EA++;
                         if (realDist <= bsf)
                         {
                             bsf = pool->managePriorityQDisc(subSeqPtr, ii, jj, realDist, TSData1->procParams.pattParams.blackDur);
+                            logs.procLogs.nPriorityUpdates++;
                         }
                     }
                 }

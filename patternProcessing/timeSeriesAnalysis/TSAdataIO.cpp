@@ -458,12 +458,16 @@ int TSAdataHandler::genTemplate1SubSeqs()
     //remove silence pitch regions
     filterSamplesTS();
     
+    procLogPtr->lenProcTS+=lenTS;
+    
     convertHz2Cents(fHandle.getTonicFileName());
     
     //calculate different motif lengths before doing sliding window candidate generation
     calculateDiffMotifLengths();
     
     genSlidingWindowSubSeqs();
+    
+    procLogPtr->nSubSeqs+=nSubSeqs;
     
     initializeBlackList();
     
@@ -474,6 +478,8 @@ int TSAdataHandler::genTemplate1SubSeqs()
     updateBLInvalidSegment(fHandle.getBlackListSegFileName());
     
     filterBlackListedSubSeqs();
+    
+    procLogPtr->nSubSeqsBL+=procLogPtr->nSubSeqs - nSubSeqs;
     
     genUniScaledSubSeqs();
     
