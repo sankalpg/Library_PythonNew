@@ -7,6 +7,8 @@
 
 using namespace std;
 
+float t1,t2, ti,tf;
+
 
 int main( int argc , char *argv[])
 {
@@ -26,6 +28,9 @@ int main( int argc , char *argv[])
         printf("\nInvalid number of arguments!!!\n");
         exit(1);
     }
+    
+    ti = clock();
+    
     //reading commandline parameters
     char *baseName = argv[1];
     char *paramFile = argv[2];
@@ -98,18 +103,23 @@ int main( int argc , char *argv[])
                     continue;
                 }
                 LB_kim_FL = computeLBkimFL(TSData1->subSeqPtr[ii].pData[0], TSData2->subSeqPtr[jj].pData[0], TSData1->subSeqPtr[ii].pData[lenMotifReal-1], TSData2->subSeqPtr[jj].pData[lenMotifReal-1], SqEuclidean);
+                logs.procLogs.nLB_KIM_FL++;
                 if (LB_kim_FL< dtwUCR.bsfArray[queryInd]) 
                 {
                     LB_Keogh_EQ = computeKeoghsLB(dtwUCR.envUQueryPtr[ii],dtwUCR.envLQueryPtr[ii],dtwUCR.accLB_Keogh_EQ, TSData2->subSeqPtr[jj].pData,lenMotifReal, dtwUCR.bsfArray[queryInd], SqEuclidean);
+                    logs.procLogs.nLB_Keogh_EQ++;
                     if(LB_Keogh_EQ < dtwUCR.bsfArray[queryInd])
                     {
                         LB_Keogh_EC = computeKeoghsLB(dtwUCR.envUCandPtr[jj],dtwUCR.envLCandPtr[jj],dtwUCR.accLB_Keogh_EC, TSData1->subSeqPtr[ii].pData,lenMotifReal, dtwUCR.bsfArray[queryInd], SqEuclidean);
+                        logs.procLogs.nLB_Keogh_EC++;
                         if(LB_Keogh_EC < dtwUCR.bsfArray[queryInd])
                         {
                             realDist = dtw1dBandConst(TSData1->subSeqPtr[ii].pData, TSData2->subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, dtwUCR.bsfArray[queryInd], dtwUCR.accLB_Keogh_EQ);
+                            logs.procLogs.nDTW_EA++;
                             if (realDist <= dtwUCR.bsfArray[queryInd])
                             {
                                 dtwUCR.bsfArray[queryInd] = pool.managePriorityQSear(queryInd, TSData2->subSeqPtr, ii, jj, realDist, searchFileID, TSData1->procParams.pattParams.blackDur);
+                                logs.procLogs.nPriorityUpdates++;
                             }
                         }
                     }
@@ -153,23 +163,22 @@ int main( int argc , char *argv[])
                 //sorting the priority list
                 pool.sortQSearch(ii);
             }   
-                
-            
+            t1 = clock();
+
             TSData1->dumpSearMotifInfo(fHandle.getOutFileNamePostRR(paramHand.procParams.simMeasureRankRefinement[mm]), pool.priorityQSear, TSData1->nSubSeqs/nInterFact, pool.K, verbos);
+            
+            t2 = clock();
+            logs.procLogs.tDump += (t2-t1)/CLOCKS_PER_SEC;
     
-    }    
-    //TSData1->dumpDiscMotifInfo(TSData1->fHandle.getOutFileName(), pool.priorityQDisc, pool.K, verbos);
-    //TSData1->dumpSearMotifInfo(fHandle.getOutFileName(), pool.priorityQSear, TSData1->nSubSeqs/nInterFact, pool.K, verbos);
-    //generate pattern sub sequences
+    }
+    
+    tf = clock();
+    
+    logs.procLogs.tTotal += (tf-ti)/CLOCKS_PER_SEC;
     
     
-    //prepare lower bounding data
+    logs.dumpProcLogs(TSData1->fHandle.getLogFileName(), verbos);
     
-    //enter into nested loop
-    
-    //free memories
-    
-    //dump the generate data
     delete TSData1;
     
     
