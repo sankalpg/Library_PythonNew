@@ -24,7 +24,7 @@ License: to be decided !!!
 
 
 
-#define ENABLE_EA
+//#define ENABLE_EA
 
 
 //########################################## Similarity Measures #####################################
@@ -137,7 +137,10 @@ double euclideanSeq(double *x, double*y, int x_len, int y_len, double**cost, int
     return dist;
 }
 
-
+int path_Euclidean(double **cost, int n, int m)
+{
+    return n;
+}
 
 
 
@@ -375,6 +378,136 @@ free(px);
 free(py);
 
 return 1;
+}
+
+
+int path_11(double **cost, int n, int m)
+{
+int i, j, k, z1, z2;
+int *px;
+int *py;
+double min_cost;
+
+    
+i =  n - 1;
+j = m - 1;
+k = 1;
+
+while ((i > 0) || (j > 0))
+    {
+        if (i == 0)
+        {
+            j--;
+        }
+        else if (j == 0)
+        {
+            i--;
+        }
+        else
+        {
+            min_cost = min3(cost[i-1][j],
+                            cost[i-1][j-1], 
+                            cost[i][j-1]);
+            
+            if (cost[i-1][j-1] == min_cost)
+            {
+                i--;
+                j--;
+            }
+            else if (cost[i][j-1] == min_cost)
+            {
+                j--;
+            }
+            else
+            {
+                i--;
+            }
+        }
+        k++;      
+    }
+
+return k;
+}
+
+int path_12(double **cost, int n, int m)
+{
+int i, j, k, z1, z2;
+int *px;
+int *py;
+double min_cost;
+
+    
+i =  n - 1;
+j = m - 1;
+k = 1;
+
+while ((i > 0) || (j > 0))
+    {
+        if (i == 0)
+        {
+            j--;
+        }
+        else if (j == 0)
+        {
+            i--;
+        }
+        else if (i == 1)
+            {
+                min_cost = min(cost[i-1][j-1], cost[i-1][j-2]);
+                
+                if (cost[i-1][j-1] == min_cost)
+                    {
+                        i--;
+                        j--;
+                    }
+                else
+                {
+                    j-=2;
+                    i--;
+                }
+            }
+        else if (j ==1)
+            {
+                min_cost = min(cost[i-2][j-1], cost[i-1][j-1]);
+                
+                if (cost[i-1][j-1] == min_cost)
+                {
+                    i--;
+                    j--;
+                }
+                else
+                {
+                    i-=2;
+                    j--;
+                }
+            }        
+        
+        else
+            {
+                min_cost = min3(cost[i-2][j-1],
+                                cost[i-1][j-1], 
+                                cost[i-1][j-2]);
+                
+                if (cost[i-1][j-1] == min_cost)
+                {
+                    i--;
+                    j--;
+                }
+                else if (cost[i-1][j-2] == min_cost)
+                {
+                    j-=2;
+                    i--;
+                }
+                else
+                {
+                    i-=2;
+                    j--;
+                }
+            }
+        k++;      
+    }
+
+return k;
 }
 
 

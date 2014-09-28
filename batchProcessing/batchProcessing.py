@@ -91,6 +91,15 @@ def BatchConvertMp32Wav(root_dir):
                 cmd = "lame --decode "+ '"'+filename+'"' + " " + '"'+wavfilename+'"'
                 os.system(cmd)
                 
+def BatchConvertWav2Mp3(root_dir):
+        
+        audiofilenames = GetFileNamesInDir(root_dir, '.wav')
+        
+        for filename in audiofilenames:
+                mp3filename = filename.replace('.wav', '.mp3')
+                cmd = "lame "+ '"'+filename+'"' + " " + '"'+mp3filename+'"'
+                os.system(cmd)                
+                
 def PostProcessPitch(pitch):
     pitch_out = copy.deepcopy(pitch)
     for i in range(0,pitch.shape[0]-1):

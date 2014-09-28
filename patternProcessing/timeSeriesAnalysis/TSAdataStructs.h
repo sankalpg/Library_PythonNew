@@ -97,6 +97,7 @@ typedef struct TSARepParams
     float flatThreshold;
     float maxPauseDur;
     int dsFactor;
+    float pitchHop;
 
 }TSARepParams_t;
 
@@ -107,6 +108,7 @@ typedef struct TSAPattParams
     float blackDur;
     int maxNMotifsPairs;
     int nInterpFac;
+    int subSeqLen;
 
 }TSAPattParams_t;
 
@@ -142,6 +144,9 @@ typedef struct fileExts
     char mappFileExt[MAX_FEXT_CHARS];
     char searchListExt[MAX_FEXT_CHARS];
     char queryFileExt[MAX_FEXT_CHARS];
+    char subSeqFileExt[MAX_FEXT_CHARS];
+    char subSeqTNFileExt[MAX_FEXT_CHARS]; //this is subSeqs which are already tonic normalized
+    char subSeqInfoFileExt[MAX_FEXT_CHARS];
     
 }fileExts_t;
 

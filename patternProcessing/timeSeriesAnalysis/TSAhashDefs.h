@@ -53,11 +53,12 @@ MY_MOTIF_ANNOT_FORMAT,//which is basically edited vbersion of vignesh's annotati
 enum 
 {
 NO_NORM=0,
+TONIC_NORM,
 Z_NORM,
 MEAN_SUB_NORM,
 MEDIAN_SUB_NORM,
-QMEDIAN_SUB_NORM,
 MAD_NORM,
+QMEDIAN_SUB_NORM
 };
 
 enum 
