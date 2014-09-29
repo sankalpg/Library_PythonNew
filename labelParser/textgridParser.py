@@ -48,6 +48,26 @@ def TextGrid2Dict(textgrid_file, tier_name):
 						
 	
 	return tg_dict	
+
+def TextGrid2Dict_NEWFORMAT(textgrid_file):
+	
+	tg_dict={}
+	par_obj = tgp.TextGrid.load(textgrid_file)	#loading the object	
+	tiers= tgp.TextGrid._find_tiers(par_obj)	#finding existing tiers
+	
+	for tier in tiers:
+			tier_details = tier.make_simple_transcript();		#this function parse the file nicely and return cool tuples
+			
+			for line in tier_details:
+				if line[2] == '':
+					continue
+				if tg_dict.has_key(line[2]):
+					tg_dict[line[2]].append((line[0], line[1]))
+				else:
+					tg_dict[line[2]]=[]
+					tg_dict[line[2]].append((line[0], line[1]))
+	
+	return tg_dict	
 	
 	
 
