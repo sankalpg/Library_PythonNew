@@ -238,7 +238,7 @@ def BatchPRocess_CheckDatabase(RootDir, FileExt2Proc = ".mp3"):
             print "pitchfile " + pitchfile + "does not exist"
         
 
-def InterpolateSilence(array, silence_val):
+def InterpolateSilence(array, silence_val, hopSize, maxSilDurIntp):
     
     if type(array) ==list:
         array = np.array(array)    
@@ -253,31 +253,33 @@ def InterpolateSilence(array, silence_val):
         if sil_ind[ii] +1 != sil_ind[ii+1]:
             if last_sil_ind!=0 and sil_ind[ii]!=length-1:
                 inter_data = np.linspace(array[last_sil_ind-1],array[sil_ind[ii]+1] , sil_ind[ii]-last_sil_ind+3)
-                array[last_sil_ind-1:sil_ind[ii]+2] = inter_data
+                if (sil_ind[ii]-last_sil_ind+1)*hopSize < maxSilDurIntp:
+                  array[last_sil_ind-1:sil_ind[ii]+2] = inter_data
                 last_sil_ind=sil_ind[ii+1]
             else:
                 last_sil_ind=sil_ind[ii+1]
     
     # zeros at the beginning and at the end of the time series are replaced by the mean of the time series
-    sil_ind = np.where(array==silence_val)[0]
-    allind = np.array(range(0,length))
-    ind_nonsilence = np.extract(np.invert(np.in1d(allind,sil_ind)),allind)
-    nonsilvals = array[ind_nonsilence]
+    #sil_ind = np.where(array==silence_val)[0]
+    #allind = np.array(range(0,length))
+    #ind_nonsilence = np.extract(np.invert(np.in1d(allind,sil_ind)),allind)
+    #nonsilvals = array[ind_nonsilence]
     #print np.sum(nonsilvals)
-    array[sil_ind] = np.mean(nonsilvals)
+    #array[sil_ind] = np.mean(nonsilvals)
     
     return array
         
-def BatchProcessInterpPitchSilence(RootDir, FileExt2Proc = ".tpe", NewExt = "", PitchCol=2, SilVal=0):
+def BatchProcessInterpPitchSilence(RootDir, FileExt2Proc = ".tpe", NewExt = "", PitchCol=2, SilVal=0, maxSilDurIntp=0.25):
     
     audiofilenames = GetFileNamesInDir(RootDir, FileExt2Proc)
     
     if len(NewExt)==0:
-        NewExt = ".interp" + FileExt2Proc
+        NewExt = FileExt2Proc + "Intrp"
     
     for audiofile in audiofilenames:
           time_pitch = np.loadtxt(open(audiofile,"r"))
-          new_pitch = InterpolateSilence(time_pitch[:,PitchCol-1],SilVal)
+          hopSize = time_pitch[1,0]-time_pitch[0,0]
+          new_pitch = InterpolateSilence(time_pitch[:,PitchCol-1],SilVal,hopSize, maxSilDurIntp)
           time_pitch[:,PitchCol-1]=new_pitch
           file,ext = os.path.splitext(audiofile)
           np.savetxt(file + NewExt, time_pitch, delimiter = "\t", fmt='%1.6f',)
@@ -324,8 +326,29 @@ def PreprocessMelodicFeatures(RootDir, Ext2Proc = ".wav", FileExts2Proc = [(".tp
             local_time_feature[:,1]=resample_interp_local_features
             np.savetxt(filename + InterpExt + exts[0], local_time_feature, delimiter = "\t", fmt='%1.6f',)
             
+
         
-        
+def interpolatePitchTracks(timeArrIn, pitchArrIn, timeArrOut, SilVal):
+    
+    pitchArrOut = np.interp(timeArrOut, timeArrIn, pitchArrIn)
+    
+    #now deadling with silence regions
+    indSil = np.where(pitchArrIn<=SilVal)[0]
+    
+    interpFactor = float(timeArrIn[1]-timeArrIn[0])/(timeArrOut[1]-timeArrOut[0])
+    
+    indSilNew1 = np.floor(indSil*interpFactor).astype(np.int)
+    indSilNew2 = np.ceil(indSil*interpFactor).astype(np.int)
+    
+    indSil = np.intersect1d(indSilNew1, indSilNew2)
+    
+    pitchArrOut[indSil] = SilVal
+    
+    
+    return pitchArrOut
+    
+    
+    
     
 
 """def renameMP3FilesUsingID3(root_dir, dst_dir, fileext='.mp3'):
