@@ -4,7 +4,7 @@ import os,sys, copy
 import matplotlib.pyplot as plt
 import math
 import scipy.ndimage.filters as filters
-
+import pls
 
 import pitchHistogram as PH
 
@@ -20,48 +20,37 @@ class nyasSegmentation():
         """
         This function computed the nyas candidates, essentially flat swar regions
         """
-        
         phObj = PH.PitchHistogram(pitch, tonic)
-        
         ### everytime this function is called just reset the old NyasInfo variable
         self.nyasInfo={}
-        
         #getting valid swar locations (within one octave)
         phObj.ValidSwarLocEstimation(Oct_fold=1)
-
         #converting swar locations in indexes to cents
         phObj.SwarLoc2Cents()
-
         #since the swar locations are computed using octave folded histogram, propagating them to other octaves
         phObj.ExtendSwarOctaves()
-        
         self.swarCents = phObj.swarCents
         self.pCents = phObj.pCents
         self.phop = phop
-        
         ### Algorithm 4: This algorith is improved version of Algo2. There are two main imrpovements
         # 1) Different broad thresholds for terminating nyas depending upon neighbouring scale degrees. Bigger the diff bigger threshold. 
         # 2) Criterion for nyas termination when pitch doesn't cross broad threshold but reaches another note. Previously a condition was set on the time that pitch spends close to the neighbouring notes. the problem is that sometimes due to the smooth transitions the pitch is not very close (< narrow trshold) to the neighbouring note. But we know that its not an ornamentation but a different note becasue the pitch remain flat for sometime. in case of ornamentation its hardly flat. So lets put the minimum time criterion on both <narrow threshold of neighbour and flat region. Where the flat region determination is based on local variance calcualted using function XXX
         
+        #improvements
+        #1) Identify points of potential segmentation based on nice musical logic and then within each detected flat segment shrink the segment to contain the valid segmentation points. THis will improve the performance where there is a glide taken with a kan kind of shape. in current implementatino we kind of cut it in the middle
 
         #two level of threshold
         narrow_tshld = 30.0
-        narrow_tshld2 = 40.0            
-        #broad_tshld_hi= 150.0    #these two thresholds are determined depending upon the local scale degree
-        #broad_tshld_lo= 150.0
-        broad_tshld= 110.0
+        nghbr_thshld = 100.0/1000    # time in ms which is the max time allowed for a pitch deviation to be close to a nieghbouring note
+        var_threshold = 30    # in cents
         swar_neighbour=-1
         neighbour_cnt = 0
-        nghbr_thshld = 50.0/1000    # time in ms which is the max time allowed for a pitch deviation to be close to a nieghbouring note
         nghbr_thshld_samples = (nghbr_thshld/self.phop)
-        var_threshold = 30    # in cents
-        
         #computing local variance for identifying note changes when diff doesn't reach broad threshold
         self.ComputeLocalVariance()
         ind_flat = np.where(self.pVar<var_threshold)[0]
         flat_notes = 0*self.pCents
         flat_notes[ind_flat]=1
-                    
         #iterating over all the swar locations
         for i, swar in enumerate(self.swarCents):
 
@@ -72,9 +61,6 @@ class nyasSegmentation():
                 broad_tshld_hi = (self.swarCents[i+1]-self.swarCents[i])+50
                 broad_tshld_lo = (self.swarCents[i]-self.swarCents[i-1])+50
                 print swar, broad_tshld_hi, broad_tshld_lo
-            
-            
-            
             # just to make process fast lets find in one shot all the points which are atleast closer than narrow threshold
             ind_narrow = np.where((self.pCents<swar+narrow_tshld)&(self.pCents>swar-narrow_tshld))[0]
             self.nyasInfo[swar]=[]
@@ -95,7 +81,6 @@ class nyasSegmentation():
                             second_tick=-1
                             neighbour_cnt=0
                     else:
-                        
                         if(second_tick==-1):    # if swar is not with narrow thsld, mark this location (for the first time) so that we have it as the note offset later
                             second_tick = pointer2 -1
                             # at this point start measuring how much time the pitch remains close (very close <narrow) to neighboring notes. And if this crosses threshold we can terminate this note. This is done to accomodate big deviations which are a part of nyas but they are differentiated because they dont remain close to neighboring notes for a long time_pitch
@@ -111,27 +96,21 @@ class nyasSegmentation():
                                 else:                        
                                     swar_neighbour = self.swarCents[i-1]
                         else:
-                            if((abs(self.pCents[pointer2]-swar_neighbour)<narrow_tshld2)|(flat_notes[pointer2]==1)):
+                            if((abs(self.pCents[pointer2]-swar_neighbour)<narrow_tshld)|(flat_notes[pointer2]==1)):
                                 neighbour_cnt=neighbour_cnt+1
-
                     #if(abs(self.pCents[pointer2]-swar)>broad_tshld):    # if the difference becomes > broad threshold, terminate this note
                     if(((self.pCents[pointer2]-swar)>broad_tshld_hi)|((swar-self.pCents[pointer2])>broad_tshld_lo)):    # if the difference becomes > broad threshold, terminate this note
-                
                         self.nyasInfo[swar].append([first_tick, second_tick])
                         break
                     elif pointer2>=len(self.pCents)-1:    #also if pointer2 reaches end of pitch file terminate the note
-                
                         self.nyasInfo[swar].append([first_tick, pointer2])
                         break
-                
                     pointer2 = pointer2+1
-            
-        
                 new_indexes = np.where(ind_narrow>second_tick)[0]        # find the next location to start the onset
                 if((pointer2>=(len(self.pCents)-1))|(len(new_indexes)==0)):
                     break
                 pointer1=new_indexes[0]
-                
+
     def ComputeLocalVariance(self):
         var_len = 100.0/1000.0    #in ms
         var_samples = int(round(var_len/self.phop))
@@ -140,11 +119,11 @@ class nyasSegmentation():
         for i in range(0+var_samples,self.pCents.shape[0]-var_samples):
             self.pVar[i] = min(np.var(self.pCents[i:i+var_samples]),np.var(self.pCents[i-var_samples:i]))
             
-    def FilterNyasCandidates(self, min_nyas_duration=150):
+    def FilterNyasCandidates(self, min_nyas_duration=150.0):
         
         ### Thresholds for filtering out weak nyas candidates
         min_nyas_dur = min_nyas_duration/1000 # in ms
-        small_allowed_gap = 50.0/1000    #in ms
+        small_allowed_gap = 100.0/1000    #in ms
 
         
         #derived thresholds
@@ -330,7 +309,7 @@ class nyasSegmentation():
 
         allSegments = allSegments[ind_sort]
 
-        return  allSegments, flatSegments
+        return  allSegments, np.array(flatSegments)*self.phop
 
     def removeSegmentsThatOverlap(self, segmentationOutput):
         popList=[]
@@ -344,6 +323,7 @@ class nyasSegmentation():
                     else:
                         popList.append(i)
         popList = list(set(popList))
+        popList = np.sort(np.array(popList)).tolist()
         for i in reversed(popList):
             segmentationOutput.pop(i)
 
@@ -534,6 +514,21 @@ class melodySegmentation():
                 pointer +=2
                 phrase_cnt+=1
         return BreathPhrases
+      
+    def segmentPitchPLS(self, pCents, hopSize, maxAbsError):
+        """
+        This function uses PLS segmentation method propose by Keogh. The implementation of the method is the one by Joan serra. He gave me this for nyas identification baseline.
+        """
+        segObj = pls.piecewise_linear_segmenter(pCents)
+        segObj.do_segmentation(absolute_max_error = maxAbsError)
+        segments = segObj.get_segments()
+        segmentationOutput=[]
+        for segment in segments:
+            segmentationOutput.append([segment['i'], segment['j']+1])
+
+        segmentationOutput = np.array(segmentationOutput)*hopSize
+
+        return segmentationOutput
     
 """    
 class piecewiseLinearSegmentation():
