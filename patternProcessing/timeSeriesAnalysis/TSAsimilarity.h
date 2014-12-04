@@ -9,6 +9,7 @@
 class TSAdtwSimilarity
 {
 public:
+    procLogs_t *procLogsPtr;
     
     int bandDTW;
     
@@ -24,6 +25,7 @@ public:
     TSADATA **envUCandPtr;
     TSAIND nCand;
     int lenCand;
+    int isCopyByRef;
     
     TSADIST *accLB_Keogh_EQ;
     TSADIST *accLB_Keogh_EC;
@@ -33,7 +35,7 @@ public:
     TSADIST *bsfArray;
     int isBSFArrayInit;
     
-    TSAdtwSimilarity();
+    TSAdtwSimilarity(procLogs_t *LogsPtr);
     ~TSAdtwSimilarity();
     
     int     configureTSASimilarity(int lenQ, int lenC, float globalConst);

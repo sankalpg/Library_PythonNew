@@ -94,6 +94,12 @@ double dtw1d_std(double *x, double*y, int x_len, int y_len, double*cost, int dis
 
 int path(double *cost, int n, int m, int startx, int starty, DTW_path *p);
 
+int path_11(double **cost, int n, int m);
+
+int path_12(double **cost, int n, int m);
+
+int path_Euclidean(double **cost, int n, int m);
+
 double dist4Path(double *x, double*y, MatrixSize*size_x, MatrixSize*size_y, int NFeatDim, DTW_path* path_t, int path_len, Config* myConfig);
 
 double dtw1d_BandConstraint45(double *x, double*y, int x_len, int y_len, double*cost, int dist_type, int bandwidth);
@@ -111,6 +117,8 @@ double dtw1dBandConst_localConst(double *x, double*y, int x_len, int y_len, doub
 double dtw1dBandConst_subsequence_localConst(double *x, double*y, int x_len, int y_len, double**cost, int dist_type, int bandwidth, double bsf, double *accLB);
 
 double dtw1dBandConst_old(double *x, double*y, int x_len, int y_len, double*cost, int dist_type, int bandwidth, double bsf, double *accLB);
+
+double euclideanSeq(double *x, double*y, int x_len, int y_len, double**cost, int dist_type, int bandwidth, double bsf, double *accLB);
 
 
 // LOWER BOUNDS

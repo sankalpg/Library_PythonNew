@@ -15,13 +15,16 @@ TSAparamHandle::TSAparamHandle()
     memset(fileExts.mappFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
     memset(fileExts.searchListExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
     memset(fileExts.queryFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
+    memset(fileExts.subSeqFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
+    memset(fileExts.subSeqTNFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
+    memset(fileExts.subSeqInfoFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
 
 }
 
 TSAparamHandle::~TSAparamHandle()
 {
     free(procParams.simMeasureRankRefinement);
-    for(int ii=0; ii< procParams.nInterpFac; ii++)
+    for(int ii=0; ii< procParams.pattParams.nInterpFac; ii++)
     {
         free(procParams.combMTX[ii]);
     }
@@ -40,28 +43,46 @@ int TSAparamHandle::readParamsFromFile(char *paramFile)
     while(fgets(tempFilename, 400, fp))
     {
         sscanf(tempFilename, "%s %s\n", field, value);
-        if (strcmp(field, "durMotif:")==0){procParams.durMotif=atof(value);}
-        if (strcmp(field, "blackDurFactor:")==0){procParams.blackDur=atof(value)*procParams.durMotif;}
-        if (strcmp(field, "dsFactor:")==0){procParams.dsFactor=atoi(value);}
-        if (strcmp(field, "binsPOct:")==0){procParams.binsPOct=atoi(value);}
-        if (strcmp(field, "minPossiblePitch:")==0){procParams.minPossiblePitch=atof(value);}
-        if (strcmp(field, "varDur:")==0){procParams.varDur=atof(value);}
-        if (strcmp(field, "threshold:")==0){procParams.threshold=atof(value);}
-        if (strcmp(field, "flatThreshold:")==0){procParams.flatThreshold=atof(value);}
-        if (strcmp(field, "maxPauseDur:")==0){procParams.maxPauseDur=atof(value);}
-        if (strcmp(field, "DTWBand:")==0){procParams.DTWBand=atof(value);}
-        if (strcmp(field, "nInterpFac:")==0){procParams.nInterpFac=atoi(value);}
-        if (strcmp(field, "SimMeasuresUsed:")==0){procParams.SimMeasuresUsed=atoi(value);}
-        if (strcmp(field, "removeTaniSegs:")==0){procParams.removeTaniSegs=atoi(value);}
+        /*Distane related parameters*/
+        if (strcmp(field, "distType:")==0){procParams.distParams.distType=atoi(value);}
+        if (strcmp(field, "DTWBand:")==0){procParams.distParams.DTWBand=atof(value);}
+        if (strcmp(field, "DTWType:")==0){procParams.distParams.DTWType=atoi(value);}
+        if (strcmp(field, "rankRefDistType:")==0){procParams.distParams.rankRefDistType=atoi(value);}
+        /*representation related parameters*/
+        if (strcmp(field, "TSRepType:")==0){procParams.repParams.TSRepType=atoi(value);}
+        if (strcmp(field, "quantSize:")==0){procParams.repParams.quantSize=atoi(value);}
+        if (strcmp(field, "normType:")==0){procParams.repParams.normType=atoi(value);}
+        if (strcmp(field, "sampleRate:")==0){procParams.repParams.sampleRate=atof(value);}
+        if (strcmp(field, "binsPOct:")==0){procParams.repParams.binsPOct=atoi(value);}
+        if (strcmp(field, "minPossiblePitch:")==0){procParams.repParams.minPossiblePitch=atof(value);}
+        if (strcmp(field, "removeTaniSegs:")==0){procParams.repParams.removeTaniSegs=atoi(value);}
+        if (strcmp(field, "varDur:")==0){procParams.repParams.varDur=atof(value);}
+        if (strcmp(field, "threshold:")==0){procParams.repParams.threshold=atof(value);}
+        if (strcmp(field, "flatThreshold:")==0){procParams.repParams.flatThreshold=atof(value);}
+        if (strcmp(field, "maxPauseDur:")==0){procParams.repParams.maxPauseDur=atof(value);}
+        /*pattern processing parameters*/
+        if (strcmp(field, "durMotif:")==0){procParams.pattParams.durMotif=atof(value);}
+        if (strcmp(field, "blackDurFact:")==0){procParams.pattParams.blackDurFact=atof(value);}
+        if (strcmp(field, "maxNMotifsPairs:")==0){procParams.pattParams.maxNMotifsPairs=atoi(value);}
+        if (strcmp(field, "nInterpFac:")==0){procParams.pattParams.nInterpFac=atoi(value);}
+        if (strcmp(field, "pitchHop:")==0){procParams.repParams.pitchHop=atof(value);}
+        if (strcmp(field, "subSeqLen:")==0){procParams.pattParams.subSeqLen=atoi(value);}
+        
         if (strcmp(field, "dumpLogs:")==0){procParams.dumpLogs=atoi(value);}
-        if (strcmp(field, "maxNMotifsPairs:")==0){procParams.maxNMotifsPairs=atoi(value);}
+        
+        
+        if (procParams.pattParams.durMotif>0)
+        {
+            procParams.pattParams.blackDur=procParams.pattParams.blackDurFact*procParams.pattParams.durMotif;
+        }
+        
     }
     fclose(fp);
     
-    if (procParams.SimMeasuresUsed>0)
+    if (procParams.distParams.rankRefDistType>0)
     {
         procParams.simMeasureRankRefinement = (int*)malloc(sizeof(int)*1);
-        procParams.simMeasureRankRefinement[0] = procParams.SimMeasuresUsed;
+        procParams.simMeasureRankRefinement[0] = procParams.distParams.rankRefDistType;
         procParams.nSimMeasuresUsed =1;
     }
     else    //In such case use 4 different similarity measures needed for experimentation
@@ -76,31 +97,31 @@ int TSAparamHandle::readParamsFromFile(char *paramFile)
     
     int ii, jj;
     
-    if (procParams.nInterpFac==1)
+    if (procParams.pattParams.nInterpFac==1)
     {
         procParams.interpFac[0]=1.0;
         
-        procParams.combMTX = (int **)malloc(sizeof(int*)*procParams.nInterpFac);
-        for(ii=0;ii<procParams.nInterpFac;ii++)
+        procParams.combMTX = (int **)malloc(sizeof(int*)*procParams.pattParams.nInterpFac);
+        for(ii=0;ii<procParams.pattParams.nInterpFac;ii++)
         {
-            procParams.combMTX[ii] =  (int *)malloc(sizeof(int)*procParams.nInterpFac);
-            for(jj=0;jj<procParams.nInterpFac;jj++)
+            procParams.combMTX[ii] =  (int *)malloc(sizeof(int)*procParams.pattParams.nInterpFac);
+            for(jj=0;jj<procParams.pattParams.nInterpFac;jj++)
             {
                 procParams.combMTX[ii][jj] = 1;
             }
         }
     }
-    else if (procParams.nInterpFac==3)
+    else if (procParams.pattParams.nInterpFac==3)
     {
         procParams.interpFac[0]=0.9;
         procParams.interpFac[1]=1.0;
         procParams.interpFac[2]=1.1;
         
-        procParams.combMTX = (int **)malloc(sizeof(int*)*procParams.nInterpFac);
-        for(ii=0;ii<procParams.nInterpFac;ii++)
+        procParams.combMTX = (int **)malloc(sizeof(int*)*procParams.pattParams.nInterpFac);
+        for(ii=0;ii<procParams.pattParams.nInterpFac;ii++)
         {
-            procParams.combMTX[ii] =  (int *)malloc(sizeof(int)*procParams.nInterpFac);
-            for(jj=0;jj<procParams.nInterpFac;jj++)
+            procParams.combMTX[ii] =  (int *)malloc(sizeof(int)*procParams.pattParams.nInterpFac);
+            for(jj=0;jj<procParams.pattParams.nInterpFac;jj++)
             {
                 procParams.combMTX[ii][jj] = combAllwd_3[ii][jj];
             }
@@ -108,7 +129,7 @@ int TSAparamHandle::readParamsFromFile(char *paramFile)
         
         
     }
-    else if (procParams.nInterpFac==5)
+    else if (procParams.pattParams.nInterpFac==5)
     {
         procParams.interpFac[0]=0.9;
         procParams.interpFac[1]=0.95;
@@ -116,11 +137,11 @@ int TSAparamHandle::readParamsFromFile(char *paramFile)
         procParams.interpFac[3]=1.05;
         procParams.interpFac[4]=1.1;
         
-        procParams.combMTX = (int **)malloc(sizeof(int*)*procParams.nInterpFac);
-        for(ii=0;ii<procParams.nInterpFac;ii++)
+        procParams.combMTX = (int **)malloc(sizeof(int*)*procParams.pattParams.nInterpFac);
+        for(ii=0;ii<procParams.pattParams.nInterpFac;ii++)
         {
-            procParams.combMTX[ii] =  (int *)malloc(sizeof(int)*procParams.nInterpFac);
-            for(jj=0;jj<procParams.nInterpFac;jj++)
+            procParams.combMTX[ii] =  (int *)malloc(sizeof(int)*procParams.pattParams.nInterpFac);
+            for(jj=0;jj<procParams.pattParams.nInterpFac;jj++)
             {
                 procParams.combMTX[ii][jj] = combAllwd_5[ii][jj];
             }
@@ -151,6 +172,9 @@ int TSAparamHandle::readFileExtsInfoFile(char *fileExtsFile)
         if (strcmp(field, "mappFileExt:")==0){strcat(fileExts.mappFileExt, value);}
         if (strcmp(field, "searchListExt:")==0){strcat(fileExts.searchListExt, value);}
         if (strcmp(field, "queryFileExt:")==0){strcat(fileExts.queryFileExt, value);}
+        if (strcmp(field, "subSeqFileExt:")==0){strcat(fileExts.subSeqFileExt, value);}
+        if (strcmp(field, "subSeqTNFileExt:")==0){strcat(fileExts.subSeqTNFileExt, value);}
+        if (strcmp(field, "subSeqInfoFileExt:")==0){strcat(fileExts.subSeqInfoFileExt, value);}
     }
     fclose(fp);
     
@@ -178,11 +202,15 @@ TSAdataHandler::TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fi
     isBlackListAlloc=-1;
     nQueries=-1;
     nSubSeqs=-1;
-	
+    lenTS =-1;
+    
 }
 TSAdataHandler::~TSAdataHandler()
 {
-    free(samPtr);
+    if(lenTS!=-1)
+    {
+        free(samPtr);
+    }
     if(nSubSeqs!=-1)
     {
         freeSubSeqsMem();
@@ -263,7 +291,7 @@ int TSAdataHandler::genSubSeqsWithTStamps(TSAseg_t *qTStamps, TSAIND nQueries)
     {
                 
         //whats the length of this motif
-        procParams.durMotif = samPtr[seedMotifEndInd[ii]].tStamp - samPtr[seedMotifStrInd[ii]].tStamp;
+        procParams.pattParams.durMotif = samPtr[seedMotifEndInd[ii]].tStamp - samPtr[seedMotifStrInd[ii]].tStamp;
         calculateDiffMotifLengths();
         int lenRawMotifData = procParams.motifLengths[procParams.indexMotifLenLongest];
         
@@ -398,7 +426,32 @@ int TSAdataHandler::readQueryTimeStamps(char *queryFileName, int format)
         fclose(fp);
         nQueries=jj;
         queryTStamps = qTStamps;
-    }    
+    } 
+    else if (format == MY_MOTIF_ANNOT_FORMAT)
+    {
+        float temp[10]={0};
+        TSAIND ii=0, jj=0;
+        int temp4;
+        fp = fopen(queryFileName,"r");
+        if (fp==NULL)
+        {
+            printf("Error opening file %s\n", queryFileName);
+            return 0;
+        }
+        //reading number of lines in the file
+        int nLines = getNumLines(queryFileName);
+        qTStamps = (TSAseg_t*)malloc(sizeof(TSAseg_t)*nLines*1);
+        
+        while(fscanf(fp,"%f\t%f\t%d\n", &temp[0], &temp[1], &temp4)!=EOF)
+        {
+            qTStamps[jj].sTime=temp[0];
+            qTStamps[jj].eTime=temp[1];
+            jj++;
+        }
+        fclose(fp);
+        nQueries=jj;
+        queryTStamps = qTStamps;
+    } 
     
     
     return 1;
@@ -417,12 +470,16 @@ int TSAdataHandler::genTemplate1SubSeqs()
     //remove silence pitch regions
     filterSamplesTS();
     
+    procLogPtr->lenProcTS+=lenTS;
+    
     convertHz2Cents(fHandle.getTonicFileName());
-	
+    
     //calculate different motif lengths before doing sliding window candidate generation
-	calculateDiffMotifLengths();
+    calculateDiffMotifLengths();
     
     genSlidingWindowSubSeqs();
+    
+    procLogPtr->nSubSeqs+=nSubSeqs;
     
     initializeBlackList();
     
@@ -434,13 +491,83 @@ int TSAdataHandler::genTemplate1SubSeqs()
     
     filterBlackListedSubSeqs();
     
+    procLogPtr->nSubSeqsBL+=procLogPtr->nSubSeqs - nSubSeqs;
+    
     genUniScaledSubSeqs();
+    
+    procLogPtr->nProcSubSeq+=nSubSeqs;
 
 }
 
+int TSAdataHandler::genUniScaledSubSeqsVarLen()
+{
+    float t1,t2;
+    t1 = clock();
+    
+    int nInterpFac = procParams.pattParams.nInterpFac;
+    TSAIND nSubSeqs_new = nSubSeqs*nInterpFac;
+    
+    TSAsubSeq_t *subSeqPtr_new = (TSAsubSeq_t *)malloc(sizeof(TSAsubSeq_t)*nSubSeqs_new);
+    
+    int max_pos_len = (int)floor(procParams.pattParams.subSeqLen/procParams.interpFac[nInterpFac-1]);
+    
+    //we do interpolation as well
+    float **indInterp = (float**)malloc(sizeof(float*)*nInterpFac);
+    for (int jj=0;jj<nInterpFac;jj++)
+    {
+        indInterp[jj] = (float *)malloc(sizeof(float)*max_pos_len);
+        for (int ii=0;ii<max_pos_len; ii++)
+        {
+            indInterp[jj][ii] = procParams.interpFac[jj]*ii ;
+        }
+    }
+    TSAIND ind=0;
+    for (TSAIND ii=0;ii<nSubSeqs;ii++)
+    {
+        for (int jj=0;jj<nInterpFac;jj++)
+        {
+            if (procParams.interpFac[jj]==1)
+            {
+                subSeqPtr_new[ind] = subSeqPtr[ii];
+                subSeqPtr_new[ind].len = subSeqPtr[ii].len;
+                ind++;
+            }
+            else
+            {
+                subSeqPtr_new[ind].pData = (TSADATA *)malloc(sizeof(TSADATA)*max_pos_len);
+                 //just a dummy allocation
+                subSeqPtr_new[ind].len = subSeqPtr[ii].len;
+                cubicInterpolate(subSeqPtr[ii].pData, subSeqPtr_new[ind].pData, indInterp[jj], max_pos_len);
+                ind++;
+            }
+        }
+    }
+    
+    for (int jj=0;jj<nInterpFac;jj++)
+    {
+        free(indInterp[jj]);
+    }
+    free(indInterp);
+    
+    free(subSeqPtr);
+    subSeqPtr = subSeqPtr_new;
+    nSubSeqs = nSubSeqs_new;
+    procParams.pattParams.subSeqLen = max_pos_len;
+    
+    t2 = clock();
+    procLogPtr->tGenUniScal += (t2-t1)/CLOCKS_PER_SEC;
+    
+    return 1;
+    
+}
+
+
 int TSAdataHandler::genUniScaledSubSeqs()
 {
-    int nInterpFac = procParams.nInterpFac;
+    float t1,t2;
+    t1 = clock();
+    
+    int nInterpFac = procParams.pattParams.nInterpFac;
     int lenMotifReal = procParams.motifLengths[procParams.indexMotifLenReal];
     
     TSAIND nSubSeqs_new = nSubSeqs*nInterpFac;
@@ -493,6 +620,11 @@ int TSAdataHandler::genUniScaledSubSeqs()
     free(subSeqPtr);
     subSeqPtr = subSeqPtr_new;
     nSubSeqs = nSubSeqs_new;
+    
+    t2 = clock();
+    procLogPtr->tGenUniScal += (t2-t1)/CLOCKS_PER_SEC;
+    
+    return 1;
     
 }
 
@@ -630,13 +762,13 @@ int TSAdataHandler::updateBLStdThsld()
 {
     //computing standard deviation
     float *stdVec;
-    int varSam = (int)round(procParams.varDur/pHop);
+    int varSam = (int)round(procParams.repParams.varDur/pHop);
     computeStdTSLocal(&stdVec, varSam);
     
     // Assigning weather a point belongs to a flat region or non flar region based on a threhsold
     for(int ii=varSam;ii<lenTS-varSam;ii++)
     {
-        if (stdVec[ii]>procParams.threshold)
+        if (stdVec[ii]>procParams.repParams.threshold)
         {
             stdVec[ii] = 1;
         }
@@ -661,7 +793,7 @@ int TSAdataHandler::updateBLStdThsld()
         {
             if (blacklist[ind-lenRawMotifDataM1]==0)
             {
-                if(ex < procParams.flatThreshold*(float)lenRawMotifData)
+                if(ex < procParams.repParams.flatThreshold*(float)lenRawMotifData)
                 {
                     
                     blacklist[ind-lenRawMotifDataM1]=1;
@@ -681,7 +813,7 @@ int TSAdataHandler::updateBLDurThsld()
 {
     float start, end, maxMotifDur;
     
-    maxMotifDur = (procParams.durMotif*procParams.interpFac[procParams.indexMotifLenLongest]) + procParams.maxPauseDur ; 
+    maxMotifDur = (procParams.pattParams.durMotif*procParams.interpFac[procParams.indexMotifLenLongest]) + procParams.repParams.maxPauseDur ; 
     
     for(int ind=0; ind<nSubSeqs; ind++)
     {
@@ -712,7 +844,9 @@ int TSAdataHandler::initializeBlackList()
 
 int TSAdataHandler::genSlidingWindowSubSeqs()
 {
+    float t1,t2;
     
+    t1 = clock();
     
     int lenRawMotifData = procParams.motifLengths[procParams.indexMotifLenLongest];
     int lenRawMotifDataM1 = lenRawMotifData-1;
@@ -746,6 +880,9 @@ int TSAdataHandler::genSlidingWindowSubSeqs()
     }
     nSubSeqs = lenTS - lenRawMotifDataM1;
     
+    t2 = clock();
+    procLogPtr->tGenUniScal += (t2-t1)/CLOCKS_PER_SEC;
+    
     return 1;
 
 }
@@ -753,11 +890,14 @@ int TSAdataHandler::genSlidingWindowSubSeqs()
 int TSAdataHandler::calculateDiffMotifLengths()
 {
     int ii,jj;
+    float t1,t2;
+    
+    t1 = clock();
     //######### computing all the motif lengths for several interpolation factors ##############
     int max_factor=-1;
-    for (ii=0;ii<procParams.nInterpFac; ii++)
+    for (ii=0;ii<procParams.pattParams.nInterpFac; ii++)
     {
-        procParams.motifLengths[ii] = (int)ceil((procParams.durMotif*procParams.interpFac[ii])/pHop);
+        procParams.motifLengths[ii] = (int)ceil((procParams.pattParams.durMotif*procParams.interpFac[ii])/pHop);
         if (procParams.interpFac[ii]==1)
         {
             procParams.indexMotifLenReal = ii;
@@ -770,16 +910,22 @@ int TSAdataHandler::calculateDiffMotifLengths()
     }
     
     //CRUCIAL POINT !!! since cubic interpolation needs 4 points (2 ahead) just store
-    if (procParams.nInterpFac >1)
+    if (procParams.pattParams.nInterpFac >1)
     {
         procParams.motifLengths[procParams.indexMotifLenLongest]+=1;
     }
+    t2 = clock();
+    procLogPtr->tProcTS += (t2-t1)/CLOCKS_PER_SEC;
+    
+    return 1;
     
 }
 
 int TSAdataHandler::convertHz2Cents(char *tonicFileName)
 {
-    float tonic;
+    float tonic, t1,t2;
+    
+    t1 = clock();
     
     //Opening tonic file
     FILE *fp =fopen(tonicFileName,"r");
@@ -791,12 +937,15 @@ int TSAdataHandler::convertHz2Cents(char *tonicFileName)
     int nRead = fscanf(fp, "%f\n",&tonic);
     fclose(fp);
     
-    float temp1 = ((float)procParams.binsPOct)/LOG2;
+    float temp1 = ((float)procParams.repParams.binsPOct)/LOG2;
     
     for(int ii=0;ii<lenTS;ii++)
     {
         samPtr[ii].value = (TSADATA)(temp1*log((samPtr[ii].value+EPS)/tonic));
     }
+    
+    t2 = clock();
+    procLogPtr->tProcTS += (t2-t1)/CLOCKS_PER_SEC;
     
     return 1;
 }
@@ -804,6 +953,9 @@ int TSAdataHandler::convertHz2Cents(char *tonicFileName)
 
 int TSAdataHandler::filterSamplesTS()
 {
+    float t1,t2;
+    
+    t1 = clock();
     
     // There can be many filtering criterion. Currently what is implemented is to filter out silence regions of pitch sequence. 
     
@@ -812,7 +964,7 @@ int TSAdataHandler::filterSamplesTS()
     //store all locations which have valid samples
     for(TSAIND ii=0;ii<lenTS; ii++)
     {
-        if(samPtr[ii].value > procParams.minPossiblePitch)
+        if(samPtr[ii].value > procParams.repParams.minPossiblePitch)
         {
             validSampleInd[nValidSamples]=ii;
             nValidSamples++;
@@ -831,6 +983,9 @@ int TSAdataHandler::filterSamplesTS()
     free(validSampleInd);
     samPtr = samPtr_new;
     lenTS = lenTS_new;
+    
+    t2 = clock();
+    procLogPtr->tProcTS += (t2-t1)/CLOCKS_PER_SEC;
     
     return 1;
 }
@@ -854,42 +1009,294 @@ int TSAdataHandler::readHopSizeTS(char *fileName)
     nRead = fscanf(fp, "%f\t%f\n",&tsTime2, &tsData);
     
     pHop = (tsTime2-tsTime1);
+    
+    procParams.repParams.dsFactor = (int)floor((procParams.repParams.sampleRate/(pHop*1000))+0.5);
+    
     fclose(fp);
     return 1;
 }
+
+int TSAdataHandler::quantizeSampleSubSeqs(int quantizationType)
+{
+    float t1,t2;
+    t1 = clock();
+    float temp = floor(procParams.repParams.binsPOct/procParams.repParams.quantSize);
+    
+    if (quantizationType == NO_QUANT)
+    {
+        return 1;
+    }
+
+    if (quantizationType == NEAREST_NOTE_QUANT)
+    {
+        for (int ii=0;ii<nSubSeqs; ii++)
+        {
+            for(int jj=0;jj<procParams.pattParams.subSeqLen;jj++)
+            {
+                subSeqPtr[ii].pData[jj] = quantizePitch(subSeqPtr[ii].pData[jj], temp);
+                
+            }
+        }
+    }
+    
+    t2 = clock();
+    procLogPtr->tProcTS += (t2-t1)/CLOCKS_PER_SEC;
+    
+    return 1;
+}
+
+
+int TSAdataHandler::quantizeSampleTS(int quantizationType)
+{
+    float t1,t2;
+    t1 = clock();
+    float temp = floor(procParams.repParams.binsPOct/procParams.repParams.quantSize);
+    
+    if (quantizationType == NO_QUANT)
+    {
+        return 1;
+    }
+
+    if (quantizationType == NEAREST_NOTE_QUANT)
+    {
+        for (int ii=0;ii<lenTS; ii++)
+        {
+            samPtr[ii].value = quantizePitch(samPtr[ii].value, temp);
+        }
+    }
+    
+    t2 = clock();
+    procLogPtr->tProcTS += (t2-t1)/CLOCKS_PER_SEC;
+    
+    return 1;
+}
+
+int TSAdataHandler::normalizeSubSeqs(int normType)
+{
+    float t1,t2;
+    t1 = clock();
+
+    if (normType==NO_NORM)
+    {
+        return 1;
+    }
+    else if(normType==Z_NORM)
+    {
+        float mu, std;
+        for(int ii=0; ii<nSubSeqs; ii++)
+        {
+            mu = computeMean(subSeqPtr[ii].pData, subSeqPtr[ii].len);
+            std = computeSTD(subSeqPtr[ii].pData, subSeqPtr[ii].len, mu);
+            
+            for (int jj=0;jj<subSeqPtr[ii].len;jj++)
+            {
+                subSeqPtr[ii].pData[jj] = (subSeqPtr[ii].pData[jj]-mu)/std;
+            }
+            
+        }
+    }
+    else if(normType==MEAN_SUB_NORM)
+    {
+        float mu;
+        for(int ii=0; ii<nSubSeqs; ii++)
+        {
+            mu = computeMean(subSeqPtr[ii].pData, subSeqPtr[ii].len);
+            
+            for (int jj=0;jj<subSeqPtr[ii].len;jj++)
+            {
+                subSeqPtr[ii].pData[jj] = (subSeqPtr[ii].pData[jj]-mu);
+            }
+            
+        }
+    }
+    else if(normType==MEDIAN_SUB_NORM)
+    {
+        float median;
+        TSADATA *tempStr = (TSADATA *)malloc(sizeof(TSADATA)*subSeqPtr[0].len*2);
+        
+        for(int ii=0; ii<nSubSeqs; ii++)
+        {
+            memcpy(tempStr, subSeqPtr[ii].pData, sizeof(TSADATA)*subSeqPtr[ii].len);
+            median = computeMedian(tempStr, subSeqPtr[ii].len);
+            
+            for (int jj=0;jj<subSeqPtr[ii].len;jj++)
+            {
+                subSeqPtr[ii].pData[jj] = (subSeqPtr[ii].pData[jj]-median);
+            }
+            
+        }
+    }
+    else if(normType==QMEDIAN_SUB_NORM)
+    {
+        float median;
+        TSADATA *tempStr = (TSADATA *)malloc(sizeof(TSADATA)*subSeqPtr[0].len*2);
+        float binsPSemiTone = (procParams.repParams.binsPOct/12);
+        
+        for(int ii=0; ii<nSubSeqs; ii++)
+        {
+            memcpy(tempStr, subSeqPtr[ii].pData, sizeof(TSADATA)*subSeqPtr[ii].len);
+            median = computeMedian(tempStr, subSeqPtr[ii].len);
+            median = floor((median/binsPSemiTone)+0.5)*binsPSemiTone;
+            
+            for (int jj=0;jj<subSeqPtr[ii].len;jj++)
+            {
+                subSeqPtr[ii].pData[jj] = (subSeqPtr[ii].pData[jj]-median);
+            }
+            
+        }
+    }   
+    
+    else if(normType==MAD_NORM)
+    {
+        float median, mad;
+        TSADATA *tempStr = (TSADATA *)malloc(sizeof(TSADATA)*subSeqPtr[0].len*2);
+        
+        
+        for(int ii=0; ii<nSubSeqs; ii++)
+        {
+            memcpy(tempStr, subSeqPtr[ii].pData, sizeof(TSADATA)*subSeqPtr[ii].len);
+            median = computeMedian(tempStr, subSeqPtr[ii].len);
+            mad = computeMAD(tempStr, subSeqPtr[ii].len, median);
+            
+            for (int jj=0;jj<subSeqPtr[ii].len;jj++)
+            {
+                subSeqPtr[ii].pData[jj] = (subSeqPtr[ii].pData[jj]-median)/mad;
+            }
+            
+        }
+    }    
+    
+    
+    
+    t2 = clock();
+    procLogPtr->tProcTS += (t2-t1)/CLOCKS_PER_SEC;
+    
+    return 1;
+}
+
+
+int TSAdataHandler::downSampleSubSeqs()
+{
+    //determining downsampling factor
+    procParams.repParams.dsFactor = (int)floor((procParams.repParams.sampleRate/(procParams.repParams.pitchHop*1000))+0.5);
+    
+    int dsFac =  procParams.repParams.dsFactor;
+    
+    //this changes length of the subsequences in samples
+    procParams.pattParams.subSeqLen = (int)floor(procParams.pattParams.subSeqLen/procParams.repParams.dsFactor);
+    
+    //this changes affective sampling rate of the pitch sequence stored in the subseqs
+    procParams.repParams.pitchHop = procParams.repParams.pitchHop*procParams.repParams.dsFactor;
+    
+    float pHop =  procParams.repParams.pitchHop;
+    
+    
+    TSAsubSeq_t *subSeqPtr_new = (TSAsubSeq_t *)malloc(sizeof(TSAsubSeq_t)*nSubSeqs);
+    
+    for(TSAIND ii=0;ii<nSubSeqs; ii++)
+    {
+        subSeqPtr_new[ii].pData = (TSADATA *)malloc(sizeof(TSADATA)*procParams.pattParams.subSeqLen);
+        for(int jj=0;jj<procParams.pattParams.subSeqLen;jj++)
+        {
+            subSeqPtr_new[ii].pData[jj] = subSeqPtr[ii].pData[jj*dsFac];
+        }
+        subSeqPtr_new[ii].len = (int)floor(subSeqPtr[ii].len/procParams.repParams.dsFactor);
+        free(subSeqPtr[ii].pData);
+    }
+    free(subSeqPtr);
+    
+    subSeqPtr=subSeqPtr_new;
+    
+    return 1;
+    
+}
+
 int TSAdataHandler::downSampleTS()
 {
-    if (procParams.dsFactor <=0)
+    float t1,t2;
+    t1 = clock();
+    if (procParams.repParams.dsFactor <=0)
     {
         return 1;
     }
     
-    TSAIND lenTS_new = ceil(lenTS/procParams.dsFactor);
+    TSAIND lenTS_new = ceil(lenTS/procParams.repParams.dsFactor);
     TSAsam_t * samPtr_new = (TSAsam_t *)malloc(sizeof(TSAsam_t)*lenTS_new);
     for (int ii=0;ii<lenTS_new; ii++)
     {
-        samPtr_new[ii] = samPtr[ii*procParams.dsFactor];
+        samPtr_new[ii] = samPtr[ii*procParams.repParams.dsFactor];
     }
     
     //correcting hop size as well
-    pHop = pHop*procParams.dsFactor;
+    pHop = pHop*procParams.repParams.dsFactor;
     
     //free old memory
     free(samPtr);
     samPtr = samPtr_new;
     lenTS = lenTS_new;
     
+    t2 = clock();
+    procLogPtr->tProcTS += (t2-t1)/CLOCKS_PER_SEC;
+    
+    return 1;
+}
+
+int TSAdataHandler::readSubSeqLengths(char *fileName)
+{
+    FILE *fp;  
+    fp =fopen(fileName,"r");
+    int tempi[2];
+    float tempf[2];
+    
+    if (fp==NULL)
+    {
+        printf("Error opening file %s\n", fileName);
+        return 0;
+    }
+    TSAIND cnt = 0;
+    while (fscanf(fp, "%f\t%f\t%d\t%d\n",&tempf[0], &tempf[1], &tempi[0], &tempi[1])!=EOF)    //read till the end of the file
+    {
+        subSeqPtr[cnt].len = (int)floor(tempf[1]/procParams.repParams.pitchHop);
+        cnt++;
+    }
+    fclose(fp);
+    
+    return 1;
+    
+}
+
+int TSAdataHandler::readSubSeqData(char *fileName, TSAIND nSubs)
+{
+    FILE *fp;
+    fp =fopen(fileName,"r");
+    int nreads=0;
+    
+    subSeqPtr = (TSAsubSeq_t *)malloc(sizeof(TSAsubSeq_t)*nSubs);
+    
+    if (fp==NULL)
+    {
+        printf("Error opening file %s\n", fileName);
+        return 0;
+    }
+    for (int ii=0;ii< nSubs; ii++)    //read till the end of the file
+    {
+        subSeqPtr[ii].pData = (TSADATA *)malloc(sizeof(TSADATA)*procParams.pattParams.subSeqLen);
+        nreads = fread(subSeqPtr[ii].pData, sizeof(TSADATA), procParams.pattParams.subSeqLen, fp);
+    }
+    
+    fclose(fp);
+    nSubSeqs = nSubs;
     return 1;
 }
 
 int TSAdataHandler::readTSData(char *fileName)
 {
     FILE *fp;
-    float tsData;
+    float tsData, t1,t2;
     float tsTime;
     TSAIND cnt;
     
-    
+    t1 = clock();
     //count number of lines in the file specified
     nLinesFile = getNumLines(fHandle.getTSFileName());
     procLogPtr->lenTS += nLinesFile;
@@ -911,6 +1318,8 @@ int TSAdataHandler::readTSData(char *fileName)
         cnt++;
     }
     fclose(fp);
+    t2 = clock();
+    procLogPtr->tLoadTS += (t2-t1)/CLOCKS_PER_SEC;
     
     return 1;
 }
@@ -1116,6 +1525,33 @@ char* fileNameHandler::getQueryFileName()
     return fileName;
 }
 
+char* fileNameHandler::getSubSeqFileName()
+{
+    memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);
+    strcat(fileName, baseName);
+    strcat(fileName, fileExtPtr->subSeqFileExt);
+    
+    return fileName;
+}
+
+char* fileNameHandler::getSubSeqTNFileName()
+{
+    memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);
+    strcat(fileName, baseName);
+    strcat(fileName, fileExtPtr->subSeqTNFileExt);
+    
+    return fileName;
+}
+
+char* fileNameHandler::getSubSeqInfoFileName()
+{
+    memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);
+    strcat(fileName, baseName);
+    strcat(fileName, fileExtPtr->subSeqInfoFileExt);
+    
+    return fileName;
+}
+
 
 
 int fileNameHandler::loadSearchFileList()
@@ -1140,7 +1576,3 @@ int fileNameHandler::loadSearchFileList()
     fclose(fp1);
     return 1;
 }
-
-  
-  
-

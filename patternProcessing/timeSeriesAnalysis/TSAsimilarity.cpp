@@ -1,7 +1,7 @@
 
 #include "TSAsimilarity.h"
 
-TSAdtwSimilarity::TSAdtwSimilarity()
+TSAdtwSimilarity::TSAdtwSimilarity(procLogs_t *LogsPtr)
 {
     nQuery=-1;
     lenQuery=-1;
@@ -10,6 +10,9 @@ TSAdtwSimilarity::TSAdtwSimilarity()
     lenCand=-1;
     
     isBSFArrayInit=-1;
+    isCopyByRef=-1;
+    
+    procLogsPtr = LogsPtr;
     
 }
 
@@ -38,7 +41,7 @@ TSAdtwSimilarity::~TSAdtwSimilarity()
         free(envUQueryPtr);
         nQuery=-1;
     }
-    if (nCand!=-1)
+    if ((nCand!=-1)&&(isCopyByRef!=1))
     {
         deleteCandEnvMem();
     }
@@ -114,6 +117,8 @@ int TSAdtwSimilarity::setCandPtr(TSAsubSeq_t *cPtr, TSAIND nC)
 
 int TSAdtwSimilarity::computeQueryEnvelops()
 {
+    float t1,t2;
+    t1 = clock();
     //assign memory to store envelops
     envLQueryPtr = (TSADATA **)malloc(sizeof(TSADATA *)*nQuery);
     envUQueryPtr = (TSADATA **)malloc(sizeof(TSADATA *)*nQuery);
@@ -124,11 +129,16 @@ int TSAdtwSimilarity::computeQueryEnvelops()
         envUQueryPtr[ii] = (TSADATA *)malloc(sizeof(TSADATA)*subSeqQueryPtr[ii].len);
         computeRunningMinMax(subSeqQueryPtr[ii].pData, envUQueryPtr[ii], envLQueryPtr[ii], subSeqQueryPtr[ii].len, bandDTW);
     }
+    t2=clock();
+    procLogsPtr->tGenEnv += (t2-t1)/CLOCKS_PER_SEC;
+    
     return 1;
 }
 
 int TSAdtwSimilarity::computeCandEnvelops()
 {
+    float t1,t2;
+    t1 = clock();
     //assign memory to store envelops
     envLCandPtr = (TSADATA **)malloc(sizeof(TSADATA *)*nCand);
     envUCandPtr = (TSADATA **)malloc(sizeof(TSADATA *)*nCand);
@@ -139,6 +149,10 @@ int TSAdtwSimilarity::computeCandEnvelops()
         envUCandPtr[ii] = (TSADATA *)malloc(sizeof(TSADATA)*subSeqCandPtr[ii].len);
         computeRunningMinMax(subSeqCandPtr[ii].pData, envUCandPtr[ii], envLCandPtr[ii], subSeqCandPtr[ii].len, bandDTW);
     }
+    
+    t2=clock();
+    procLogsPtr->tGenEnv += (t2-t1)/CLOCKS_PER_SEC;
+    
     return 1;
 }
 
@@ -147,6 +161,7 @@ int TSAdtwSimilarity::copyQueryEnv2Cand()
     envLCandPtr = envLQueryPtr;
     envUCandPtr = envUQueryPtr;
     nCand = nQuery;
+    isCopyByRef=1;
     
 }
 

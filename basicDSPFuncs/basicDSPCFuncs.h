@@ -20,6 +20,17 @@ void linearInterpolateV1(double *dataInp, double *dataOut, float *indInt, int N)
 
 void quadraticInterpolate(double *dataInp, double *dataOut, float *indInt, int N);
 
+double quantizePitch(double pitchCents, int binsPDiv);
+
+double computeMean(double* data, int len);
+
+double computeSTD(double *data, int len, double mean);
+
+double computeMAD(double* data, int len, double median);
+
+int compare (const void * a, const void * b);
+
+double computeMedian(double* data, int len);
 
 #endif //BASICDSPFUNC_H
 

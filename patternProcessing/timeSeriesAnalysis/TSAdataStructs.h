@@ -73,22 +73,54 @@ typedef struct TSAmotifInfoExt
 
 }TSAmotifInfoExt_t;
 
-
-typedef struct procParams
+typedef struct TSADistParams
 {
-    //params used for preprocessing
-    float durMotif;
-    float blackDur;
-    int dsFactor;
-    int binsPOct;    
+    int distType;
+    float DTWBand;
+    int DTWType;
+    int rankRefDistType;
+    
+
+}TSADistParams_t;
+
+typedef struct TSARepParams
+{
+    int TSRepType;
+    int quantSize;
+    int sampleRate;
+    int normType;
+    int binsPOct;
     float minPossiblePitch;
+    int removeTaniSegs;
     float varDur;
     float threshold;
     float flatThreshold;
     float maxPauseDur;
-    float DTWBand;
+    int dsFactor;
+    float pitchHop;
+
+}TSARepParams_t;
+
+typedef struct TSAPattParams
+{
+    float durMotif;
+    float blackDurFact;
+    float blackDur;
+    int maxNMotifsPairs;
+    int nInterpFac;
+    int subSeqLen;
+
+}TSAPattParams_t;
+
+
+typedef struct procParams
+{
+    //params used for preprocessing
+    TSADistParams_t distParams;
+    TSARepParams_t  repParams;
+    TSAPattParams_t pattParams;
+    
     float interpFac[MAXNTEMPOFACTORS];
-    int nInterpFac; 
     int motifLengths[MAXNTEMPOFACTORS];
     int motifLengthsM1[MAXNTEMPOFACTORS];
     int indexMotifLenReal;
@@ -96,12 +128,8 @@ typedef struct procParams
     int **combMTX;
     int *simMeasureRankRefinement;
     int nSimMeasuresUsed;
-    int SimMeasuresUsed;
     int verbos;
-    int removeTaniSegs;
     int dumpLogs;
-    int maxNMotifsPairs;
-    
     
 }procParams_t;
 
@@ -116,6 +144,9 @@ typedef struct fileExts
     char mappFileExt[MAX_FEXT_CHARS];
     char searchListExt[MAX_FEXT_CHARS];
     char queryFileExt[MAX_FEXT_CHARS];
+    char subSeqFileExt[MAX_FEXT_CHARS];
+    char subSeqTNFileExt[MAX_FEXT_CHARS]; //this is subSeqs which are already tonic normalized
+    char subSeqInfoFileExt[MAX_FEXT_CHARS];
     
 }fileExts_t;
 

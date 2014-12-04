@@ -91,6 +91,15 @@ def BatchConvertMp32Wav(root_dir):
                 cmd = "lame --decode "+ '"'+filename+'"' + " " + '"'+wavfilename+'"'
                 os.system(cmd)
                 
+def BatchConvertWav2Mp3(root_dir):
+        
+        audiofilenames = GetFileNamesInDir(root_dir, '.wav')
+        
+        for filename in audiofilenames:
+                mp3filename = filename.replace('.wav', '.mp3')
+                cmd = "lame "+ '"'+filename+'"' + " " + '"'+mp3filename+'"'
+                os.system(cmd)                
+                
 def PostProcessPitch(pitch):
     pitch_out = copy.deepcopy(pitch)
     for i in range(0,pitch.shape[0]-1):
@@ -392,18 +401,18 @@ def testFileExist(fileList, Extension):
     print "total non existing files are %d"%(len(nonExist))
     print nonExist
     
-def copyFileListForSearchingMotifs(root_dir, fileList, extOut):
+def copyFileListForSearchingMotifs(root_dir, fileList, extOut, ext = '.wav'):
     
-    filenames = GetFileNamesInDir(root_dir, '.mp3')
+    filenames = GetFileNamesInDir(root_dir, ext)
     
     for f in filenames:
         filename, ext = os.path.splitext(f)
         filename = filename + extOut        
         shutil.copy(fileList, filename)
 
-def generateFileList(root_dir, fileOut):
+def generateFileList(root_dir,fileOut,ext = '.wav'):
     
-    filenames = GetFileNamesInDir(root_dir, '.mp3')
+    filenames = GetFileNamesInDir(root_dir, ext)
     
     fid = open(fileOut, "w")
     for f in filenames:
