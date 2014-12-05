@@ -38,6 +38,7 @@ class nyasSegmentation():
         
         #improvements
         #1) Identify points of potential segmentation based on nice musical logic and then within each detected flat segment shrink the segment to contain the valid segmentation points. THis will improve the performance where there is a glide taken with a kan kind of shape. in current implementatino we kind of cut it in the middle
+        #2) Improve oerlap removal code. Currently it just removes the short segment, but in reality we would liketo have that segment in a non overlapping way. Better would be to choose at each instance from a segment which is highest length.
 
         #two level of threshold
         narrow_tshld = 30.0
