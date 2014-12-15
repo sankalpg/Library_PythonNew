@@ -17,7 +17,7 @@ import os, sys, copy, shutil
 import numpy as np
 #import eyed3
 import scipy.interpolate as scpyinterp
-
+from scipy.signal import medfilt
 try:
     from mutagen.mp3 import MP3
 except:
@@ -529,3 +529,92 @@ def countNumberOfRemovedPatterns(root_dir, Ext):
         
         
     print "Total number of patterns are %d and total valid patterns are %d\n"%(totalPatterns, validPatterns)
+
+
+    
+def computeLoudness(audioFile, outputExt='.loudness', f0=-1, HopSize = 0.01, FrameSize = 0.04643990929, BinResolution = 10, GuessUnvoiced=True, VoicingTolerance=0.2, MaxFrequency=20000, interpolateLoudness=0, maxSilDurIntp=0.25, smoothLoudness=0):
+  """
+  This function computes loudness (represented by energy) of the predominant source assuming either you have provided pitch of the predominant melodic source or if f0=-1, it uses Essentia-Melodia to estimate pitch of the predominant melodic source and uses harmonic detection to compute energy (treated as loudness).
+  Any sudden gap in the harmonic magnitudes (undetected harmonics) which span a continous time duration < maxSilDurIntp will be interpolated. You should set this value exactly the same you used for interpolating pitch sequence to accound for short intra pattern pauses.
+  """
+  #reading audio file
+  fs = 44100.0#ES.AudioLoader(filename = audioFile)()[1]
+  audio = ES.MonoLoader(filename = audioFile, sampleRate = fs)()
+  
+  
+  #obtaining just the file name and splitting extionsion
+  fname, ext = os.path.splitext(audioFile)
+  
+  frameNSamples = np.round(FrameSize*fs).astype(np.int)
+  frameNSamples = frameNSamples + np.mod(frameNSamples,2)
+  
+  #checking the cases, possible types of input parameter f0 
+  if type(f0)==int:
+    #if its an integer (which essentially means the user has not provided any input and its -1), run the predominant melody estimation and obtain pitch estimate
+    pitch = ES.PredominantMelody(hopSize = np.round(HopSize*fs).astype(np.int), frameSize = frameNSamples, binResolution = BinResolution, guessUnvoiced=GuessUnvoiced, voicingTolerance= VoicingTolerance, maxFrequency = MaxFrequency, minFrequency = 60)(audio)[0]
+  if type(f0) == str:
+    #if its a string that means a user has provided input file name of the pitch file stored in the format <time stamps><pitch value>
+    pitch = np.loadtxt(f0)[:,1]
+  if type(f0) == np.ndarray:
+    # if its an ndarray, this means that the given sequence is the pitch sequence to be used for loudness computation
+    pitch = f0
+    
+  #creating algorithm objects to be used for harmonic detection for each audio frame
+  NFFT = (2**np.ceil(np.log2(frameNSamples)+1)).astype(np.int)
+  WIN=ES.Windowing()
+  SPECTRUM=ES.Spectrum()
+  EQUALLOUD = ES.EqualLoudness()
+  SPECPEAKS = ES.SpectralPeaks(sampleRate = fs, maxFrequency = 8000)
+  HARMDET = ES.HarmonicDetection(nH=30, freqDevThsld=5, sampleRate = fs)#TODO: use the function that Dmitry implemented and not this one!!!
+  
+  audio_in = EQUALLOUD(audio)
+  
+  cnt = 0
+  harmWghts = []
+  for frame in ES.FrameGenerator(audio_in, frameSize = frameNSamples, hopSize = np.round(HopSize*fs).astype(np.int)):
+    if cnt >= len(pitch):
+        break
+    spec = SPECTRUM(WIN(frame))
+    peaks = SPECPEAKS(spec)
+    wghtsLocal = HARMDET(peaks[0], peaks[1], pitch[cnt])
+    harmWghts.append(wghtsLocal)
+    cnt+=1
+
+  if interpolateLoudness==1:
+    #interpolating harmonic weights
+    harmWghts = np.array(harmWghts)
+    harmWghtsIntrp = np.zeros(harmWghts.shape)
+    for ii in range(harmWghts.shape[1]):
+       harmWghts_temp = InterpolateSilence(harmWghts[:,ii], 0, HopSize, maxSilDurIntp)
+       harmWghtsIntrp[:,ii] = harmWghts_temp
+  else:
+    harmWghtsIntrp = harmWghts
+
+  loudness=[]
+  for wghtsLocal in harmWghtsIntrp:
+    indValid = np.where(wghtsLocal>0)[0]
+    loudness.append(np.sum(wghtsLocal[indValid]))
+  
+    
+  if interpolateLoudness ==1:
+    loudness = InterpolateSilence(loudness, 0, HopSize, maxSilDurIntp)
+  
+  if smoothLoudness ==1:
+    loudness = medfilt(loudness,np.round(50.0/(HopSize*1000)).astype(np.int))
+  
+  #generating time stamps (because its equally hopped)
+  TStamps = np.array(range(0,len(loudness)))*np.float(HopSize)
+  dump = np.array([TStamps, loudness]).transpose()
+  np.savetxt(fname+outputExt, dump, delimiter = "\t")  
+  
+  
+def batchProcessComputeLoudness(root_dir, searchExt = '.wav', outputExt='.loudness', pitchExt='.tpe', f0=-1, HopSize = 0.01, FrameSize = 0.04643990929, BinResolution = 10, GuessUnvoiced=True, VoicingTolerance=0.2, MaxFrequency=20000, interpolateLoudness=0, maxSilDurIntp=0.25, smoothLoudness=0):
+  
+    filenames = GetFileNamesInDir(root_dir, searchExt)
+    
+    for filename in filenames:
+      fname, ext = os.path.splitext(filename)
+      print "processing file: %s"%fname
+      computeLoudness(filename, outputExt=outputExt, f0=fname+pitchExt, HopSize = HopSize, FrameSize = FrameSize, BinResolution = BinResolution, GuessUnvoiced=GuessUnvoiced, VoicingTolerance=VoicingTolerance, MaxFrequency=MaxFrequency, interpolateLoudness=interpolateLoudness, maxSilDurIntp=maxSilDurIntp, smoothLoudness=smoothLoudness)
+      
+    
