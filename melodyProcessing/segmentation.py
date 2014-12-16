@@ -8,6 +8,38 @@ import pls
 
 import pitchHistogram as PH
 
+eps = np.finfo(np.float).eps
+
+def groupIndices(indexes):
+    """
+    This function groups indexes. This is often needed to produce segments given indices.
+    """
+    segments = []
+    segStart = indexes[0]
+    N = len(indexes)
+    for ii in range(len(indexes)):
+        if ii == N-1:
+            segments.append([segStart, indexes[ii]])
+            return np.array(segments)
+        if indexes[ii]+1 != indexes[ii+1]:
+            segments.append([segStart, indexes[ii]])
+            segStart = indexes[ii+1]
+
+    return np.array(segments)
+
+
+
+
+def ComputeLocalVariance(pCents, phop, windowLen):
+    var_len = float(windowLen)/1000.0    #in ms
+    var_samples = int(round(var_len/phop))
+    
+    pVar = np.finfo(np.float).max*np.ones(pCents.shape[0])
+    for i in range(0+var_samples,pCents.shape[0]-var_samples):
+        pVar[i] = min(np.var(pCents[i:i+var_samples]),np.var(pCents[i-var_samples:i]))
+
+    return pVar
+
 class nyasSegmentation():
     
     swarCents = []
@@ -16,9 +48,14 @@ class nyasSegmentation():
         print "Initialization PitchProcessing..."
         
     
-    def ComputeNyasCandidates(self, pitch, tonic, phop):
+    def ComputeNyasCandidates(self, pitch, tonic, phop, vicinityThsld = 30, timeAwayThsld = 100, varianceWinLen = 100, varianceThsld = 30):
         """
-        This function computed the nyas candidates, essentially flat swar regions
+        This function computed the nyas candidates, essentially flat swar regions for each swara separately.
+        Params:
+            vicinityThsld (cents): absolute deviation (difference) around the mean swara location which is considered as within the vicinity of the swara
+            timeAwayThsld (ms): The maximum duration which is allowed for the melody to be in the close vicinity of neighboring swar before we declare that melody has moved to another swar.
+            varianceThsld (cents): threshold on the variance of the pitch contour in cents used for estimating regions corresponding to stable melody.  
+            varianceWinLen (ms): window length for computing variance for estimating stable melodic regions
         """
         phObj = PH.PitchHistogram(pitch, tonic)
         ### everytime this function is called just reset the old NyasInfo variable
@@ -41,14 +78,14 @@ class nyasSegmentation():
         #2) Improve oerlap removal code. Currently it just removes the short segment, but in reality we would liketo have that segment in a non overlapping way. Better would be to choose at each instance from a segment which is highest length.
 
         #two level of threshold
-        narrow_tshld = 30.0
-        nghbr_thshld = 100.0/1000    # time in ms which is the max time allowed for a pitch deviation to be close to a nieghbouring note
-        var_threshold = 30    # in cents
+        narrow_tshld = vicinityThsld
+        nghbr_thshld = float(timeAwayThsld)/1000    # time in ms which is the max time allowed for a pitch deviation to be close to a nieghbouring note
+        var_threshold = float(varianceThsld)    # in cents
         swar_neighbour=-1
         neighbour_cnt = 0
         nghbr_thshld_samples = (nghbr_thshld/self.phop)
         #computing local variance for identifying note changes when diff doesn't reach broad threshold
-        self.ComputeLocalVariance()
+        self.pVar = ComputeLocalVariance(self.pCents, self.phop, varianceWinLen)
         ind_flat = np.where(self.pVar<var_threshold)[0]
         flat_notes = 0*self.pCents
         flat_notes[ind_flat]=1
@@ -112,14 +149,6 @@ class nyasSegmentation():
                     break
                 pointer1=new_indexes[0]
 
-    def ComputeLocalVariance(self):
-        var_len = 100.0/1000.0    #in ms
-        var_samples = int(round(var_len/self.phop))
-        
-        self.pVar = np.zeros(self.pCents.shape[0])
-        for i in range(0+var_samples,self.pCents.shape[0]-var_samples):
-            self.pVar[i] = min(np.var(self.pCents[i:i+var_samples]),np.var(self.pCents[i-var_samples:i]))
-            
     def FilterNyasCandidates(self, min_nyas_duration=150.0):
         
         ### Thresholds for filtering out weak nyas candidates
@@ -530,7 +559,206 @@ class melodySegmentation():
         segmentationOutput = np.array(segmentationOutput)*hopSize
 
         return segmentationOutput
-    
-"""    
-class piecewiseLinearSegmentation():
-"""    
+
+    def flatSegmentsPitchVariance(self, pCents, hopSize, varWinLen=100, varThsld=30):
+        """
+        This function uses just the variance criterion to decide stable melody regions
+        varWinLen (ms): window length used for the variance computation
+        varThsld (cents): variance threshold used for deciding stable melody regions
+        output: 
+            time stamps of the melodically stable regions
+        """
+        var = ComputeLocalVariance(pCents, hopSize, varWinLen)
+        indFlat = np.where(var<=varThsld)[0]
+        #computing indexes of silence regions
+        indSil = np.where(pCents < -5000)[0]    #remember melody is in cents
+        indFlat = np.setdiff1d(indFlat, indSil,assume_unique=True)
+        flatSegments = groupIndices(indFlat)
+        flatSegments =flatSegments
+
+        return flatSegments
+
+    def flatSegmentsSwarVicinity(self, pitch, tonic, hopSize, vicinityThsld = 30):
+        """
+        This function estimates time regions corresponding to stable melody regions based on vicinity to swar locations. Everything that is under some threshold of a swar location is flat region
+        """
+        # computing pitch histogram
+        phObj = PH.PitchHistogram(pitch, tonic)
+        #getting valid swar locations (within one octave)
+        phObj.ValidSwarLocEstimation(Oct_fold=1)
+        #converting swar locations in indexes to cents
+        phObj.SwarLoc2Cents()
+        #since the swar locations are computed using octave folded histogram, propagating them to other octaves
+        phObj.ExtendSwarOctaves()
+        swarCents = phObj.swarCents
+        pCents = phObj.pCents
+        
+        indFlats = np.array([])
+        for i, swar in enumerate(swarCents):
+            # just to make process fast lets find in one shot all the points which are atleast closer than narrow threshold
+            ind_narrow = np.where((pCents<swar+vicinityThsld)&(pCents>swar-vicinityThsld))[0]
+
+            if len(ind_narrow)>0:
+                indFlats = np.concatenate((indFlats, ind_narrow))
+        flatSegments = groupIndices(indFlats)
+        flatSegments =flatSegments
+        return flatSegments
+
+    def estimateProbableSegmentationPoints(self, pitch, tonic, hopSize, vicinityThsld = 30, varWinLen=100, varThsld=100):
+        """
+        This function estimates possible segmentation points for melody. The segmentatino is based on flat notes
+        The logic is 
+        1) All the within swar vicinity points which have low variance + all the slope change points which are within swar vicinity
+        """ 
+
+        pCents = 1200*np.log2((pitch+eps)/tonic)
+
+        ### all the points under variance threshold 
+        var = ComputeLocalVariance(pCents, hopSize, varWinLen)
+        indFlat = np.where(var<=varThsld)[0]
+        #computing indexes of silence regions
+        indSil = np.where(pCents < -5000)[0]    #remember melody is in cents
+        indVar = np.setdiff1d(indFlat, indSil,assume_unique=True)
+
+        ### index of slope change
+        #diff1 = pCents[2:]-pCents[1:-1]
+        #diff2 = pCents[1:-1] - pCents[:-2]
+        #indSlope = 1 + np.where(diff1*diff2<0)[0]
+        ########################
+        ###delete this line SOON
+        ########################
+        #indSlope = np.concatenate((indSlope,indSlope+1))
+
+
+        ### all the points within the vicinity
+        # computing pitch histogram
+        phObj = PH.PitchHistogram(pitch, tonic)
+        #getting valid swar locations (within one octave)
+        phObj.ValidSwarLocEstimation(Oct_fold=1)
+        #converting swar locations in indexes to cents
+        phObj.SwarLoc2Cents()
+        #since the swar locations are computed using octave folded histogram, propagating them to other octaves
+        phObj.ExtendSwarOctaves()
+        swarCents = phObj.swarCents
+        pCents = phObj.pCents
+        
+        indVic = np.array([])
+        indCandidates = []
+        for i, swar in enumerate(swarCents):
+            # just to make process fast lets find in one shot all the points which are atleast closer than narrow threshold
+            ind_narrow = np.where((pCents<swar+vicinityThsld)&(pCents>swar-vicinityThsld))[0]
+
+            if len(ind_narrow)>0:
+                #indIntersect = np.unique(np.concatenate((np.intersect1d(indVar, ind_narrow), np.intersect1d(indSlope, ind_narrow))))
+                indIntersect = np.intersect1d(indVar, ind_narrow)
+                if len(indIntersect)>0:
+                    indCandidates.append(indIntersect)
+        flatSegments = []
+        for segPerSwar in indCandidates:
+            flatSegments.extend(groupIndices(segPerSwar))
+        
+        np.array(flatSegments)
+        
+        onsets=[]
+        for segs in flatSegments:
+            onsets.append(segs[0])
+            onsets.append(segs[1])
+
+        onsets = np.array(onsets)
+        return onsets
+
+
+    def removeOverlapSegsGreedy(self, segments):
+        """
+        This function computes segments based on greedy search, meaning at each instance selecting segment that is longest.
+        """
+        length = np.max(segments)
+        segLengths = segments[:,1] - segments[:,0]
+
+        decArray = -1*np.ones((length,2))
+
+        for ii, seg in enumerate(segments):
+            if np.mean(decArray[seg[0]:seg[1]+1,0])==-1:
+                decArray[seg[0]:seg[1]+1,0] = ii
+            elif np.mean(decArray[seg[0]:seg[1]+1,1])==-1:
+                decArray[seg[0]:seg[1]+1,1] = ii
+            else:
+                print "I never expected this to happen check around segment index %d"%seg[0]
+
+        finalDecArray = -1*np.ones(length)
+
+        for ii in range(len(finalDecArray)):
+            indNeg = np.where(decArray[ii,:]==-1)[0]
+            if len(indNeg)==2:
+                finalDecArray[ii]=-1
+            elif len(indNeg)==1:
+                finalDecArray[ii]= decArray[ii,abs(1-indNeg).astype(np.int)]
+            else:
+                indMax = np.argmax(segLengths[decArray[ii,:].astype(np.int)])
+                finalDecArray[ii] = decArray[ii,indMax]
+
+        segmentsOut = []
+        for ii in range(segments.shape[0]):
+            indSeg = np.where(finalDecArray==ii)[0]
+            if len(indSeg)>0:
+                segmentsOut.append([indSeg[0], indSeg[-1]])
+
+        segmentsOut = np.array(segmentsOut)
+        #checking if there is no overlap in the segments
+        indSort = np.argsort(segmentsOut[:,0])
+        segmentsOutSort = segmentsOut[indSort]
+        diff = segmentsOutSort[1:,1]-segmentsOutSort[:-1,1]
+        indNeg = np.where(diff<0)[0] +1
+        if len(indNeg)>0:
+            print "We still get overlapping segments, something is wrong"
+            print segmentsOutSort[indNeg[0]-2,:]
+            print segmentsOutSort[indNeg[0]-1,:]
+            print segmentsOutSort[indNeg[0],:]
+            print segmentsOutSort[indNeg[0]+1,:]
+            print segmentsOutSort[indNeg[0]+2,:]
+            
+        else:
+            return segmentsOutSort
+
+    def segmentPitchNyas(self, pitch, tonic, phop, vicinityThsld = 30, varWinLen=100, varThsld=100, timeAwayThsld=100, min_nyas_duration=150.0):
+        """
+        This function is an improved version of the segmentPItch function in nyasSegmentation class. Here we resolve overlapping flat candidates better and also postprocess nyas candidates to have boundaries as the probably segmentation candidates computed using heuristic based logic
+
+        """
+        nyasSegObj = nyasSegmentation()
+        nyasSegObj.ComputeNyasCandidates(pitch, tonic, phop, vicinityThsld = vicinityThsld, timeAwayThsld = timeAwayThsld, varianceWinLen = varWinLen, varianceThsld = varThsld)
+        nyasSegObj.FilterNyasCandidates(min_nyas_duration=min_nyas_duration)
+
+        segmentationOutput = []
+
+        for key in nyasSegObj.nyasInfo.keys():
+            for segment in nyasSegObj.nyasInfo[key]:
+                segmentationOutput.append(segment)
+
+        segmentationOutput = np.array(segmentationOutput)
+        #Note that these segments are the flat regions only. We need to generate all segments. But to do that we have to make sure there is no overlapping segments
+        flatSegments = self.removeOverlapSegsGreedy(segmentationOutput)
+
+        segPoints = self.estimateProbableSegmentationPoints(pitch, tonic, phop, vicinityThsld = vicinityThsld, varWinLen=varWinLen, varThsld=varThsld)
+
+        finalFlatSegs = []
+        for flatSegs in flatSegments:
+            #print len(segPoints[:,0]), len(segPoints[:,1]), flatSegs[0], flatSegs[1]
+            indStart = np.where(segPoints>=flatSegs[0])[0]
+            indEnd = np.where(segPoints<=flatSegs[1])[0]
+            indOverlap = np.intersect1d(indStart, indEnd)
+            if len(indOverlap)>0:
+                finalFlatSegs.append([segPoints[indOverlap[0]], segPoints[indOverlap[-1]]])
+            #if len(indStart)>0 and len(indEnd)>0:
+            #    s = max(indEnd)
+            #    e = min(indStart)
+            #    if  e > s:
+            #        finalFlatSegs.append([s,e])
+
+        return np.array(finalFlatSegs)
+
+
+
+
+
+
