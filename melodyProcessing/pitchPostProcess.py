@@ -437,13 +437,12 @@ def batchProcessPitchPostProcess(root_dir, searchExt = '.wav', pitchExt= '.tpe',
   """
   filenames = BP.GetFileNamesInDir(root_dir, searchExt)
   for filename in filenames:
+    print "Processing file %s"%filename
     fname, ext = os.path.splitext(filename)
     timePitch = np.loadtxt(fname+pitchExt)
     hopSize = timePitch[1,0]-timePitch[0,0]
     tonic = float(np.loadtxt(fname + tonicExt))
 
     pitchOut = postProcessPitchSequence(timePitch[:,1], tonic= tonic, hopSize = hopSize, filtDurMed=filtDurMed, filtDurGaus=filtDurGaus, winDurOctCorr=winDurOctCorr, sigmaGauss=sigmaGauss, fillSilDur= fillSilDur, interpAllSil=interpAllSil)
-
-  timePitch[:,1] = pitchOut
-
-  np.savetxt(fname + outExt, timePitch, delimiter = "\t", fmt = '%.5f')
+    timePitch[:,1] = pitchOut
+    np.savetxt(fname + outExt, timePitch, delimiter = "\t", fmt = '%.5f')
