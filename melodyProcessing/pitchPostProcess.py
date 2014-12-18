@@ -3,7 +3,7 @@ import scipy.signal as sig
 eps = np.finfo(np.float).eps
 import sys, os
 import matplotlib.pyplot as plt
-sys.path.append('../batchProcessing')
+sys.path.append(os.path.join(os.path.dirname(__file__), '../batchProcessing'))
 
 import batchProcessing as BP
 import segmentation as seg
