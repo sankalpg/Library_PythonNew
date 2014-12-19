@@ -338,12 +338,18 @@ def InterpolateSilence(array, silence_val, hopSize, maxSilDurIntp=0.25, interpAl
           else:
               last_sil_ind=sil_ind[ii+1]
   
-  # zeros at the beginning and at the end of the time series are replaced by the mean of the time series
+
+  ## zeros at the beginning and at the end of the time series are replaced by the mean of the time series
+  #if interpAllSil:
+  #  sil_ind = np.where(array<=silence_val)[0]
+  #  nonSil_ind = np.where(array>silence_val)[0]
+  #  array[sil_ind] = np.mean(array[nonSil_ind])
+  
+  #filling silence at the starting and at the end by random values
   if interpAllSil:
     sil_ind = np.where(array<=silence_val)[0]
     nonSil_ind = np.where(array>silence_val)[0]
-    array[sil_ind] = np.mean(array[nonSil_ind])
-  
+    array[sil_ind] = np.random.random_integers(np.min(array[nonSil_ind]), np.max(array[nonSil_ind]), len(sil_ind))
   return array
         
 def BatchProcessInterpPitchSilence(RootDir, FileExt2Proc = ".tpe", NewExt = "", PitchCol=2, SilVal=0, maxSilDurIntp=0.25):
