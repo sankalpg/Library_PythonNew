@@ -72,7 +72,7 @@ def batchProcessMedianFilterPitchContour(root_dir, searchExt = '.wav', pitchExt=
 
   timePitch[:,1] = pitchOut
 
-  np.savetxt(fname + outExt, timePitch, delimiter = "\t", fmt = '%.5f')
+  np.savetxt(fname + outExt, timePitch, delimiter = "\t")
   
   
 ###########################1) Low-pass filtering pitch contour ###########################
@@ -162,7 +162,7 @@ def batchProcessGaussianFilterPitchContour(root_dir, searchExt = '.wav', pitchEx
 
   timePitch[:,1] = pitchOut
 
-  np.savetxt(fname + outExt, timePitch, delimiter = "\t", fmt = '%.5f')
+  np.savetxt(fname + outExt, timePitch, delimiter = "\t")
 
 def removeSpuriousPitchJumps(pitch, tonic=-1, hopSize=-1, filtLen=0.3):
   """
@@ -219,10 +219,10 @@ def removeSpuriousPitchJumps(pitch, tonic=-1, hopSize=-1, filtLen=0.3):
   DnInd = [2,4,6]
 
   for ii in indChange:
-    if ii>=163480:
-      ii=ii
+    if ii>=pitchCents.size-2:
+      continue
     diff = pitchCents[ii+1]-pitchCents[ii]
-    if np.min(abs(diff-octBins*np.array([-3,-2,-1,1,2,3,4])))<=2*semitoneBins and pitchCents[ii]>silCentVal: #octave jump, -5000 is regarded as best case silence cent value, in reality it will be further less
+    if np.min(abs(diff-octBins*np.array([-3,-2,-1,1,2,3,4])))<=3*semitoneBins and pitchCents[ii]>silCentVal: #octave jump, -5000 is regarded as best case silence cent value, in reality it will be further less
       # there has been an octave jump and that the current sample is not silence
       if diff>0:
         jumpType[ii+1]=3
@@ -250,8 +250,6 @@ def removeSpuriousPitchJumps(pitch, tonic=-1, hopSize=-1, filtLen=0.3):
           jumpType[ii]=7
 
   for ii in range(len(pitchCents)-filtSize):
-    if ii==77175:
-      ii=ii
     indChange = np.where(jumpType[ii:ii+filtSize]>0)[0]
     indChange = np.sort(indChange)
     if len(indChange)==0:
@@ -278,15 +276,37 @@ def removeSpuriousPitchJumps(pitch, tonic=-1, hopSize=-1, filtLen=0.3):
           shift = semitoneBins*np.round((pitchCents[i1] - pitchCents[i1-1])/semitoneBins)
           pitchCents[i1:i2+1] = pitchCents[i1:i2+1]-shift
         else:
-          pitchCents[i1-1:i2+2] = np.linspace(pitchCents[i1-1], pitchCents[i2+2], i2-i1+3)
+          if (i2-i1)*hopSize>0.5:
+            err1 = np.mod(abs(pitchCents[i1]-pitchCents[i1-1]),octBins)
+            err2 = np.mod(abs(pitchCents[i2+1]-pitchCents[i2]),octBins)
+            if err1 < err2:
+              shift = octBins*np.round((pitchCents[i1] - pitchCents[i1-1])/octBins)
+            else:
+              shift = octBins*np.round((pitchCents[i2] - pitchCents[i2+1])/octBins)
+            pitchCents[i1:i2+1] = pitchCents[i1:i2+1]-shift
+          else:
+            pitchCents[i1-1:i2+2] = np.linspace(pitchCents[i1-1], pitchCents[i2+2], i2-i1+3)
         jumpType[i1]=0
         jumpType[i2]=0
       else:
         jumpType[i1]=0
+      #### The only exception to the above rule of going up and down is that if there is double octave error.
+      ###if jumpType[i1]==3 and ( jumpType[i2]==3 or jumpType[i2]==5):
+        ###shift = octBins*np.round((pitchCents[i1] - pitchCents[i1-1])/octBins)
+        ###pitchCents[i1:i2] = pitchCents[i1:i2]-shift
+        ###jumpType[i1]=0
+        ####jumpType[i2]=0#this is not resetted purposefully
+    
     # special case of only one change point    
     if jumpType[ii+indChange[0]]==7 and len(indChange)==1:
       i1 = indChange[0]+ii
-      pitchCents[i1] = np.mean((pitchCents[i1+1],pitchCents[i1-1]))
+      #This is a tricky point, this situation can arise between two valid pitch samples or near the silence.
+      if pitchCents[i1+1] <silCentVal:
+        pitchCents[i1] = pitchCents[i1-1]
+      elif pitchCents[i1-1] <silCentVal:
+        pitchCents[i1] = pitchCents[i1+1]        
+      else:
+        pitchCents[i1] = np.mean((pitchCents[i1+1],pitchCents[i1-1]))
       jumpType[i1]=0
 
   if type(tonic)!=int:
@@ -311,7 +331,7 @@ def batchProcessRemoveSpuriousPitchJumps(root_dir, searchExt = '.wav', pitchExt=
 
   timePitch[:,1] = pitchOut
 
-  np.savetxt(fname + outExt, timePitch, delimiter = "\t", fmt = '%.5f')
+  np.savetxt(fname + outExt, timePitch, delimiter = "\t")
 
 
 def InterpolateSilence(array, silence_val, hopSize, maxSilDurIntp=0.25, interpAllSil = False):
@@ -365,7 +385,7 @@ def BatchProcessInterpPitchSilence(RootDir, FileExt2Proc = ".tpe", NewExt = "", 
         new_pitch = InterpolateSilence(time_pitch[:,PitchCol-1],SilVal,hopSize, maxSilDurIntp)
         time_pitch[:,PitchCol-1]=new_pitch
         file,ext = os.path.splitext(audiofile)
-        np.savetxt(file + NewExt, time_pitch, delimiter = "\t", fmt = '%.5f')
+        np.savetxt(file + NewExt, time_pitch, delimiter = "\t")
 
 
 
@@ -431,7 +451,7 @@ def postProcessPitchSequence(pitch, tonic=-1, hopSize=-1, filtDurMed=0.05, filtD
     pitchGausFilt = pitchMedFilt
 
   if interpAllSil:
-    pitchIntrpAll = InterpolateSilence(pitchOctCorr, silVal, hopSize, maxSilDurIntp=fillSilDur, interpAllSil = interpAllSil)
+    pitchIntrpAll = InterpolateSilence(pitchGausFilt, silVal, hopSize, maxSilDurIntp=fillSilDur, interpAllSil = interpAllSil)
   else:
     pitchIntrpAll = pitchGausFilt
 
@@ -451,4 +471,4 @@ def batchProcessPitchPostProcess(root_dir, searchExt = '.wav', pitchExt= '.tpe',
 
     pitchOut = postProcessPitchSequence(timePitch[:,1], tonic= tonic, hopSize = hopSize, filtDurMed=filtDurMed, filtDurGaus=filtDurGaus, winDurOctCorr=winDurOctCorr, sigmaGauss=sigmaGauss, fillSilDur= fillSilDur, interpAllSil=interpAllSil)
     timePitch[:,1] = pitchOut
-    np.savetxt(fname + outExt, timePitch, delimiter = "\t", fmt = '%.5f')
+    np.savetxt(fname + outExt, timePitch, delimiter = "\t")
