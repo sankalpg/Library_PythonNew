@@ -433,7 +433,7 @@ def postProcessPitchSequence(pitch, tonic=-1, hopSize=-1, filtDurMed=0.05, filtD
   if winDurOctCorr > 0:
     pitchOctCorr = removeSpuriousPitchJumps(pitch, tonic=tonic, hopSize=hopSize, filtLen=winDurOctCorr)
   else:
-    pitchOctCorr = pitchCents
+    pitchOctCorr = pitch
 
   if fillSilDur > 0:
     pitchSinSilShort = InterpolateSilence(pitchOctCorr, silVal, hopSize, maxSilDurIntp=fillSilDur, interpAllSil = False)
