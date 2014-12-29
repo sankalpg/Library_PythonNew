@@ -275,8 +275,23 @@ int main( int argc , char *argv[])
             }
             ind1 = ii*nInterFact;
             ind2 = jj*nInterFact;
+
+           
+            if (TSData1->procParams.distParams.distNormType >=MAXLEN_NO_NORM)
+            {   
+                pattLenFinal =0;
+                for(int tt=0; tt<nCands;tt++)
+                    if (pattLenFinal < TSData1->subSeqPtr[tt].len)
+                    {
+                        pattLenFinal = TSData1->subSeqPtr[tt].len;
+                    }
+            }
+            else
+            {
+                pattLenFinal = max(TSData1->subSeqPtr[ind1].len, TSData1->subSeqPtr[ind2].len);
+            }
             
-            pattLenFinal = max(TSData1->subSeqPtr[ind1].len, TSData1->subSeqPtr[ind2].len);
+
             bandDTW = (int)floor(pattLenFinal*myProcParamsPtr->distParams.DTWBand);
             for(ss=0;ss<pattLenFinal;ss++)
             {
@@ -292,13 +307,24 @@ int main( int argc , char *argv[])
                 {
                     //if (paramHand.procParams.combMTX[ss][kk]==0)
                     //continue;
-                    
                     copyLinStrechedBuffer(buff1, TSData1->subSeqPtr[ind1+ss].pData, TSData1->subSeqPtr[ind1].len, pattLenFinal);
                     copyLinStrechedBuffer(buff2, TSData1->subSeqPtr[ind2+kk].pData, TSData1->subSeqPtr[ind2].len, pattLenFinal);
                     myNorm[myProcParamsPtr->repParams.normType](buff1, pattLenFinal);
                     myNorm[myProcParamsPtr->repParams.normType](buff2, pattLenFinal);
                     realDist = myDist[distType](buff1, buff2, pattLenFinal, pattLenFinal, costMTX, SqEuclidean, bandDTW, -1, temp101);
-                    pathLen = myPathLen[distType](costMTX, pattLenFinal, pattLenFinal);
+                    
+                    if ((TSData1->procParams.distParams.distNormType == NORM_1) || (TSData1->procParams.distParams.distNormType==MAXLEN_NO_NORM))
+                    {
+                        pathLen = 1;    
+                    }
+                    else if ((TSData1->procParams.distParams.distNormType == PATH_LEN) || (TSData1->procParams.distParams.distNormType==MAXLEN_PATH_LEN))
+                    {
+                        pathLen = myPathLen[distType](costMTX, pattLenFinal, pattLenFinal);
+                    }
+                    else
+                    {
+                        pathLen =  pattLenFinal;
+                    }
                     realDist= realDist/pathLen;
                     
                     if(realDist < min_dist)

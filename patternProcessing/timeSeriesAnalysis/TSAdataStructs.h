@@ -79,6 +79,7 @@ typedef struct TSADistParams
     float DTWBand;
     int DTWType;
     int rankRefDistType;
+    int distNormType;
     
 
 }TSADistParams_t;

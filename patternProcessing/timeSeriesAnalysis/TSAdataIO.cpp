@@ -19,6 +19,9 @@ TSAparamHandle::TSAparamHandle()
     memset(fileExts.subSeqTNFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
     memset(fileExts.subSeqInfoFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
 
+    //I need to initialize other structure members as well, #TODO
+    procParams.distParams.distNormType = PATH_LEN;
+
 }
 
 TSAparamHandle::~TSAparamHandle()
@@ -48,6 +51,7 @@ int TSAparamHandle::readParamsFromFile(char *paramFile)
         if (strcmp(field, "DTWBand:")==0){procParams.distParams.DTWBand=atof(value);}
         if (strcmp(field, "DTWType:")==0){procParams.distParams.DTWType=atoi(value);}
         if (strcmp(field, "rankRefDistType:")==0){procParams.distParams.rankRefDistType=atoi(value);}
+        if (strcmp(field, "distNormType:")==0){procParams.distParams.distNormType=atoi(value);}
         /*representation related parameters*/
         if (strcmp(field, "TSRepType:")==0){procParams.repParams.TSRepType=atoi(value);}
         if (strcmp(field, "quantSize:")==0){procParams.repParams.quantSize=atoi(value);}
