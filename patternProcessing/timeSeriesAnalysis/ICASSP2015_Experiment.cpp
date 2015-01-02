@@ -257,7 +257,17 @@ int main( int argc , char *argv[])
     {
         costMTX[ii] = (TSADIST *)malloc(sizeof(TSADIST)*subSeqLen);
     }
-    
+
+    if (TSData1->procParams.distParams.distNormType >=MAXLEN_NO_NORM)
+    {   
+        pattLenFinal =0;
+        for(int tt=0; tt<nCands;tt++)
+            if (pattLenFinal < TSData1->subSeqPtr[tt].len)
+            {
+                pattLenFinal = TSData1->subSeqPtr[tt].len;
+            }
+    }
+
     for(ii=0; ii<nQueries; ii++)
     {
         for(ss=0; ss<nCands;ss++)
@@ -265,6 +275,7 @@ int main( int argc , char *argv[])
             pArray[ss].dist = INF;
             pArray[ss].ind = -1;
         }
+
         for(jj=0; jj<nCands; jj++)
         {
             if(ii==jj)
@@ -277,16 +288,7 @@ int main( int argc , char *argv[])
             ind2 = jj*nInterFact;
 
            
-            if (TSData1->procParams.distParams.distNormType >=MAXLEN_NO_NORM)
-            {   
-                pattLenFinal =0;
-                for(int tt=0; tt<nCands;tt++)
-                    if (pattLenFinal < TSData1->subSeqPtr[tt].len)
-                    {
-                        pattLenFinal = TSData1->subSeqPtr[tt].len;
-                    }
-            }
-            else
+            if (TSData1->procParams.distParams.distNormType < MAXLEN_NO_NORM)
             {
                 pattLenFinal = max(TSData1->subSeqPtr[ind1].len, TSData1->subSeqPtr[ind2].len);
             }
