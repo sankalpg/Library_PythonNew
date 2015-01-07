@@ -110,15 +110,18 @@ class nyasSegmentation():
                 second_tick = -1            # this is supposed to store the offset location
                 pointer2 = first_tick            # this pointer is incremental pointer for note (during the note)
                 neighbour_cnt = 0            # this counter measures the samples of pitch close to the neighbouring swar (needed for improving algo2 over algo1)
+                overallOutCnt = 0            # this counter measures the samples when the pointer is outside the close vicinity of a note. This shouldn't be too high
                 while True:
-                    if(neighbour_cnt>nghbr_thshld_samples):
+                    if(neighbour_cnt>nghbr_thshld_samples) | (overallOutCnt>2*nghbr_thshld_samples):
                         self.nyasInfo[swar].append([first_tick, second_tick])
                         break
                     if(abs(self.pCents[pointer2]-swar)<narrow_tshld):    #if <narrow just make sure second_tick is -1 (benefit when swar is fluctuating and it comes back within narrow threshold)
                         if(second_tick!=-1):
                             second_tick=-1
                             neighbour_cnt=0
+                            overallOutCnt=0
                     else:
+                        overallOutCnt = overallOutCnt+1
                         if(second_tick==-1):    # if swar is not with narrow thsld, mark this location (for the first time) so that we have it as the note offset later
                             second_tick = pointer2 -1
                             # at this point start measuring how much time the pitch remains close (very close <narrow) to neighboring notes. And if this crosses threshold we can terminate this note. This is done to accomodate big deviations which are a part of nyas but they are differentiated because they dont remain close to neighboring notes for a long time_pitch
