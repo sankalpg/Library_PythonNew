@@ -22,8 +22,37 @@ try:
     from mutagen.mp3 import MP3
 except:
     pass
+sys.path.append(os.path.join(os.path.dirname(__file__), '../melodyProcessing/'))
+import pitchHistogram as PH
 
+def fineTuneTonicValue(tonicInFile, tonicOutFile, pitchFile):
+  #reading pitch
+  timePitch = np.loadtxt(pitchFile)
+  tonic = np.loadtxt(tonicInFile)
+  
+  phObj = PH.PitchHistogram(timePitch[:,1], tonic.tolist(), hResolution=1)
+  phObj.ComputePitchHistogram(Oct_fold=1)
+  phObj.SmoothPitchHistogram()
+  phObj.ValidSwarLocEstimation(Oct_fold=1)
+  phObj.SwarLoc2Cents()
+  phObj.ExtendSwarOctaves()
+  swars = phObj.swarCents
+  ind = np.argmin(abs(swars))
+  if abs(swars[ind]) < 100:
+    print "The tonic is off by %f cents"%swars[ind]
+    offset = swars[ind]
+    newTonic = tonic*np.power(2,offset/1200)
+    print "Old Tonic %f, New tonic %f\n"%(tonic, np.array([newTonic]))
+    np.savetxt(tonicOutFile, np.array([newTonic]))
+  
+def batchProcessTonicFineTune(root_dir, tonicExt = '.tonic', tonicExtOut = '.tonicFine', pitchExt = '.pitch'):
+    
+    audiofilenames = GetFileNamesInDir(root_dir,tonicExt)
 
+    for audiofilename in audiofilenames:
+      fname,ext = os.path.splitext(audiofilename)
+      fineTuneTonicValue(fname+tonicExt, fname+tonicExtOut, fname+pitchExt)
+ 
 
 def computeDutationSongs(root_dir, FileExt2Proc='.mp3'): 
     
