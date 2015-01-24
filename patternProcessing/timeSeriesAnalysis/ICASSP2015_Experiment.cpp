@@ -155,15 +155,12 @@ int main( int argc , char *argv[])
     myNorm[3] = &meanNorm;
     myNorm[4] = &medianNorm;
     myNorm[5] = &MADNorm;
-
-
     
     procParams_t *myProcParamsPtr;
     fileExts_t *myFileExtsPtr;
     TSAparamHandle paramHand;
     TSAlogs logs;
-    fileNameHandler fHandleTemp, fHandle;
-    
+    fileNameHandler fHandleTemp, fHandle;    
     
     //checking if the number of input arguments are correct 
     if(argc < 6 || argc > 7)
@@ -177,8 +174,7 @@ int main( int argc , char *argv[])
     char *fileExtFile = argv[3];
     int kNN = atoi(argv[4]);
     TSADIST distTsld = atof(argv[5]); 
-    if( argc == 7 ){verbos = atoi(argv[6]);}
-    
+    if( argc == 7 ){verbos = atoi(argv[6]);}    
     
     //read params from the paramFile
     paramHand.readParamsFromFile(paramFile);
@@ -241,7 +237,7 @@ int main( int argc , char *argv[])
     
     TSAIND ii, jj, ss, kk;
     TSAIND ind1, ind2;
-    int pattLenFinal=0, bandDTW;
+    int pattLenFinal=0, bandDTW, nSamplesCandidate;
     TSADIST *temp101, min_dist;
     int pathLen =0;
     
@@ -258,7 +254,8 @@ int main( int argc , char *argv[])
         costMTX[ii] = (TSADIST *)malloc(sizeof(TSADIST)*subSeqLen);
     }
 
-    if (TSData1->procParams.distParams.distNormType >=MAXLEN_NO_NORM)
+    //in case we chose a distance normalization where all patterns are brought to the same length, we have to compute max length of the pattern.
+    if (TSData1->procParams.distParams.distNormType >= MAXLEN_NO_NORM)
     {   
         pattLenFinal =0;
         for(int tt=0; tt<nCands;tt++)
@@ -270,6 +267,8 @@ int main( int argc , char *argv[])
 
     for(ii=0; ii<nQueries; ii++)
     {
+		ind1 = ii*nInterFact;
+        
         for(ss=0; ss<nCands;ss++)
         {
             pArray[ss].dist = INF;
@@ -284,16 +283,37 @@ int main( int argc , char *argv[])
                 pArray[jj].dist = INF;
                 continue;
             }
-            ind1 = ii*nInterFact;
+            
             ind2 = jj*nInterFact;
+
+            if (TSData1->procParams.methodVariant == Var1)
+                {nSamplesCandidate =    TSData1->subSeqPtr[ind2].len;}
+                else if (TSData1->procParams.methodVariant == Var2)
+                {nSamplesCandidate =    TSData1->subSeqPtr[ind1].len;}
+                else
+                {
+                    printf("Please provide a valid method variant type\n");
+                    return -1;
+                }
 
            
             if (TSData1->procParams.distParams.distNormType < MAXLEN_NO_NORM)
             {
-                pattLenFinal = max(TSData1->subSeqPtr[ind1].len, TSData1->subSeqPtr[ind2].len);
+                if (TSData1->procParams.methodVariant == Var1)
+                {
+                    pattLenFinal = max(TSData1->subSeqPtr[ind1].len, TSData1->subSeqPtr[ind2].len);
+                }
+                else if (TSData1->procParams.methodVariant == Var2)
+                {
+                    pattLenFinal = TSData1->subSeqPtr[ind1].len;    
+                }
+                else
+                {
+                    printf("Please provide a valid method variant type\n");
+                    return -1;
+                }
+				
             }
-            
-
             bandDTW = (int)floor(pattLenFinal*myProcParamsPtr->distParams.DTWBand);
             for(ss=0;ss<pattLenFinal;ss++)
             {
@@ -310,7 +330,7 @@ int main( int argc , char *argv[])
                     //if (paramHand.procParams.combMTX[ss][kk]==0)
                     //continue;
                     copyLinStrechedBuffer(buff1, TSData1->subSeqPtr[ind1+ss].pData, TSData1->subSeqPtr[ind1].len, pattLenFinal);
-                    copyLinStrechedBuffer(buff2, TSData1->subSeqPtr[ind2+kk].pData, TSData1->subSeqPtr[ind2].len, pattLenFinal);
+                    copyLinStrechedBuffer(buff2, TSData1->subSeqPtr[ind2+kk].pData, nSamplesCandidate, pattLenFinal);
                     myNorm[myProcParamsPtr->repParams.normType](buff1, pattLenFinal);
                     myNorm[myProcParamsPtr->repParams.normType](buff2, pattLenFinal);
                     realDist = myDist[distType](buff1, buff2, pattLenFinal, pattLenFinal, costMTX, SqEuclidean, bandDTW, -1, temp101);

@@ -21,6 +21,7 @@ TSAparamHandle::TSAparamHandle()
 
     //I need to initialize other structure members as well, #TODO
     procParams.distParams.distNormType = PATH_LEN;
+    procParams.methodVariant=Var1;
 
 }
 
@@ -71,6 +72,7 @@ int TSAparamHandle::readParamsFromFile(char *paramFile)
         if (strcmp(field, "nInterpFac:")==0){procParams.pattParams.nInterpFac=atoi(value);}
         if (strcmp(field, "pitchHop:")==0){procParams.repParams.pitchHop=atof(value);}
         if (strcmp(field, "subSeqLen:")==0){procParams.pattParams.subSeqLen=atoi(value);}
+        if (strcmp(field, "methodVariant:")==0){procParams.methodVariant=atoi(value);}
         
         if (strcmp(field, "dumpLogs:")==0){procParams.dumpLogs=atoi(value);}
         

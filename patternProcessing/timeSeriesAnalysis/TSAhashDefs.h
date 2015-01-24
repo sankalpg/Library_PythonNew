@@ -76,6 +76,12 @@ NO_QUANT=0,
 NEAREST_NOTE_QUANT,
 };
 
+enum
+{
+	Var1=1,
+	Var2
+};//These are mthod variants for supervised analysis. Var1: ground truth segmentation is considered and patterns are linearly stretched to the same length. Var2: candiadte patterns are taken to be of the length of the query.
+
 
 //Extern declarations
 extern const int combAllwd_5[5][5];

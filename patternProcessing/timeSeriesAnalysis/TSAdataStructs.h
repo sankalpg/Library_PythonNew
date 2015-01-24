@@ -131,6 +131,7 @@ typedef struct procParams
     int nSimMeasuresUsed;
     int verbos;
     int dumpLogs;
+    int methodVariant;
     
 }procParams_t;
 
