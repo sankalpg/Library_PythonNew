@@ -1251,7 +1251,7 @@ int TSAdataHandler::readSubSeqLengths(char *fileName)
 {
     FILE *fp;  
     fp =fopen(fileName,"r");
-    int tempi[2];
+    int tempi[4];
     float tempf[2];
     
     if (fp==NULL)
@@ -1260,7 +1260,7 @@ int TSAdataHandler::readSubSeqLengths(char *fileName)
         return 0;
     }
     TSAIND cnt = 0;
-    while (fscanf(fp, "%f\t%f\t%d\t%d\n",&tempf[0], &tempf[1], &tempi[0], &tempi[1])!=EOF)    //read till the end of the file
+    while (fscanf(fp, "%f\t%f\t%d\t%d\t%d\n",&tempf[0], &tempf[1], &tempi[0], &tempi[1], &tempi[2])!=EOF)    //read till the end of the file
     {
         subSeqPtr[cnt].len = (int)floor(tempf[1]/procParams.repParams.pitchHop);
         cnt++;
