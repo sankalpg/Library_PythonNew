@@ -66,6 +66,48 @@ int tonicNorm(TSADATA *data, int len)
     return 1;
 }
 
+int normalizePASAPA(TSADATA *data1, int len1, TSADATA *data2, int len2)
+{
+    //finding difference in means,
+    double mean1=0, mean2=0;
+
+    for (int ii =0;ii<len1;ii++)
+    {
+        mean1+=data1[ii];
+    }
+    for (int ii =0;ii<len2;ii++)
+    {
+        mean2+=data2[ii];
+    }
+    mean1 = mean1/float(len1);
+    mean2 = mean2/float(len2);
+    float diff = mean1-mean2;
+    float sign=1;
+    if (diff!=0) 
+    { sign= diff/fabs(diff);}
+    
+    float offset=0;    
+    if ((fabs(diff)>550) && (fabs(diff)<850))
+    {
+        offset=sign*700;
+    }
+    else if  ((fabs(diff)>1050) && (fabs(diff)<1350))
+    {
+        offset=sign*1200;
+    }
+    else if((fabs(diff)>1750) && (fabs(diff)<2050))
+    {
+        offset=sign*1900;
+    }
+
+    for(int ii=0;ii<len1;ii++)
+    {
+        data1[ii]-=offset;
+    }
+
+}
+
+
 typedef struct couplet
 {
     TSADIST dist;
@@ -216,7 +258,7 @@ int main( int argc , char *argv[])
     //loading the data
     TSAdataHandler *TSData1 = new TSAdataHandler(fHandleTemp.searchFileNames[0], &logs.procLogs, myFileExtsPtr, myProcParamsPtr);
     TSAIND nSubs = TSData1->getNumLines(TSData1->fHandle.getSubSeqInfoFileName());
-    if (myProcParamsPtr->repParams.normType == TONIC_NORM)
+    if ((myProcParamsPtr->repParams.normType == TONIC_NORM) || (myProcParamsPtr->repParams.normType == TONIC_NORM_PASAPA))
     {
         TSData1->readSubSeqData(TSData1->fHandle.getSubSeqTNFileName(), nSubs);
     }
@@ -331,8 +373,17 @@ int main( int argc , char *argv[])
                     //continue;
                     copyLinStrechedBuffer(buff1, TSData1->subSeqPtr[ind1+ss].pData, TSData1->subSeqPtr[ind1].len, pattLenFinal);
                     copyLinStrechedBuffer(buff2, TSData1->subSeqPtr[ind2+kk].pData, nSamplesCandidate, pattLenFinal);
-                    myNorm[myProcParamsPtr->repParams.normType](buff1, pattLenFinal);
-                    myNorm[myProcParamsPtr->repParams.normType](buff2, pattLenFinal);
+                    if (myProcParamsPtr->repParams.normType == TONIC_NORM_PASAPA)
+                    {
+                      normalizePASAPA(buff1, pattLenFinal, buff2, pattLenFinal);
+                    }
+                    else
+                    {
+                      myNorm[myProcParamsPtr->repParams.normType](buff1, pattLenFinal);
+                      myNorm[myProcParamsPtr->repParams.normType](buff2, pattLenFinal);
+                      
+                    }
+                    
                     realDist = myDist[distType](buff1, buff2, pattLenFinal, pattLenFinal, costMTX, SqEuclidean, bandDTW, -1, temp101);
                     
                     if ((TSData1->procParams.distParams.distNormType == NORM_1) || (TSData1->procParams.distParams.distNormType==MAXLEN_NO_NORM))

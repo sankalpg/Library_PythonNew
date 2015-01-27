@@ -132,6 +132,7 @@ typedef struct procParams
     int verbos;
     int dumpLogs;
     int methodVariant;
+    int complexityMeasure;
     
 }procParams_t;
 
