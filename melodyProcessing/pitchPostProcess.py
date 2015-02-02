@@ -9,6 +9,85 @@ import batchProcessing as BP
 import segmentation as seg
 
 
+def groupIndices(indexes):
+    """
+    This function groups indexes. This is often needed to produce segments given indices.
+    """
+    segments = []
+    segStart = indexes[0]
+    N = len(indexes)
+    for ii in range(len(indexes)):
+        if ii == N-1:
+            segments.append([segStart, indexes[ii]])
+            return np.array(segments)
+        if indexes[ii]+1 != indexes[ii+1]:
+            segments.append([segStart, indexes[ii]])
+            segStart = indexes[ii+1]
+
+    return np.array(segments)
+  
+
+########################### Pitch sequence resampling ##################################
+
+def resamplePitchSequence(pitch, upSampleFactor, silVal, tonic=-1, hopSize=-1):
+    """
+    This function resamples the pitch sequence 
+    Input: 
+        pitch: numpy array of pitch sequence
+        hopSize: hopSize in terms of samples for the current pitch sequence
+        upSampleFactor: factor by which the user wants to upsample the pitch sequence, if <1 its a downsampling factor in essense
+        silVal: the value of the silence in the pitch sequence, needed to take care of such regions in interpolation
+    output: 
+        pitchOut: the upSampled (this could be a fraction as well for downsampling) pitch sequence as a numpy array
+    """
+    
+    if type(pitch)==str:#passed a file name
+      timePitch = np.loadtxt(pitch)
+      pitch = timePitch[:,1]
+      hopSize = timePitch[1,0]-timePitch[0,0]
+    else:
+      if type(hopSize)==int and hopSize ==-1:
+        print "Please provide a valid hopsize if you want to input pithc as a ndarray"
+        return -1
+        
+    if type(tonic)==str:
+      tonic = float(np.loadtxt(tonic))
+    
+    indSil = np.where(pitch<=silVal)[0]  
+    nSamples = pitch.size
+    timeArrIn = hopSize*np.arange(nSamples)
+    timeArrOut = hopSize*upSampleFactor*np.arange(int(np.ceil(nSamples/upSampleFactor)))
+    
+    pitchOut = np.interp(timeArrOut, timeArrIn, pitch)
+    
+    interpFactor = float(1/upSampleFactor)
+    
+    indSilNew1 = np.floor(indSil*interpFactor).astype(np.int)
+    indSilNew2 = np.ceil(indSil*interpFactor).astype(np.int)
+    
+    indSil = np.intersect1d(indSilNew1, indSilNew2)
+    
+    if upSampleFactor <1:
+      #note that when we do upsampling, there will always be samples at the onset and offset of a valid pitched segment which we dont want. There is an obvious reason for why will they exist, think?
+      #so group the silence indices and subtract 1 from the start and add 1 to the end
+      silSegs = groupIndices(indSil)
+      silSegs[:,0] = silSegs[:,0]-1
+      silSegs[:,1] = silSegs[:,1]+1
+      
+      #converting them again to indices
+      indSil = []
+      for seg in silSegs:
+        indSil.append(range(seg[0], seg[1]+1))
+      indSil = np.array(indSil)
+      indNeg = np.where(indSil<0)[0]
+      indSat = np.where(indSil>pitchOut.size-1)[0]
+      indSil = np.delete(indSil, indNeg)
+      indSil = np.delete(indSil, indSat)     
+    
+    pitchOut[indSil] = silVal  
+    
+    return pitchOut
+    
 
 ###########################1) Median filtering pitch contour ###########################
 #Motivation
@@ -389,7 +468,7 @@ def BatchProcessInterpPitchSilence(RootDir, FileExt2Proc = ".tpe", NewExt = "", 
 
 
 
-def postProcessPitchSequence(pitch, tonic=-1, hopSize=-1, filtDurMed=0.05, filtDurGaus=0.05, winDurOctCorr=0.3, sigmaGauss=0.025, fillSilDur= 0.25, interpAllSil=False):
+def postProcessPitchSequence(pitch, tonic=-1, hopSize=-1, filtDurMed=0.05, filtDurGaus=0.05, winDurOctCorr=0.3, sigmaGauss=0.025, fillSilDur= 0.25, interpAllSil=False, upSampleFactor=1):
   """
   This is a function which performs all the selected post processing steps on a pitch sequence. 
   Inputs: 
@@ -429,11 +508,16 @@ def postProcessPitchSequence(pitch, tonic=-1, hopSize=-1, filtDurMed=0.05, filtD
   
   if tonic >400 or tonic < 80:
     print "You should provide a valid tonic value for this processing"
-
-  if winDurOctCorr > 0:
-    pitchOctCorr = removeSpuriousPitchJumps(pitch, tonic=tonic, hopSize=hopSize, filtLen=winDurOctCorr)
+  
+  if upSampleFactor > 0 and upSampleFactor !=1:
+    pitchResampled = resamplePitchSequence(pitch,  upSampleFactor, silVal, tonic = tonic, hopSize=hopSize)
   else:
-    pitchOctCorr = pitch
+      pitchResampled = pitch
+  
+  if winDurOctCorr > 0:
+    pitchOctCorr = removeSpuriousPitchJumps(pitchResampled, tonic=tonic, hopSize=hopSize, filtLen=winDurOctCorr)
+  else:
+    pitchOctCorr = pitchResampled
 
   if fillSilDur > 0:
     pitchSinSilShort = InterpolateSilence(pitchOctCorr, silVal, hopSize, maxSilDurIntp=fillSilDur, interpAllSil = False)
@@ -457,7 +541,7 @@ def postProcessPitchSequence(pitch, tonic=-1, hopSize=-1, filtDurMed=0.05, filtD
 
   return pitchIntrpAll
 
-def batchProcessPitchPostProcess(root_dir, searchExt = '.wav', pitchExt= '.tpe', tonicExt = '.tonic', outExt = '.tpeOctCorr', filtDurMed=0.05, filtDurGaus=0.05, winDurOctCorr=0.3, sigmaGauss=0.025, fillSilDur= 0.25, interpAllSil=False):
+def batchProcessPitchPostProcess(root_dir, searchExt = '.wav', pitchExt= '.tpe', tonicExt = '.tonic', outExt = '.tpeOctCorr', filtDurMed=0.05, filtDurGaus=0.05, winDurOctCorr=0.3, sigmaGauss=0.025, fillSilDur= 0.25, interpAllSil=False, upSampleFactor = 1):
   """
   Wrapper to batch process pitch post processing
   """
@@ -469,6 +553,9 @@ def batchProcessPitchPostProcess(root_dir, searchExt = '.wav', pitchExt= '.tpe',
     hopSize = timePitch[1,0]-timePitch[0,0]
     tonic = float(np.loadtxt(fname + tonicExt))
 
-    pitchOut = postProcessPitchSequence(timePitch[:,1], tonic= tonic, hopSize = hopSize, filtDurMed=filtDurMed, filtDurGaus=filtDurGaus, winDurOctCorr=winDurOctCorr, sigmaGauss=sigmaGauss, fillSilDur= fillSilDur, interpAllSil=interpAllSil)
-    timePitch[:,1] = pitchOut
+    pitchOut = postProcessPitchSequence(timePitch[:,1], tonic= tonic, hopSize = hopSize, filtDurMed=filtDurMed, filtDurGaus=filtDurGaus, winDurOctCorr=winDurOctCorr, sigmaGauss=sigmaGauss, fillSilDur= fillSilDur, interpAllSil=interpAllSil, upSampleFactor = upSampleFactor)
+    TStamps = float(hopSize)*float(upSampleFactor)*np.arange(pitchOut.size)
+    timePitch = np.array([TStamps, pitchOut]).transpose()
     np.savetxt(fname + outExt, timePitch, delimiter = "\t")
+
+
