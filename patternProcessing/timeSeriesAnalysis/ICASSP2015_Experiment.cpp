@@ -10,6 +10,7 @@ using namespace std;
 typedef double (*distFunc)(double*, double*, int, int, double**, int, int, double, double*);
 typedef int (*normFunc)(double*, int);
 typedef int (*pathLenFunc)(double **, int, int);
+typedef double (*complexityFunc)(double *, int);
 
 TSADIST mu, median, stdev, mad;
 TSADATA *tempArr = (TSADATA *)malloc(sizeof(TSADATA)*5000);
@@ -168,6 +169,117 @@ int copyLinStrechedBuffer(TSADATA *dst, TSADATA *src, int lenSrc, int lenDst)
         }
     }
 }
+
+/*
+ * This function computes number of inflection points which are basically points where the pitch 
+ * sequence changes slope. For this function not to be affected by jitter in pitch sequence we add a
+ * conditino that the minimum difference in the pitch values between two inflection points should be
+ * 50 cents
+ */
+double computeInflectionPoints2(TSADATA *data, int len)
+{
+  int elems =1;
+  double accum=0;
+  TSADATA tempDiff=0;
+  double lastVal=0;
+  for (int ii=0; ii<len-2;ii++)
+  {
+    tempDiff = (data[ii+2]-data[ii+1])*(data[ii+1]-data[ii]);
+    if (tempDiff<0)
+    {
+        if (elems>=2)
+        {
+            if (fabs(data[ii+1]-lastVal)>50)
+            {
+                elems+=1;   //counter increases only when there is a significant diff from the last saddle point
+            }
+        }
+        else
+        {
+           elems+=1; 
+        }
+        lastVal=  data[ii+1];
+    }
+    
+  }
+  return elems;
+}
+
+
+/*
+ * This function computes number of inflection points which are basically points where the pitch 
+ * sequence changes slope. 
+ */
+double computeInflectionPoints1(TSADATA *data, int len)
+{
+  int elems =1;
+  double accum=0;
+  TSADATA tempDiff=0;
+  for (int ii=0; ii<len-2;ii++)
+  {
+    tempDiff = (data[ii+2]-data[ii+1])*(data[ii+1]-data[ii]);
+    if (tempDiff<0)
+    {
+      elems+=1;
+    }
+    
+  }
+  return elems;
+}
+
+/*
+ * This function computes complexity measure similar to Batista, but instead of summing diffs it does diff(diffs)
+ */
+
+double measureGlobalComplexity2(TSADATA *data, int len)
+{
+  int elems =0;
+  double accum=0;
+  TSADATA tempDiff=0;
+  for (int ii=0; ii<len-2;ii++)
+  {
+    tempDiff = fabs(fabs(data[ii+2]-data[ii+1]) - fabs(data[ii]-data[ii+1]));
+    if (tempDiff<=600)
+    {
+      accum+=tempDiff*tempDiff;
+      elems+=1;
+    }    
+  }
+  if (elems>0)
+  {
+    return sqrt(accum/float(elems));
+  }
+  return EPS;
+}
+
+
+/*
+ * This function computes complexity measure same as Batista.
+ * Ref:
+ * 
+ */
+
+double measureGlobalComplexity1(TSADATA *data, int len)
+{
+  int elems =0;
+  double accum=0;
+  TSADATA tempDiff=0;
+  for (int ii=0; ii<len-1;ii++)
+  {
+    tempDiff = fabs(data[ii]-data[ii+1]);
+    if (tempDiff<=600)
+    {
+      accum+=tempDiff*tempDiff;
+      elems+=1;
+    }
+  }
+  if (elems>0)
+  {
+    return sqrt(accum/float(elems));
+  }
+  return EPS;
+}
+
 
 
 int main( int argc , char *argv[])
