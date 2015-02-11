@@ -1,8 +1,7 @@
-
-#include "TSAdataIO.h"
-#include "TSAsimilarity.h"
-#include "TSApool.h"
-#include "TSAlogs.h"
+#include "../TSAdataIO.h"
+#include "../TSAsimilarity.h"
+#include "../TSApool.h"
+#include "../TSAlogs.h"
 
 
 using namespace std;
@@ -13,101 +12,10 @@ typedef int (*pathLenFunc)(double **, int, int);
 typedef double (*complexityFunc)(double *, int);
 
 TSADIST mu, median, stdev, mad;
-TSADATA *tempArr = (TSADATA *)malloc(sizeof(TSADATA)*5000);
 
-int zNormorm(TSADATA *data, int len)
-{
-    mu = computeMean(data, len);
-    stdev = computeSTD(data, len, mu);
-    for (int jj=0;jj<len;jj++)
-    {
-        data[jj] = (data[jj]-mu)/stdev;
-    }
-    return 1;
-}
 
-int meanNorm(TSADATA *data, int len)
-{
-    mu = computeMean(data, len);
-    for (int jj=0;jj<len;jj++)
-    {
-        data[jj] = data[jj]-mu;
-    }
-    
-}
-
-int medianNorm(TSADATA *data, int len)
-{
-    memcpy(tempArr, data, sizeof(TSADATA)*len);
-    median = computeMedian(tempArr, len);
-    for (int jj=0;jj<len;jj++)
-    {
-        data[jj] = data[jj]-median;
-    } 
-}
-
-int MADNorm(TSADATA *data, int len)
-{
-    memcpy(tempArr, data, sizeof(TSADATA)*len);
-    median = computeMedian(tempArr, len);
-    mad = computeMAD(tempArr, len, median);
-    for (int jj=0;jj<len;jj++)
-    {
-        data[jj] = (data[jj]-median)/mad;
-    } 
-    
-}
-
-int noNorm(TSADATA *data, int len)
-{
-    return 1;
-}
-int tonicNorm(TSADATA *data, int len)
-{
-    return 1;
-}
-
-int normalizePASAPA(TSADATA *data1, int len1, TSADATA *data2, int len2)
-{
-    //finding difference in means,
-    double mean1=0, mean2=0;
-
-    for (int ii =0;ii<len1;ii++)
-    {
-        mean1+=data1[ii];
-    }
-    for (int ii =0;ii<len2;ii++)
-    {
-        mean2+=data2[ii];
-    }
-    mean1 = mean1/float(len1);
-    mean2 = mean2/float(len2);
-    float diff = mean1-mean2;
-    float sign=1;
-    if (diff!=0) 
-    { sign= diff/fabs(diff);}
-    
-    float offset=0;    
-    if ((fabs(diff)>550) && (fabs(diff)<850))
-    {
-        offset=sign*700;
-    }
-    else if  ((fabs(diff)>1050) && (fabs(diff)<1350))
-    {
-        offset=sign*1200;
-    }
-    else if((fabs(diff)>1750) && (fabs(diff)<2050))
-    {
-        offset=sign*1900;
-    }
-
-    for(int ii=0;ii<len1;ii++)
-    {
-        data1[ii]-=offset;
-    }
-
-}
-
+/*These are the functions which are needed specifically for this file and are not generic enough to be moved to common files
+ */
 
 typedef struct couplet
 {
@@ -170,116 +78,7 @@ int copyLinStrechedBuffer(TSADATA *dst, TSADATA *src, int lenSrc, int lenDst)
     }
 }
 
-/*
- * This function computes number of inflection points which are basically points where the pitch 
- * sequence changes slope. For this function not to be affected by jitter in pitch sequence we add a
- * conditino that the minimum difference in the pitch values between two inflection points should be
- * 50 cents
- */
-double computeInflectionPoints2(TSADATA *data, int len)
-{
-  int elems =1;
-  double accum=0;
-  TSADATA tempDiff=0;
-  double lastVal=0;
-  for (int ii=0; ii<len-2;ii++)
-  {
-    tempDiff = (data[ii+2]-data[ii+1])*(data[ii+1]-data[ii]);
-    if (tempDiff<0)
-    {
-        if (elems>=2)
-        {
-            if (fabs(data[ii+1]-lastVal)>50)
-            {
-                elems+=1;   //counter increases only when there is a significant diff from the last saddle point
-            }
-        }
-        else
-        {
-           elems+=1; 
-        }
-        lastVal=  data[ii+1];
-    }
-    
-  }
-  return elems;
-}
-
-
-/*
- * This function computes number of inflection points which are basically points where the pitch 
- * sequence changes slope. 
- */
-double computeInflectionPoints1(TSADATA *data, int len)
-{
-  int elems =1;
-  double accum=0;
-  TSADATA tempDiff=0;
-  for (int ii=0; ii<len-2;ii++)
-  {
-    tempDiff = (data[ii+2]-data[ii+1])*(data[ii+1]-data[ii]);
-    if (tempDiff<0)
-    {
-      elems+=1;
-    }
-    
-  }
-  return elems;
-}
-
-/*
- * This function computes complexity measure similar to Batista, but instead of summing diffs it does diff(diffs)
- */
-
-double measureGlobalComplexity2(TSADATA *data, int len)
-{
-  int elems =0;
-  double accum=0;
-  TSADATA tempDiff=0;
-  for (int ii=0; ii<len-2;ii++)
-  {
-    tempDiff = fabs(fabs(data[ii+2]-data[ii+1]) - fabs(data[ii]-data[ii+1]));
-    if (tempDiff<=600)
-    {
-      accum+=tempDiff*tempDiff;
-      elems+=1;
-    }    
-  }
-  if (elems>0)
-  {
-    return sqrt(accum/float(elems));
-  }
-  return EPS;
-}
-
-
-/*
- * This function computes complexity measure same as Batista.
- * Ref:
- * 
- */
-
-double measureGlobalComplexity1(TSADATA *data, int len)
-{
-  int elems =0;
-  double accum=0;
-  TSADATA tempDiff=0;
-  for (int ii=0; ii<len-1;ii++)
-  {
-    tempDiff = fabs(data[ii]-data[ii+1]);
-    if (tempDiff<=600)
-    {
-      accum+=tempDiff*tempDiff;
-      elems+=1;
-    }
-  }
-  if (elems>0)
-  {
-    return sqrt(accum/float(elems));
-  }
-  return EPS;
-}
-
+/*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
 
 
 int main( int argc , char *argv[])
@@ -306,7 +105,7 @@ int main( int argc , char *argv[])
     
     myNorm[0] = &noNorm;
     myNorm[1] = &tonicNorm;
-    myNorm[2] = &zNormorm;
+    myNorm[2] = &zNorm;
     myNorm[3] = &meanNorm;
     myNorm[4] = &medianNorm;
     myNorm[5] = &MADNorm;

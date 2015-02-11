@@ -32,5 +32,28 @@ int compare (const void * a, const void * b);
 
 double computeMedian(double* data, int len);
 
+int zNorm(double *data, int len);
+
+int meanNorm(double *data, int len);
+
+int medianNorm(double *data, int len);
+
+int MADNorm(double *data, int len);
+
+int noNorm(double *data, int len);
+
+int tonicNorm(double *data, int len);
+
+int normalizePASAPA(double *data1, int len1, double *data2, int len2);
+
+double computeInflectionPoints2(double *data, int len);
+
+double computeInflectionPoints1(double *data, int len);
+
+double measureGlobalComplexity2(double *data, int len);
+
+double measureGlobalComplexity1(double *data, int len);
+
+
 #endif //BASICDSPFUNC_H
 

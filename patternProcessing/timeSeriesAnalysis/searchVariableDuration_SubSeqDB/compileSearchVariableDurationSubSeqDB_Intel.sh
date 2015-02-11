@@ -1,1 +1,1 @@
-g++ -I. ../../similarityMeasures/dtw/dtw.c ../../basicDSPFuncs/basicDSPCFuncs.c ../../similarityMeasures/dtw/tables.c TSATables.cpp TSApool.cpp TSAsimilarity.cpp TSAdataIO.cpp searchVariableDurationSubSeqDB.cpp TSAlogs.cpp -O3 -o searchVariableDurationSubSeqDB_O3
+g++ -I. ../../../similarityMeasures/dtw/dtw.c ../../../basicDSPFuncs/basicDSPCFuncs.c ../../../similarityMeasures/dtw/tables.c ../TSATables.cpp ../TSApool.cpp ../TSAsimilarity.cpp ../TSAdataIO.cpp searchVariableDurationSubSeqDB.cpp ../TSAlogs.cpp -O3 -o searchVariableDurationSubSeqDB_O3
