@@ -292,6 +292,7 @@ int main( int argc , char *argv[])
     distFunc myDist[3]={NULL};
     normFunc myNorm[10]={NULL};
     pathLenFunc myPathLen[3]={NULL};
+    complexityFunc myComplexity[4]={};
     
     typedef int (*pathLenFunc)(double **, int, int);
     
@@ -309,6 +310,12 @@ int main( int argc , char *argv[])
     myNorm[3] = &meanNorm;
     myNorm[4] = &medianNorm;
     myNorm[5] = &MADNorm;
+    
+    myComplexity[0] = &measureGlobalComplexity1;
+    myComplexity[1] = &measureGlobalComplexity2;
+    myComplexity[2] = &computeInflectionPoints1;
+    myComplexity[3] = &computeInflectionPoints2;
+    
     
     procParams_t *myProcParamsPtr;
     fileExts_t *myFileExtsPtr;
@@ -418,6 +425,8 @@ int main( int argc , char *argv[])
                 pattLenFinal = TSData1->subSeqPtr[tt].len;
             }
     }
+    
+    float complexity1, complexity2;
 
     for(ii=0; ii<nQueries; ii++)
     {
@@ -485,6 +494,14 @@ int main( int argc , char *argv[])
                     //continue;
                     copyLinStrechedBuffer(buff1, TSData1->subSeqPtr[ind1+ss].pData, TSData1->subSeqPtr[ind1].len, pattLenFinal);
                     copyLinStrechedBuffer(buff2, TSData1->subSeqPtr[ind2+kk].pData, nSamplesCandidate, pattLenFinal);
+                    complexity1 =1;
+                    complexity2 =1;
+                    if (TSData1->procParams.complexityMeasure>=0)
+                    {
+                        complexity1 = myComplexity[TSData1->procParams.complexityMeasure](buff1, pattLenFinal-1);
+                        complexity2 = myComplexity[TSData1->procParams.complexityMeasure](buff2, pattLenFinal-1);
+                    }
+                    
                     if (myProcParamsPtr->repParams.normType == TONIC_NORM_PASAPA)
                     {
                       normalizePASAPA(buff1, pattLenFinal, buff2, pattLenFinal);
@@ -497,7 +514,7 @@ int main( int argc , char *argv[])
                     }
                     
                     realDist = myDist[distType](buff1, buff2, pattLenFinal, pattLenFinal, costMTX, SqEuclidean, bandDTW, -1, temp101);
-                    
+                    realDist = realDist*(max(complexity1, complexity2)/min(complexity1, complexity2));                    
                     if ((TSData1->procParams.distParams.distNormType == NORM_1) || (TSData1->procParams.distParams.distNormType==MAXLEN_NO_NORM))
                     {
                         pathLen = 1;    
