@@ -36,7 +36,7 @@ TSAIND countQueries(char *fileName)
         printf("Error opening file %s\n", fileName);
         return 0;
     }
-    TSAIND cnt = 0;
+    TSAIND cnt = 0;ICASSP2015_Experiment_O3_CUR
     while (fscanf(fp, "%f\t%f\t%d\t%d\t%d\n",&tempf[0], &tempf[1], &tempi[0], &tempi[1], &tempi[2])!=EOF)    //read till the end of the file
     {
         if (tempi[1]!=-1)
@@ -87,22 +87,25 @@ int main( int argc , char *argv[])
     int verbos;
     TSADIST realDist, LB_kim_FL, LB_Keogh_EQ, LB_Keogh_EC;
     int distType=-1;
+    float complexity1, complexity2;
     
+    //declaring function pointers (I prefer to use function pointers to respond to different parma values rather than if else condition because its much much faster specially if its in a loop. Its doesn't even involve any comparison.)    
     distFunc myDist[3]={NULL};
     normFunc myNorm[10]={NULL};
     pathLenFunc myPathLen[3]={NULL};
     complexityFunc myComplexity[4]={};
     
-    typedef int (*pathLenFunc)(double **, int, int);
-    
+    //Filling in all the method variants for computing distances
     myDist[0] = &euclideanSeq;
     myDist[1] = &dtw1dBandConst;
     myDist[2] = &dtw1dBandConst_localConst;
     
+    //variants for different kind of path lengths. Note that even though path doesn't make sense in the case of euclidean distance, for an efficient implementation I make a dummy wrapper.    
     myPathLen[0] = &path_Euclidean;
     myPathLen[1] = &path_11;
     myPathLen[2] = &path_12;
     
+    //variants for normalization of melody sequence (Here also several functions are dummp and they retun the input signal as it is. But they are maded so that they fit the template of function pointers to avoid comparison in loop)
     myNorm[0] = &noNorm;
     myNorm[1] = &tonicNorm;
     myNorm[2] = &zNorm;
@@ -110,12 +113,13 @@ int main( int argc , char *argv[])
     myNorm[4] = &medianNorm;
     myNorm[5] = &MADNorm;
     
+    //variants for complexity measures (for carnatic music some of these measures can be benefitial)
     myComplexity[0] = &measureGlobalComplexity1;
     myComplexity[1] = &measureGlobalComplexity2;
     myComplexity[2] = &computeInflectionPoints1;
     myComplexity[3] = &computeInflectionPoints2;
     
-    
+    //declaring some other useful variables
     procParams_t *myProcParamsPtr;
     fileExts_t *myFileExtsPtr;
     TSAparamHandle paramHand;
@@ -147,15 +151,17 @@ int main( int argc , char *argv[])
     //lets use this to read the search file names
     fHandleTemp.initialize(baseName, myFileExtsPtr);
     fHandleTemp.loadSearchFileList();
-
+    
+    //since we dump output in appending mode. We open that file once in 'w' mode at the beginning to clear out all the contents
     FILE *fp10;
     fp10 = fopen(fHandleTemp.getOutFileName(), "w");
     fclose(fp10);
     
+    
     int nInterFact = myProcParamsPtr->pattParams.nInterpFac;
     float blackDur=0;
     
-    
+    //reading distance type based on parameters read from param file
     if (myProcParamsPtr->distParams.distType==0)
     {
         distType=0;
@@ -170,12 +176,12 @@ int main( int argc , char *argv[])
         {
             distType=2;
         }
-
     }
     
-    //loading the data
+    //loading the data from the subsequence database
     TSAdataHandler *TSData1 = new TSAdataHandler(fHandleTemp.searchFileNames[0], &logs.procLogs, myFileExtsPtr, myProcParamsPtr);
     TSAIND nSubs = TSData1->getNumLines(TSData1->fHandle.getSubSeqInfoFileName());
+    //if user has chosen tonic norm or pa sa norm, in that case we load tonic normalized subsequences
     if ((myProcParamsPtr->repParams.normType == TONIC_NORM) || (myProcParamsPtr->repParams.normType == TONIC_NORM_PASAPA))
     {
         TSData1->readSubSeqData(TSData1->fHandle.getSubSeqTNFileName(), nSubs);
@@ -184,13 +190,18 @@ int main( int argc , char *argv[])
     {
         TSData1->readSubSeqData(TSData1->fHandle.getSubSeqFileName(), nSubs);
     }
+    
+    
     char *tempChar = TSData1->fHandle.getSubSeqInfoFileName();
-    TSAIND nQueries = countQueries(tempChar);
+    //count number of queries in the subseq database
+    TSAIND nQueries = countQueries(tempChar);    
+    //reading pattern lengths from info file, downsampling, generating multiple time-stretched copies and quantizing pitch values.
     TSData1->readSubSeqLengths(tempChar);
     TSData1->downSampleSubSeqs();
     TSData1->genUniScaledSubSeqsVarLen();
     TSData1->quantizeSampleSubSeqs(TSData1->procParams.repParams.TSRepType);
     
+    // computing total number of candidates
     TSAIND nCands = (int)(TSData1->nSubSeqs/nInterFact);
     
     couplet_t *pArray = (couplet_t *)malloc(sizeof(couplet_t)*nSubs);
@@ -201,20 +212,21 @@ int main( int argc , char *argv[])
     TSADIST *temp101, min_dist;
     int pathLen =0;
     
+    //length of the subsequences stores. Note that this is not the length fo the pattern. pattern length should be < this length. We need some extra sample to do time -compacting. 
     int subSeqLen = TSData1->procParams.pattParams.subSeqLen;
     
     //temp buffers to store the linearly streched version of a subseq to make lengths equal
     TSADATA *buff1= (TSADATA *)malloc(sizeof(TSADATA)*subSeqLen);
     TSADATA *buff2= (TSADATA *)malloc(sizeof(TSADATA)*subSeqLen);    
     
-    
+    //Initializing costMTX for the DTW computation
     TSADIST **costMTX = (TSADIST **)malloc(sizeof(TSADIST*)*subSeqLen);
     for(ii=0;ii<subSeqLen;ii++)
     {
         costMTX[ii] = (TSADIST *)malloc(sizeof(TSADIST)*subSeqLen);
     }
-
-    //in case we chose a distance normalization where all patterns are brought to the same length, we have to compute max length of the pattern.
+    
+    //in case we chose a distance normalization where all patterns are brought to the same length, we have to compute max length of the patterns over entire dataset.
     if (TSData1->procParams.distParams.distNormType >= MAXLEN_NO_NORM)
     {   
         pattLenFinal =0;
@@ -225,20 +237,23 @@ int main( int argc , char *argv[])
             }
     }
     
-    float complexity1, complexity2;
-
+    //Looping for every query pattern
     for(ii=0; ii<nQueries; ii++)
     {
+        //since there are nInterFact number of time stretched version, computing the starting index of the new query
 		ind1 = ii*nInterFact;
         
+        //for every query nullifying the array where we store the distance with the candidates
         for(ss=0; ss<nCands;ss++)
         {
             pArray[ss].dist = INF;
             pArray[ss].ind = -1;
         }
-
+        
+        // Looping for every candidate pattern
         for(jj=0; jj<nCands; jj++)
         {
+            //if the candidate happens to be the quey itself mark the distance as INF
             if(ii==jj)
             {
                 pArray[jj].ind = jj;
@@ -246,8 +261,11 @@ int main( int argc , char *argv[])
                 continue;
             }
             
+            //starting index of the candidate pattern because every candidate also has nInterFact number of time-stretched versions
             ind2 = jj*nInterFact;
-
+            
+            //Var1: both query len and candidate lengths are stretched to same length. Hence number of samples taken from candidate patterns is its length
+            //Var2: Candidates are taken to be the same length as th query. So number of samples to be considered for candidates is the length of the query
             if (TSData1->procParams.methodVariant == Var1)
                 {nSamplesCandidate =    TSData1->subSeqPtr[ind2].len;}
                 else if (TSData1->procParams.methodVariant == Var2)
@@ -258,7 +276,7 @@ int main( int argc , char *argv[])
                     return -1;
                 }
 
-           
+            //in Var1 pattLenFinal is the maximum of the lengths of the query and candidate. Whereas in Var2 it is the length of the query always.
             if (TSData1->procParams.distParams.distNormType < MAXLEN_NO_NORM)
             {
                 if (TSData1->procParams.methodVariant == Var1)
@@ -277,6 +295,9 @@ int main( int argc , char *argv[])
 				
             }
             bandDTW = (int)floor(pattLenFinal*myProcParamsPtr->distParams.DTWBand);
+            
+            //Since we are dealing with variable length queries and candidates, we need to reinitialize dtw CostMTX in every iteration. Note that typically this operation is done in DTW function. But in cases where 
+            //query length remains the same, we dont have to do this in every iteration (aka also not in DTW function) because number of pixels filled by DTW function in each iteration are exactly the same. 
             for(ss=0;ss<pattLenFinal;ss++)
             {
                 for(kk=0;kk<pattLenFinal;kk++)
@@ -284,17 +305,27 @@ int main( int argc , char *argv[])
                     costMTX[ss][kk]=INF;
                 }
             }
+            
+            
             min_dist = INF;
+            //for one query and one candidate we iterate over all possible combinations of time-stretched verisons and take the minimum distance.
             for(ss=0; ss< nInterFact; ss++)
             {
                 for(kk=0; kk< nInterFact; kk++)
                 {
-                    //if (paramHand.procParams.combMTX[ss][kk]==0)
-                    //continue;
-                    copyLinStrechedBuffer(buff1, TSData1->subSeqPtr[ind1+ss].pData, TSData1->subSeqPtr[ind1].len, pattLenFinal);
-                    copyLinStrechedBuffer(buff2, TSData1->subSeqPtr[ind2+kk].pData, nSamplesCandidate, pattLenFinal);
+                    //initializing complexity of both query and candidate to 1. This way if we dont compute the complexity (if specified in the param file) we get the same distance as computed from the DTW/Euclidean distance.
                     complexity1 =1;
                     complexity2 =1;
+                    
+                    //if we didn't have to compute the minimum overall possible combinations we could have chosen set of combinations for which we do this computation, like done for the unsupervised anlaysis. Thats why next line is commented because here we dont do it.!
+                    //if (paramHand.procParams.combMTX[ss][kk]==0)
+                    //continue;
+                    
+                    //Performing linear time stretch by step sampling and making two patterns of different lengths the same length
+                    copyLinStrechedBuffer(buff1, TSData1->subSeqPtr[ind1+ss].pData, TSData1->subSeqPtr[ind1].len, pattLenFinal);
+                    copyLinStrechedBuffer(buff2, TSData1->subSeqPtr[ind2+kk].pData, nSamplesCandidate, pattLenFinal);
+                    
+                    //If user chooses to weight the distance measure with the 
                     if (TSData1->procParams.complexityMeasure>=0)
                     {
                         complexity1 = myComplexity[TSData1->procParams.complexityMeasure](buff1, pattLenFinal-1);
@@ -334,6 +365,7 @@ int main( int argc , char *argv[])
                     }
                 }
             }
+            
             pArray[jj].ind = jj;
             pArray[jj].dist = min_dist;
         }
