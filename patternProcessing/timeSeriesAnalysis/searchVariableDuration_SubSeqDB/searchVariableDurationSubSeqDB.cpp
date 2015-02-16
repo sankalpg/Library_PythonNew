@@ -36,7 +36,7 @@ TSAIND countQueries(char *fileName)
         printf("Error opening file %s\n", fileName);
         return 0;
     }
-    TSAIND cnt = 0;ICASSP2015_Experiment_O3_CUR
+    TSAIND cnt = 0;
     while (fscanf(fp, "%f\t%f\t%d\t%d\t%d\n",&tempf[0], &tempf[1], &tempi[0], &tempi[1], &tempi[2])!=EOF)    //read till the end of the file
     {
         if (tempi[1]!=-1)
@@ -325,26 +325,32 @@ int main( int argc , char *argv[])
                     copyLinStrechedBuffer(buff1, TSData1->subSeqPtr[ind1+ss].pData, TSData1->subSeqPtr[ind1].len, pattLenFinal);
                     copyLinStrechedBuffer(buff2, TSData1->subSeqPtr[ind2+kk].pData, nSamplesCandidate, pattLenFinal);
                     
-                    //If user chooses to weight the distance measure with the 
+                    //If user chooses to weight the distance measure with the complexity measure, we have to compute complextiy measure of both the sequences 
                     if (TSData1->procParams.complexityMeasure>=0)
                     {
                         complexity1 = myComplexity[TSData1->procParams.complexityMeasure](buff1, pattLenFinal-1);
                         complexity2 = myComplexity[TSData1->procParams.complexityMeasure](buff2, pattLenFinal-1);
                     }
                     
+                    //In case pa sa pa normalization is chosen, we have to normalize looking at the different between two patterns, hence the function call is different
                     if (myProcParamsPtr->repParams.normType == TONIC_NORM_PASAPA)
                     {
                       normalizePASAPA(buff1, pattLenFinal, buff2, pattLenFinal);
                     }
-                    else
+                    else    //if not pa sa pa, its just a per pattern normalization
                     {
                       myNorm[myProcParamsPtr->repParams.normType](buff1, pattLenFinal);
                       myNorm[myProcParamsPtr->repParams.normType](buff2, pattLenFinal);
                       
                     }
                     
+                    //Here is where I compute distance, it can be any of the distances (euclidean, dtw basic, dtw local, dtw global) depending on the params and functino pointer.
                     realDist = myDist[distType](buff1, buff2, pattLenFinal, pattLenFinal, costMTX, SqEuclidean, bandDTW, -1, temp101);
+                    
+                    //Weighing the distance by complexity measure. If weighing by complexity measure is not selected, this measure will be 1, meaning no affect on the distance
                     realDist = realDist*(max(complexity1, complexity2)/min(complexity1, complexity2));                    
+                    
+                    //depending on the options for distance nmormalization, path length is computed appropriately. 
                     if ((TSData1->procParams.distParams.distNormType == NORM_1) || (TSData1->procParams.distParams.distNormType==MAXLEN_NO_NORM))
                     {
                         pathLen = 1;    
@@ -357,19 +363,25 @@ int main( int argc , char *argv[])
                     {
                         pathLen =  pattLenFinal;
                     }
+                    //normalizing distance with the path length. For Euclidean also we do this pseudo process.
                     realDist= realDist/pathLen;
                     
+                    //for every query and candidate index, storing out of nInterFact*nInterFact combinations which one results into the smallest distance
                     if(realDist < min_dist)
                     {
                         min_dist=realDist;
                     }
                 }
             }
-            
+            //whichever is min distance amongst nInterFact*nInterFact combinations is stored in an distance buffer together with the index of the candidate for referencing later.
             pArray[jj].ind = jj;
             pArray[jj].dist = min_dist;
         }
+        
+        //sorting distance buffer in the increasing order of the distance values.
         qsort(pArray, nCands, sizeof(couplet_t), compareDistPatts);
+        
+        //Dumping the informaiton about top kNN for each query
         FILE *fp;
         fp = fopen(fHandleTemp.getOutFileName(), "ab");
         
@@ -381,7 +393,7 @@ int main( int argc , char *argv[])
         
     }
     
-    
+    // freeing the memory for different buffers. Maybe a better memory management should be in place. This step should ideally not be needed, but hey, its research not product dev!!
     for(int ii=0;ii<TSData1->nSubSeqs;ii++)
     {
         free(TSData1->subSeqPtr[ii].pData);
