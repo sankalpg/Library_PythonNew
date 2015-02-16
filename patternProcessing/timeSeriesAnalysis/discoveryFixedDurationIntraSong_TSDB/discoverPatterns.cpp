@@ -1,8 +1,8 @@
 
-#include "TSAdataIO.h"
-#include "TSAsimilarity.h"
-#include "TSApool.h"
-#include "TSAlogs.h"
+#include "../TSAdataIO.h"
+#include "../TSAsimilarity.h"
+#include "../TSApool.h"
+#include "../TSAlogs.h"
 
 
 using namespace std;
