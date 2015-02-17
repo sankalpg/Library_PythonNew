@@ -468,8 +468,12 @@ int TSAdataHandler::readQueryTimeStamps(char *queryFileName, int format)
 
 int TSAdataHandler::genTemplate1SubSeqs()
 {
+    int rVal = 0;
     //read the time series data    
-    readTSData(fHandle.getTSFileName());
+    rVal = readTSData(fHandle.getTSFileName());
+    if (rVal==0)
+    {return 1;}
+    
     readHopSizeTS(fHandle.getTSFileName());
     
     //downsample

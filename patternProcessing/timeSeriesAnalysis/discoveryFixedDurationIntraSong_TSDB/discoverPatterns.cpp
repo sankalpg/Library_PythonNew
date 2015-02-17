@@ -15,6 +15,7 @@ int main( int argc , char *argv[])
     fileExts_t *myFileExtsPtr;
     int Err=0;
     int verbos;
+    int rVal=0;
     
     TSAparamHandle paramHand;
     TSAlogs logs;
@@ -47,7 +48,11 @@ int main( int argc , char *argv[])
     //create a data handler object
     TSAdataHandler *TSData1 = new TSAdataHandler(baseName, &logs.procLogs, myFileExtsPtr, myProcParamsPtr);
     
-    TSData1->genTemplate1SubSeqs();
+    rVal = TSData1->genTemplate1SubSeqs();
+    if (rVal==0)
+    {
+        return 0;
+    }
     
     TSAsubSeq_t *subSeqPtr = TSData1->subSeqPtr;
     
