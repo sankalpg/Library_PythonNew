@@ -375,6 +375,10 @@ int main( int argc , char *argv[])
             {
                 ind1 = ii*myProcParams.nInterpFac;
                 ind2 = jj*myProcParams.nInterpFac;
+                if ((ind1==5)&&(ind2==755))
+                {
+                    ind1=5;
+                } 
 
                 bsf_local = bsfArray[ii];
                 for (pp = 0; pp < myProcParams.nInterpFac; pp++)
@@ -411,11 +415,12 @@ int main( int argc , char *argv[])
 
                     }   
                 }
-
+                printf("%lld\t%lld\t%f\n",ii,jj,bsf_local);
                 if (bsf_local < bsfArray[ii])
                 {
                     if (bsf_local > 0) // update only when the patterns are different
                     {
+                        
                         bsfArray[ii] = manageTopKMotifs(topKmotifs[ii], K, patternInfo1[ii].id, patternInfo2[jj].id, bsf_local);
                         myProcLogs.totalPriorityUpdates++;
                     }

@@ -93,8 +93,10 @@ public:
     int       readHopSizeTS(char *fileName);
     int         dumpMotifInfo();
     int         countNumberLines();
+    int         readSubSeqInfo(char *fileName);
     int         genTemplate1SubSeqs();
     TSAIND      getNumLines(const char *file);
+    int         setSubSeqLengthsFIX(int motifLen);
     int         downSampleTS();
     int         downSampleSubSeqs();
     int         quantizeSampleTS(int quantizationType);

@@ -1,8 +1,7 @@
-
-#include "TSAdataIO.h"
-#include "TSAsimilarity.h"
-#include "TSApool.h"
-#include "TSAlogs.h"
+#include "../TSAdataIO.h"
+#include "../TSAsimilarity.h"
+#include "../TSApool.h"
+#include "../TSAlogs.h"
 
 
 using namespace std;
@@ -78,35 +77,27 @@ int main( int argc , char *argv[])
     fclose(fp);
     
     
-    printf("Hello1\n");
     for (int qq=0; qq < TSData1->nQueries; qq++ )
     {
-        printf("%lld\t%d\n", TSData1->nQueries, qq);
-        printf("Hello1.1\n");
+        //printf("%lld\t%d\n", TSData1->nQueries, qq);
         TSData1->genSubSeqsWithTStamps(&TSData1->queryTStamps [qq], 1);
-        printf("Hello1.2\n");
         TSData1->genUniScaledSubSeqs();
-        printf("Hello1.3\n");
-        printf("Hello1.4\n");
         TSData1->procParams.pattParams.durMotif = TSData1->subSeqPtr[TSData1->procParams.indexMotifLenReal].eTime-TSData1->subSeqPtr[TSData1->procParams.indexMotifLenReal].sTime;
-        printf("%f\t%f\n", TSData1->pHop, TSData1->procParams.pattParams.durMotif);
-        printf("Hello1.5\n");
+        //printf("%f\t%f\n", TSData1->pHop, TSData1->procParams.pattParams.durMotif);
         TSData1->calculateDiffMotifLengths();
         int lenMotifReal = TSData1->procParams.motifLengths[TSData1->procParams.indexMotifLenReal];
         int nInterFact = TSData1->procParams.pattParams.nInterpFac;
         
-        printf("Hello1.6\n");
         TSAdtwSimilarity *dtwUCR = new TSAdtwSimilarity(&logs.procLogs);
-        printf("Hello1.7\n");
-        printf("motif len %d\n", lenMotifReal);
+        
+        
         dtwUCR->configureTSASimilarity(lenMotifReal, lenMotifReal, TSData1->procParams.distParams.DTWBand);
-        printf("Hello1.8\n");
+        
         dtwUCR->setQueryPtr(TSData1->subSeqPtr, TSData1->nSubSeqs);
-        printf("Hello1.9\n");
+        
         dtwUCR->computeQueryEnvelops();
         dtwUCR->initArrayBSF(ceil(TSData1->nSubSeqs/nInterFact));
         
-        printf("Hello2\n");
         
         
         
@@ -122,7 +113,6 @@ int main( int argc , char *argv[])
             //TSData2->filterSamplesTS();
             TSData2->convertHz2Cents(TSData2->fHandle.getTonicFileName());
             TSData2->calculateDiffMotifLengths();
-            printf("motif len %d\n", TSData2->procParams.motifLengths[TSData2->procParams.indexMotifLenReal]);
             TSData2->genSlidingWindowSubSeqs();
             TSData2->genUniScaledSubSeqs();
             
@@ -130,8 +120,7 @@ int main( int argc , char *argv[])
             dtwUCR->computeCandEnvelops();
             
             searchFileID = ss;
-            printf("Hello3\n");
-       
+            
             for(TSAIND jj=0;jj< TSData2->nSubSeqs;jj++)
             {
                 for(TSAIND ii=0;ii< TSData1->nSubSeqs;ii++)
@@ -177,7 +166,6 @@ int main( int argc , char *argv[])
             fwrite(TSData2->subSeqPtr[24664].pData,sizeof(TSADATA), lenMotifReal, fp);
             fclose(fp);}*/
             delete TSData2;
-            printf("Hello4\n");
         }
         {
             FILE *fp;
@@ -198,9 +186,9 @@ int main( int argc , char *argv[])
         delete dtwUCR;
         if (qq <TSData1->nQueries-1)
         {TSData1->freeSubSeqsMem();}
-        printf("Hello5\n");
+        
     }
-    printf("Hello6\n");
+    
     
     delete TSData1;
     

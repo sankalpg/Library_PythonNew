@@ -1,0 +1,1 @@
+g++ -I. ../../../similarityMeasures/dtw/dtw.c ../../../basicDSPFuncs/basicDSPCFuncs.c ../../../similarityMeasures/dtw/tables.c ../TSATables.cpp ../TSApool.cpp ../TSAsimilarity.cpp ../TSAdataIO.cpp searchPatternsAllDBQuery.cpp ../TSAlogs.cpp -O3 -o searchPatternsAllDBQuery_O3

@@ -207,6 +207,8 @@ TSAdataHandler::TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fi
     
     fHandle.initialize(baseName, fileExtPtr);
     
+    pHop = procParams.repParams.pitchHop; //TODO: this pHop should be replaced by procParams.repParams.pitchHop everywhere
+    
     isBlackListAlloc=-1;
     nQueries=-1;
     nSubSeqs=-1;
@@ -542,6 +544,9 @@ int TSAdataHandler::genUniScaledSubSeqsVarLen()
             {
                 subSeqPtr_new[ind] = subSeqPtr[ii];
                 subSeqPtr_new[ind].len = subSeqPtr[ii].len;
+                subSeqPtr_new[ind].id = subSeqPtr[ii].id;
+                subSeqPtr_new[ind].sTime = subSeqPtr[ii].sTime;
+                subSeqPtr_new[ind].eTime = subSeqPtr[ii].eTime;
                 ind++;
             }
             else
@@ -549,6 +554,9 @@ int TSAdataHandler::genUniScaledSubSeqsVarLen()
                 subSeqPtr_new[ind].pData = (TSADATA *)malloc(sizeof(TSADATA)*max_pos_len);
                  //just a dummy allocation
                 subSeqPtr_new[ind].len = subSeqPtr[ii].len;
+                subSeqPtr_new[ind].id = subSeqPtr[ii].id;
+                subSeqPtr_new[ind].sTime = subSeqPtr[ii].sTime;
+                subSeqPtr_new[ind].eTime = subSeqPtr[ii].eTime;
                 cubicInterpolate(subSeqPtr[ii].pData, subSeqPtr_new[ind].pData, indInterp[jj], max_pos_len);
                 ind++;
             }
@@ -1200,7 +1208,7 @@ int TSAdataHandler::downSampleSubSeqs()
     //this changes affective sampling rate of the pitch sequence stored in the subseqs
     procParams.repParams.pitchHop = procParams.repParams.pitchHop*procParams.repParams.dsFactor;
     
-    float pHop =  procParams.repParams.pitchHop;
+    pHop =  procParams.repParams.pitchHop;
     
     
     TSAsubSeq_t *subSeqPtr_new = (TSAsubSeq_t *)malloc(sizeof(TSAsubSeq_t)*nSubSeqs);
@@ -1213,6 +1221,9 @@ int TSAdataHandler::downSampleSubSeqs()
             subSeqPtr_new[ii].pData[jj] = subSeqPtr[ii].pData[jj*dsFac];
         }
         subSeqPtr_new[ii].len = (int)floor(subSeqPtr[ii].len/procParams.repParams.dsFactor);
+        subSeqPtr_new[ii].id = subSeqPtr[ii].id; 
+        subSeqPtr_new[ii].sTime = subSeqPtr[ii].sTime; 
+        subSeqPtr_new[ii].eTime = subSeqPtr[ii].eTime; 
         free(subSeqPtr[ii].pData);
     }
     free(subSeqPtr);
@@ -1251,6 +1262,42 @@ int TSAdataHandler::downSampleTS()
     procLogPtr->tProcTS += (t2-t1)/CLOCKS_PER_SEC;
     
     return 1;
+}
+
+int TSAdataHandler::readSubSeqInfo(char *fileName)
+{
+    FILE *fp;  
+    fp =fopen(fileName,"r");
+    int tempi[4];
+    float tempf[2];
+    //TSAIND tempi;
+    
+    if (fp==NULL)
+    {
+        printf("Error opening file %s\n", fileName);
+        return 0;
+    }
+    TSAIND cnt = 0;
+    while (fscanf(fp, "%d\t%f\t%f\n",&tempi[0], &tempf[0], &tempf[1])!=EOF)    //read till the end of the file
+    {
+        subSeqPtr[cnt].id = tempi[0];
+        subSeqPtr[cnt].sTime = tempf[0];
+        subSeqPtr[cnt].eTime = tempf[1];
+        subSeqPtr[cnt].len = (int)floor((tempf[1]-tempf[0])/procParams.repParams.pitchHop);
+        cnt++;
+    }
+    fclose(fp);
+    
+    return 1;
+    
+}
+
+int TSAdataHandler::setSubSeqLengthsFIX(int motifLen)
+{
+    for(TSAIND ii=0;ii<nSubSeqs; ii++)
+    {
+        subSeqPtr[ii].len = motifLen;
+    }
 }
 
 int TSAdataHandler::readSubSeqLengths(char *fileName)
