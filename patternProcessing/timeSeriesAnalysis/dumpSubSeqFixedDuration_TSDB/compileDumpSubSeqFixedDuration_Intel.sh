@@ -1,0 +1,1 @@
+g++ -I. ../../../similarityMeasures/dtw/dtw.c ../../../basicDSPFuncs/basicDSPCFuncs.c ../../../similarityMeasures/dtw/tables.c ../TSATables.cpp ../TSApool.cpp ../TSAsimilarity.cpp ../TSAdataIO.cpp dumpSubSeqFixedDuration.cpp ../TSAlogs.cpp -O3 -o dumpSubSeqFixedDuration_O3
