@@ -1503,7 +1503,7 @@ int TSAdataHandler::dumpPatternKNNInfo(char *motifFile, TSAmotifInfoExt_t **prio
         {
             if ( priorityQSear[ii][jj].dist < INF)
             {
-                fprintf(fp, "%lld\t%lld\t%f\n", priorityQSear[ii][jj].patternID1, priorityQSear[ii][jj].patternID2, priorityQSear[ii][jj].dist);
+                fprintf(fp, "%lld\t%lld\t%f\n", subSeqPtr[priorityQSear[ii][jj].ind1].id, priorityQSear[ii][jj].patternID2, priorityQSear[ii][jj].dist);
             }
             else
             {

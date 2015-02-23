@@ -220,7 +220,7 @@ TSADIST TSApool::managePriorityQDisc(TSAsubSeq_t *subSeqPtr, TSAIND ind1, TSAIND
 
 
 
-TSADIST TSApool::managePriorityQSear(TSAIND queryInd, TSAsubSeq_t *subSeqPtr, TSAIND ind1, TSAIND ind2, TSAIND patternId1, TSAIND patternId2, TSADIST dist, int searchFileID, float blackDur)
+TSADIST TSApool::managePriorityQSear(TSAIND queryInd, TSAsubSeq_t *subSeqPtr, TSAIND ind1, TSAIND ind2, TSADIST dist, int searchFileID, float blackDur)
 {
     int sortInd=-1, matchInd=-1;
     
@@ -264,8 +264,8 @@ TSADIST TSApool::managePriorityQSear(TSAIND queryInd, TSAsubSeq_t *subSeqPtr, TS
         priorityQSear[queryInd][sortInd].eTime = subSeqPtr[ind2].eTime;
         priorityQSear[queryInd][sortInd].searchFileID = searchFileID;
         priorityQSear[queryInd][sortInd].patternID = PID_DEFAULT3;
-        priorityQSear[queryInd][sortInd].patternID1 = patternId1;
-        priorityQSear[queryInd][sortInd].patternID2 = patternId2;
+        priorityQSear[queryInd][sortInd].patternID1 = -1;
+        priorityQSear[queryInd][sortInd].patternID2 = subSeqPtr[ind2].id;
     }
     else if (sortInd == matchInd)
     {
@@ -276,8 +276,8 @@ TSADIST TSApool::managePriorityQSear(TSAIND queryInd, TSAsubSeq_t *subSeqPtr, TS
         priorityQSear[queryInd][sortInd].eTime = subSeqPtr[ind2].eTime;
         priorityQSear[queryInd][sortInd].searchFileID = searchFileID;
         priorityQSear[queryInd][sortInd].patternID = PID_DEFAULT3;
-        priorityQSear[queryInd][sortInd].patternID1 = patternId1;
-        priorityQSear[queryInd][sortInd].patternID2 = patternId2;
+        priorityQSear[queryInd][sortInd].patternID1 = -1;
+        priorityQSear[queryInd][sortInd].patternID2 = subSeqPtr[ind2].id;
     }
     else if (sortInd < matchInd)
     {
@@ -289,8 +289,8 @@ TSADIST TSApool::managePriorityQSear(TSAIND queryInd, TSAsubSeq_t *subSeqPtr, TS
         priorityQSear[queryInd][sortInd].eTime = subSeqPtr[ind2].eTime;
         priorityQSear[queryInd][sortInd].searchFileID = searchFileID;
         priorityQSear[queryInd][sortInd].patternID = PID_DEFAULT3;
-        priorityQSear[queryInd][sortInd].patternID1 = patternId1;
-        priorityQSear[queryInd][sortInd].patternID2 = patternId2;
+        priorityQSear[queryInd][sortInd].patternID1 = -1;
+        priorityQSear[queryInd][sortInd].patternID2 = subSeqPtr[ind2].id;
     }
     
     return priorityQSear[queryInd][K-1].dist;
