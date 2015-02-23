@@ -461,6 +461,31 @@ int TSAdataHandler::readQueryTimeStamps(char *queryFileName, int format)
         fclose(fp);
         nQueries=jj;
         queryTStamps = qTStamps;
+    }
+    else if (format == PATTERNS_PER_FILE_DUMP)
+    {
+        float temp[10]={0};
+        TSAIND ii=0, jj=0;
+        long long int temp4;
+        fp = fopen(queryFileName,"r");
+        if (fp==NULL)
+        {
+            printf("Error opening file %s\n", queryFileName);
+            return 0;
+        }
+        //reading number of lines in the file
+        int nLines = getNumLines(queryFileName);
+        qTStamps = (TSAseg_t*)malloc(sizeof(TSAseg_t)*nLines*1);
+        
+        while(fscanf(fp,"%lld\t%f\t%f\n", &temp4, &temp[0], &temp[1])!=EOF)
+        {
+            qTStamps[jj].sTime=temp[0];
+            qTStamps[jj].eTime=temp[1];
+            jj++;
+        }
+        fclose(fp);
+        nQueries=jj;
+        queryTStamps = qTStamps;
     } 
     
     
@@ -1461,6 +1486,32 @@ int TSAdataHandler::dumpSearMotifInfo(char *motifFile, TSAmotifInfoExt_t **prior
             
         }
         fprintf(fp, "\n");
+    }
+    fclose(fp);
+    
+    return 1;
+}
+
+int TSAdataHandler::dumpPatternKNNInfo(char *motifFile, TSAmotifInfoExt_t **priorityQSear, TSAIND nQueries, int KNN, int verbos)
+{
+    FILE *fp;
+    fp = fopen(motifFile, "w");
+    
+    for(TSAIND ii=0;ii<nQueries;ii++)
+    {
+        for(TSAIND jj=0;jj < KNN;jj++)
+        {
+            if ( priorityQSear[ii][jj].dist < INF)
+            {
+                fprintf(fp, "%lld\t%lld\t%f\n", priorityQSear[ii][jj].patternID1, priorityQSear[ii][jj].patternID2, priorityQSear[ii][jj].dist);
+            }
+            else
+            {
+                fprintf(fp, "%lld\t%lld\t%f\n", -1,-1,INF);
+            }
+            
+        }
+        
     }
     fclose(fp);
     

@@ -48,6 +48,7 @@ enum
 MOTIFPAIR_DUMP_FORMAT=0,
 VIGNESH_MOTIF_ANNOT_FORMAT,
 MY_MOTIF_ANNOT_FORMAT,//which is basically edited vbersion of vignesh's annotation with start and end and id instead of start duration and id
+PATTERNS_PER_FILE_DUMP,
 };
 
 enum 

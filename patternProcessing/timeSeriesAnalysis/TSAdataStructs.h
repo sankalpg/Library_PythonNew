@@ -67,6 +67,8 @@ typedef struct TSAmotifInfoExt
     TSAIND ind2;
     int searchFileID;
     TSAIND patternID;
+    TSAIND patternID1;
+    TSAIND patternID2;
     float sTime;
     float eTime;
     TSAmotifDataStorage_t *storagePtr;

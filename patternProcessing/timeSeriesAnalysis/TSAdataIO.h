@@ -121,6 +121,7 @@ public:
     int         loadMotifDataTemplate1();
     int         freeSubSeqsMem();
     int         normalizeSubSeqs(int normType);
+    int         dumpPatternKNNInfo(char *motifFile, TSAmotifInfoExt_t **priorityQSear, TSAIND nQueries, int KNN, int verbos);
     
     TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fileExts, procParams_t *pParams);
     ~TSAdataHandler();

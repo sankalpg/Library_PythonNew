@@ -144,7 +144,7 @@ int main( int argc , char *argv[])
         fwrite ( dataInterpSeed[ii], sizeof(DATATYPE), pattenLen, fp);
     }
     fclose(fp);
-     
+    printf("motif length dumped %d\n",pattenLen);
 
     //Memory clearing
     for(ii=0;ii<NPattern;ii++)
