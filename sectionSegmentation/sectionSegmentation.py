@@ -197,7 +197,10 @@ def extractSoloPercussion(audiofile, segFile, modelFile, normFile, frameDur, hop
     
     
     #computing dynamically fs, aggLen based on provided hop size
-    fs=float(es.MetadataReader(filename=audiofile)()[9])
+    fs=float(es.MetadataReader(filename=audiofile)()[10])
+    print "Sampling rate is %d\n"%fs
+    if fs!=44100:
+        print "Hey here is a file which doesn't have 44100 as fs"
     framesize = int(np.round(fs*frameDur))
     if framesize%2 ==1:
             framesize=framesize+1
