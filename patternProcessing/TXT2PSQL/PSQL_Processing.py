@@ -6,6 +6,9 @@ import sys, os
 from mutagen import easyid3
 import numpy as np
 import time 
+from compmusic import dunya as dn
+from compmusic.dunya import hindustani as hn
+from compmusic.dunya import carnatic as ca
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../batchProcessing'))
 
@@ -14,10 +17,10 @@ import batchProcessing as BP
 
 
 myUser = 'sankalp'
-myDatabase = 'motifHindustani_CONF1'
+#myDatabase = 'motifHindustani_CONF1'
 
-serverPrefix = "/homedtic/sgulati/motifDiscovery/dataset/hindustani/compmusic/"
-localPrefix = "/media/Data/Datasets/MotifDiscovery_Dataset/CompMusic/Hindustani/"
+serverPrefix = "/homedtic/sgulati/motifDiscovery/dataset/PatternProcessing_DB/unsupervisedDBs/carnaticDB/Carnatic10RagasISMIR2015DB/audio/"
+localPrefix = "/media/Data/Datasets/PatternProcessing_DB/unsupervisedDBs/carnaticDB/Carnatic10RagasISMIR2015DB/audio/"
 
 
 def resetAllTables():
@@ -63,8 +66,47 @@ def stripPrefix(audiofile):
         
     return audiofile_WOPre
 
+def fillFileTableWithRagaIds(myDatabase, collection = 'carnatic'):
+	
+	dn.set_token("60312f59428916bb854adaa208f55eb35c3f2f07")
+	if collection == 'hindustani':
+		tradition = hn
+	elif collection == 'carnatic':
+		tradition = ca
+		
+	getMBIDs = "select mbid from file"
+	cmd1 = "update file set raagaId ='%s' where mbid='%s'"
+		
+	try:
+		con = psy.connect(database=myDatabase, user=myUser) 
+		cur = con.cursor()
+		cur.execute(getMBIDs)
+		mbids = cur.fetchall()
+		
+		for mbid in mbids:
+			mbid = mbid[0]
+			recData = tradition.get_recording(mbid)
+			ragaId = recData['raaga']['id']
+			cur.execute(cmd1%(ragaId, mbid))
+		con.commit()
+		print "Successfully updated file table in %s database"%(myDatabase)
 
-def createFileTable(root_dir, filterExt = '.mp3'):
+	except psy.DatabaseError, e:
+		print 'Error %s' % e	
+		if con:
+			con.rollback()
+			con.close()
+			sys.exit(1)
+
+	if con:
+		con.close()
+	
+	
+		
+	
+
+
+def createFileTable(root_dir, myDatabase, filterExt = '.mp3'):
     
     con = None
     audioFiles = BP.GetFileNamesInDir(root_dir, filterExt)
@@ -107,7 +149,7 @@ def createFileTable(root_dir, filterExt = '.mp3'):
     if con:
         con.close()
 
-def addHasSeedValeInFileTable():
+def addHasSeedValeInFileTable(myDatabase = ''):
     
     cmd1 = "drop index if exists file_id_idx"
     cmd2 = "drop index if exists file_filename_idx"
@@ -159,13 +201,13 @@ def addHasSeedValeInFileTable():
         con.close()
         
 
-def createPatternMatchTable(root_dir):
+def createPatternMatchTable(root_dir, logFile, myDatabase=''):
     
     t1 = time.time()
     #important stuff
-    motifDiscExt = '.2s25Motif_CONF1'
-    motifSearchExt = ['.2s25MotifSearch_CONF1SqEuclidean', '.2s25MotifSearch_CONF1CityBlock', '.2s25MotifSearch_CONF1ShiftCityBlock', '.2s25MotifSearch_CONF1ShiftLinExp']
-    motifSearchMappExt = '.2s25SearchMapp_CONF1'
+    motifDiscExt = '.disPatts'
+    motifSearchExt = ['.srhPattsSqEuclidean', '.srhPattsCityBlock', '.srhPattsShiftCityBlock', '.srhPattsShiftLinExp']
+    motifSearchMappExt = '.srhMap'
     
     #lets get all the files in the root_dir
     fileNames = BP.GetFileNamesInDir(root_dir, motifDiscExt)
@@ -225,7 +267,7 @@ def createPatternMatchTable(root_dir):
                 seedMotifData = np.loadtxt(motifSeedFile)
             except:
                 print ("seed file couldnt be opened%s\n"%motifSeedFile)
-                fid = open('DuplicationLog.txt','a')
+                fid = open(logFile,'a')
                 fid.write('###########BUG3###########\n')
                 fid.write("seed file couldnt be opened%s\n"%motifSeedFile)
                 fid.close()
@@ -266,7 +308,7 @@ def createPatternMatchTable(root_dir):
                 searchMappData = open(motifMappFile,'r').readlines()
             except:
                 print ("Mapp file couldnt be opened%s\n"%motifMappFile)
-                fid = open('DuplicationLog.txt','a')
+                fid = open(logFile,'a')
                 fid.write('###########BUG3###########\n')
                 fid.write("Mapp file couldnt be opened%s\n"%motifMappFile)
                 fid.close()
@@ -297,7 +339,7 @@ def createPatternMatchTable(root_dir):
                 searchMotifData = np.loadtxt(motifSearchFile)
             except:
                 print ("Search file couldnt be opened%s\n"%motifSearchFile)
-                fid = open('DuplicationLog.txt','a')
+                fid = open(logFile,'a')
                 fid.write('###########BUG3###########\n')
                 fid.write("Search file couldnt be opened%s\n"%motifSearchFile)
                 fid.close()
@@ -324,7 +366,7 @@ def createPatternMatchTable(root_dir):
                     searchMotifDataNEW = np.loadtxt(motifSearchFile)
                 except:
                     print ("Search file couldnt be opened%s\n"%searchMotifDataNEW)
-                    fid = open('DuplicationLog.txt','a')
+                    fid = open(logFile,'a')
                     fid.write('###########BUG3###########\n')
                     fid.write("Search file couldnt be opened%s\n"%searchMotifDataNEW)
                     fid.close()
@@ -339,7 +381,7 @@ def createPatternMatchTable(root_dir):
                         indSameStart = np.where(searchMotifData[indSameFiles,colOffset+2]==searchMotifDataNEW[rowInd,colOffset+2])[0]
                         indMatch = indSameFiles[indSameStart]
                         if indMatch.size>1:
-                            fid = open('DuplicationLog.txt','a')
+                            fid = open(logFile,'a')
                             fid.write('###########BUG1###########\n')
                             fid.write('Seed file name %s\n'%motifSeedFile)
                             fid.write('Search file name %s\n'%motifSearchFile)
@@ -351,7 +393,7 @@ def createPatternMatchTable(root_dir):
                             indSameStartEnd = np.intersect1d(indSameStart, indSameSeedEnd)
                             indMatch = indSameFiles[indSameStartEnd]
                             if indMatch.size>1:
-                                fid = open('DuplicationLog.txt','a')
+                                fid = open(logFile,'a')
                                 fid.write('###########BUG2###########\n')
                                 fid.write('Seed file name %s\n'%motifSeedFile)
                                 fid.write('Search file name %s\n'%motifSearchFile)
