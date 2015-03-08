@@ -208,6 +208,10 @@ def BatchProcess_Tonic_CCode(RootDir, FileExt2Proc = ".mp3", ExeFile= -1, outFil
         filename, ext = os.path.splitext(audiofilename)
         tonicfilename = filename + outFileExt
         wavfilename =  audiofilename
+        
+        if os.path.isfile(tonicfilename):
+            print "File already exist %s\n"%tonicfilename
+            continue
 
         #Converting mp3 to wav if mp3 is to be processed\
         if FileExt2Proc == ".mp3":
@@ -486,19 +490,23 @@ def checkFileExistance(root_dir, outfile, fileList, Ext2Search = ['.mp3']):
     lines = open(fileList).readlines()
     
     fid = open(outfile, "w")
-    
+    strFMT = "FILE NAME\t"+"%s\t"*len(Ext2Search)+"\n"
+    fid.write(strFMT%tuple(Ext2Search))
+    totalCount = [0]*len(Ext2Search)
     for line in lines:
         line = line.strip()
         fid.write("%s\t"%line )
-        for ext in Ext2Search:
+        for ii,ext in enumerate(Ext2Search):
             filename = line  + ext
-            if os.path.isfile(filename):
+            if os.path.isfile(filename) and os.path.getsize(filename) > 0:
                 fid.write("%d\t"%1)
+                totalCount[ii] = totalCount[ii]+1
             else:
                 fid.write("%d\t"%0)
                 
         fid.write("\n")
-        
+    strFMT = "Total count\t"+"%s\t"*len(totalCount)+"\n"
+    fid.write(strFMT%tuple(totalCount))
     fid.close()
         
 def countNumberOfRemovedPatterns(root_dir, Ext):
