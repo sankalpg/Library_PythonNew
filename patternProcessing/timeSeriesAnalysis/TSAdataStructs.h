@@ -10,6 +10,7 @@ typedef struct TSAseg
 {
     float sTime;
     float eTime;
+    TSAIND id;
 }TSAseg_t;
 
 
@@ -75,14 +76,20 @@ typedef struct TSAmotifInfoExt
 
 }TSAmotifInfoExt_t;
 
+
+typedef struct sortElem
+{
+    TSAIND index;
+    TSADIST value;
+}sortElem_t;
+
 typedef struct TSADistParams
 {
     int distType;
     float DTWBand;
     int DTWType;
     int rankRefDistType;
-    int distNormType;
-    
+    int distNormType;   
 
 }TSADistParams_t;
 
@@ -152,6 +159,7 @@ typedef struct fileExts
     char subSeqFileExt[MAX_FEXT_CHARS];
     char subSeqTNFileExt[MAX_FEXT_CHARS]; //this is subSeqs which are already tonic normalized
     char subSeqInfoFileExt[MAX_FEXT_CHARS];
+    char patternKNNExt[MAX_FEXT_CHARS];
     
 }fileExts_t;
 

@@ -51,4 +51,5 @@ public:
     
 };
 
+int compareSortElems(const void *a, const void *b);
 #endif //TSASIMILARITY_H

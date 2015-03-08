@@ -1,6 +1,20 @@
 
 #include "TSAsimilarity.h"
 
+
+int compareSortElems(const void *a, const void *b)
+{
+    if (((sortElem_t*)a)->value > ((sortElem_t*)b)->value)
+    {
+        return 1;
+    }
+    else if (((sortElem_t*)a)->value < ((sortElem_t*)b)->value)
+    {
+        return -1;
+    }
+    return 0;
+}
+
 TSAdtwSimilarity::TSAdtwSimilarity(procLogs_t *LogsPtr)
 {
     nQuery=-1;

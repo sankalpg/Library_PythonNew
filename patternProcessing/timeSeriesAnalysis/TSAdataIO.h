@@ -52,6 +52,7 @@ public:
     char *getSubSeqFileName();
     char *getSubSeqTNFileName();
     char *getSubSeqInfoFileName();
+    char *getPatternKNNFileName();
 };
 
 
@@ -66,22 +67,22 @@ public:
     char *baseName;
     fileNameHandler fHandle;
     
-    
+    TSAsam_t *samPtr;    
     TSAIND lenTS;
+    
+    TSAsubSeq_t *subSeqPtr;
     TSAIND nSubSeqs;
-    TSAIND nLinesFile;
-    
-    
-    int *blacklist;
-    int isBlackListAlloc;
     
     TSAseg_t *queryTStamps;
     TSAIND nQueries;
     
+    TSAmotifInfo_t *patternPairs;
+    TSAIND nPatternPairs;
     
+    TSAIND nLinesFile;
     
-    TSAsam_t *samPtr;
-    TSAsubSeq_t *subSeqPtr;
+    int *blacklist;
+    int isBlackListAlloc;
     
     float pHop;
     
@@ -97,13 +98,15 @@ public:
     int         genTemplate1SubSeqs();
     TSAIND      getNumLines(const char *file);
     int         setSubSeqLengthsFIX(int motifLen);
+    int         setSubSeqLengthsTStamps();
     int         downSampleTS();
     int         downSampleSubSeqs();
     int         quantizeSampleTS(int quantizationType);
     int         quantizeSampleSubSeqs(int quantizationType);
     int         filterSamplesTS();
     int         convertHz2Cents(char *tonicFileName);
-    int         initializeBlackList();
+    int         initializeBlackList(TSAIND N);
+    int         loadBlackList(char *blackListFile);
     int         updateBLDurThsld();
     int         updateBLStdThsld();
     int         updateBLInvalidSegment(char *fileName);
@@ -116,12 +119,14 @@ public:
     int         dumpDiscMotifInfo(char *motifFile, TSAmotifInfo_t *priorityQDisc, int K, int verbos);
     int         dumpSearMotifInfo(char *motifFile, TSAmotifInfoExt_t **priorityQSear, TSAIND nQueries, int K, int verbos);
     int         readQueryTimeStamps(char *queryFileName, int format);
+    int         readKNNPatternDump(char *patternKNNFile, int format);
     int         genSubSeqsWithTStarts(TSAseg_t *queryTStamps, TSAIND nQueries);
     int         genSubSeqsWithTStamps(TSAseg_t *qTStamps, TSAIND nQueries);
     int         loadMotifDataTemplate1();
     int         freeSubSeqsMem();
     int         normalizeSubSeqs(int normType);
     int         dumpPatternKNNInfo(char *motifFile, TSAmotifInfoExt_t **priorityQSear, TSAIND nQueries, int KNN, int verbos);
+    int         dumpPatternDISTInfo(char *outputFile, TSAmotifInfoExt_t **priorityQSear, TSAIND nPatterns, TSAIND *pattPerQ, int verbos);
     
     TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fileExts, procParams_t *pParams);
     ~TSAdataHandler();

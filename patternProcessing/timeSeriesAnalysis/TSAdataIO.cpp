@@ -18,6 +18,7 @@ TSAparamHandle::TSAparamHandle()
     memset(fileExts.subSeqFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
     memset(fileExts.subSeqTNFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
     memset(fileExts.subSeqInfoFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
+    memset(fileExts.patternKNNExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
 
     //I need to initialize other structure members as well, #TODO
     procParams.distParams.distNormType = PATH_LEN;
@@ -183,6 +184,7 @@ int TSAparamHandle::readFileExtsInfoFile(char *fileExtsFile)
         if (strcmp(field, "subSeqFileExt:")==0){strcat(fileExts.subSeqFileExt, value);}
         if (strcmp(field, "subSeqTNFileExt:")==0){strcat(fileExts.subSeqTNFileExt, value);}
         if (strcmp(field, "subSeqInfoFileExt:")==0){strcat(fileExts.subSeqInfoFileExt, value);}
+        if (strcmp(field, "patternKNNExt:")==0){strcat(fileExts.patternKNNExt, value);}
     }
     fclose(fp);
     
@@ -213,6 +215,7 @@ TSAdataHandler::TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fi
     nQueries=-1;
     nSubSeqs=-1;
     lenTS =-1;
+    nPatternPairs=-1;
     
 }
 TSAdataHandler::~TSAdataHandler()
@@ -231,6 +234,9 @@ TSAdataHandler::~TSAdataHandler()
     
     if(nQueries>0)
     {free(queryTStamps);}
+    
+    if(nPatternPairs>0)
+    {free(patternPairs);}
     
 }
 
@@ -371,6 +377,41 @@ int TSAdataHandler::genSubSeqsWithTStarts(TSAseg_t *qTStamps, TSAIND nQueries)
     
 }
 
+int TSAdataHandler::readKNNPatternDump(char *patternKNNFile, int format)
+{
+    FILE *fp;
+    TSAmotifInfo_t *pPairs;
+    TSAIND nPairs;
+    
+    if (format == MOTIFID1_MOTIFID2_DIST)
+    {
+        float temp1;
+        TSAIND temp[2]={0};
+        TSAIND ii=0;
+        fp = fopen(patternKNNFile,"r");
+        if (fp==NULL)
+        {
+            printf("Error opening file %s\n", patternKNNFile);
+            return 0;
+        }
+        int nLines = getNumLines(patternKNNFile);
+        pPairs = (TSAmotifInfo_t*)malloc(sizeof(TSAmotifInfo_t)*nLines);
+        while(fscanf(fp,"%lld\t%lld\t%f\n", &temp[0], &temp[1],&temp1)!=EOF)
+        {
+            if(ii>=nLines)
+                break;
+            pPairs[ii].ind1 = temp[0];
+            pPairs[ii].ind2 = temp[1];
+            pPairs[ii].dist = temp1;
+            ii++;
+        }
+        fclose(fp);
+        nPatternPairs=ii;
+        patternPairs = pPairs;
+    }
+    
+}
+
 int TSAdataHandler::readQueryTimeStamps(char *queryFileName, int format)
 {
     FILE *fp;
@@ -481,6 +522,7 @@ int TSAdataHandler::readQueryTimeStamps(char *queryFileName, int format)
         {
             qTStamps[jj].sTime=temp[0];
             qTStamps[jj].eTime=temp[1];
+            qTStamps[jj].id = temp4;
             jj++;
         }
         fclose(fp);
@@ -520,7 +562,7 @@ int TSAdataHandler::genTemplate1SubSeqs()
     
     procLogPtr->nSubSeqs+=nSubSeqs;
     
-    initializeBlackList();
+    initializeBlackList(nSubSeqs);
     
     updateBLDurThsld();
     
@@ -577,11 +619,14 @@ int TSAdataHandler::genUniScaledSubSeqsVarLen()
             else
             {
                 subSeqPtr_new[ind].pData = (TSADATA *)malloc(sizeof(TSADATA)*max_pos_len);
+                subSeqPtr_new[ind].pTStamps = (float *)malloc(sizeof(float)*1); //just a dummy allocation
                  //just a dummy allocation
                 subSeqPtr_new[ind].len = subSeqPtr[ii].len;
                 subSeqPtr_new[ind].id = subSeqPtr[ii].id;
                 subSeqPtr_new[ind].sTime = subSeqPtr[ii].sTime;
                 subSeqPtr_new[ind].eTime = subSeqPtr[ii].eTime;
+                //subSeqPtr_new[ind].sTime  = subSeqPtr[ii].pTStamps[0];
+                //subSeqPtr_new[ind].eTime  = subSeqPtr[ii].pTStamps[procParams.motifLengths[jj]-1];
                 cubicInterpolate(subSeqPtr[ii].pData, subSeqPtr_new[ind].pData, indInterp[jj], max_pos_len);
                 ind++;
             }
@@ -874,12 +919,31 @@ int TSAdataHandler::updateBLDurThsld()
     return 1;
 }
 
-
-
-int TSAdataHandler::initializeBlackList()
+int TSAdataHandler::loadBlackList(char *blackListFile)
 {
-    blacklist = (int *)malloc(sizeof(int)*nSubSeqs);
-    for(TSAIND ii=0; ii<nSubSeqs; ii++)
+    FILE *fp;
+    int temp;
+    TSAIND ii=0;
+    
+    fp = fopen(blackListFile,"r");
+    if (fp==NULL)
+    {
+        printf("Error opening file %s\n", blackListFile);
+        return 0;
+    }
+     while(fscanf(fp,"%d\n", &temp)!=EOF)
+    {
+        blacklist[ii] = temp;
+        ii++;
+    }
+    fclose(fp);
+    
+}
+
+int TSAdataHandler::initializeBlackList(TSAIND N)
+{
+    blacklist = (int *)malloc(sizeof(int)*N);
+    for(TSAIND ii=0; ii<N; ii++)
     {
         blacklist[ii]=0;
     }
@@ -1241,15 +1305,18 @@ int TSAdataHandler::downSampleSubSeqs()
     for(TSAIND ii=0;ii<nSubSeqs; ii++)
     {
         subSeqPtr_new[ii].pData = (TSADATA *)malloc(sizeof(TSADATA)*procParams.pattParams.subSeqLen);
+        subSeqPtr_new[ii].pTStamps = (float *)malloc(sizeof(float)*procParams.pattParams.subSeqLen);
         for(int jj=0;jj<procParams.pattParams.subSeqLen;jj++)
         {
             subSeqPtr_new[ii].pData[jj] = subSeqPtr[ii].pData[jj*dsFac];
+            subSeqPtr_new[ii].pTStamps[jj] = subSeqPtr[ii].pTStamps[jj*dsFac];
         }
         subSeqPtr_new[ii].len = (int)floor(subSeqPtr[ii].len/procParams.repParams.dsFactor);
         subSeqPtr_new[ii].id = subSeqPtr[ii].id; 
         subSeqPtr_new[ii].sTime = subSeqPtr[ii].sTime; 
         subSeqPtr_new[ii].eTime = subSeqPtr[ii].eTime; 
         free(subSeqPtr[ii].pData);
+        free(subSeqPtr[ii].pTStamps);
     }
     free(subSeqPtr);
     
@@ -1317,6 +1384,18 @@ int TSAdataHandler::readSubSeqInfo(char *fileName)
     
 }
 
+int TSAdataHandler::setSubSeqLengthsTStamps()
+{
+    for(TSAIND ii=0;ii<nSubSeqs; ii++)
+    {
+        for(TSAIND jj=0;jj<procParams.pattParams.subSeqLen; jj++)
+        {
+            subSeqPtr[ii].pTStamps[jj] = subSeqPtr[ii].sTime + jj*procParams.repParams.pitchHop;
+        }
+    }
+    
+}
+
 int TSAdataHandler::setSubSeqLengthsFIX(int motifLen)
 {
     for(TSAIND ii=0;ii<nSubSeqs; ii++)
@@ -1365,6 +1444,7 @@ int TSAdataHandler::readSubSeqData(char *fileName, TSAIND nSubs)
     for (int ii=0;ii< nSubs; ii++)    //read till the end of the file
     {
         subSeqPtr[ii].pData = (TSADATA *)malloc(sizeof(TSADATA)*procParams.pattParams.subSeqLen);
+        subSeqPtr[ii].pTStamps = (float *)malloc(sizeof(float)*procParams.pattParams.subSeqLen);//dummy allocation
         nreads = fread(subSeqPtr[ii].pData, sizeof(TSADATA), procParams.pattParams.subSeqLen, fp);
     }
     
@@ -1500,6 +1580,32 @@ int TSAdataHandler::dumpPatternKNNInfo(char *motifFile, TSAmotifInfoExt_t **prio
     for(TSAIND ii=0;ii<nQueries;ii++)
     {
         for(TSAIND jj=0;jj < KNN;jj++)
+        {
+            if ( priorityQSear[ii][jj].dist < INF)
+            {
+                fprintf(fp, "%lld\t%lld\t%f\n", subSeqPtr[priorityQSear[ii][jj].ind1].id, priorityQSear[ii][jj].patternID2, priorityQSear[ii][jj].dist);
+            }
+            else
+            {
+                fprintf(fp, "%lld\t%lld\t%f\n", -1,-1,INF);
+            }
+            
+        }
+        
+    }
+    fclose(fp);
+    
+    return 1;
+}
+
+int TSAdataHandler::dumpPatternDISTInfo(char *outputFile, TSAmotifInfoExt_t **priorityQSear, TSAIND nPatterns, TSAIND *pattPerQ, int verbos)
+{
+    FILE *fp;
+    fp = fopen(outputFile, "w");
+    
+    for(TSAIND ii=0;ii<nPatterns;ii++)
+    {
+        for(TSAIND jj=0;jj < pattPerQ[ii];jj++)
         {
             if ( priorityQSear[ii][jj].dist < INF)
             {
@@ -1661,6 +1767,16 @@ char* fileNameHandler::getSubSeqInfoFileName()
     
     return fileName;
 }
+
+char* fileNameHandler::getPatternKNNFileName()
+{
+    memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);
+    strcat(fileName, baseName);
+    strcat(fileName, fileExtPtr->patternKNNExt);
+    
+    return fileName;
+}
+
 
 
 

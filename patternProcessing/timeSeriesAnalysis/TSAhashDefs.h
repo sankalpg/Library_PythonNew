@@ -36,6 +36,7 @@
 #define MAX_FNAME_CHARS 400
 #define MAX_FEXT_CHARS 100
 #define MAX_NUM_SEARCHFILES 2000
+#define Q_DIST_BLOCKSIZE 500
 
 #define PID_DEFAULT1    -1
 #define PID_DEFAULT2    -2
@@ -49,6 +50,7 @@ MOTIFPAIR_DUMP_FORMAT=0,
 VIGNESH_MOTIF_ANNOT_FORMAT,
 MY_MOTIF_ANNOT_FORMAT,//which is basically edited vbersion of vignesh's annotation with start and end and id instead of start duration and id
 PATTERNS_PER_FILE_DUMP,
+MOTIFID1_MOTIFID2_DIST,
 };
 
 enum 

@@ -90,6 +90,69 @@ int TSApool::initPriorityQSear(TSAIND nQueries)
     
     return 1;
 }
+
+
+int TSApool::initPriorityQSearDist(TSAIND nQueries)
+{
+    isQDist=1;    
+    priorityQSear = (TSAmotifInfoExt_t **)malloc(sizeof(TSAmotifInfoExt_t*)*nQueries);
+    pattsPerQ = (TSAIND *)malloc(sizeof(TSAIND)*nQueries);
+    spaceAllocQ = (TSAIND *)malloc(sizeof(TSAIND)*nQueries);
+    for (int ii=0; ii < nQueries; ii++)
+    {
+        pattsPerQ[ii] = 0;
+        spaceAllocQ[ii] = Q_DIST_BLOCKSIZE;
+        priorityQSear[ii] = (TSAmotifInfoExt_t *)malloc(sizeof(TSAmotifInfoExt_t)*Q_DIST_BLOCKSIZE);
+        for(int jj=0;jj<Q_DIST_BLOCKSIZE;jj++)
+        {
+            priorityQSear[ii][jj].dist=INF;
+            priorityQSear[ii][jj].ind1=0;
+            priorityQSear[ii][jj].ind2=0;
+            priorityQSear[ii][jj].sTime = -1;
+            priorityQSear[ii][jj].eTime = -1;
+            priorityQSear[ii][jj].patternID=PID_DEFAULT2;
+            priorityQSear[ii][jj].searchFileID = FID_DEFAULT1;
+            priorityQSear[ii][jj].patternID=PID_DEFAULT2;
+            priorityQSear[ii][jj].patternID=PID_DEFAULT2;
+        }
+    }
+    numQueries = nQueries;
+    
+    return 1;
+}
+int TSApool::extendPriorityQSearDist(TSAIND queryInd)
+{
+    TSAmotifInfoExt_t *newStorage = (TSAmotifInfoExt_t *)malloc(sizeof(TSAmotifInfoExt_t)*(spaceAllocQ[queryInd] + Q_DIST_BLOCKSIZE));
+    spaceAllocQ[queryInd]+=Q_DIST_BLOCKSIZE;
+    
+    memcpy(newStorage, priorityQSear[queryInd], sizeof(TSAmotifInfoExt_t)*pattsPerQ[queryInd]);
+    
+    free(priorityQSear[queryInd]);
+    priorityQSear[queryInd]=newStorage;
+    
+    return 1;
+}
+
+int TSApool::managePriorityQSearDIST(TSAIND queryInd, TSAsubSeq_t *subSeqPtr, TSAIND ind1, TSAIND ind2, TSADIST dist, int searchFileID)
+{
+    if (pattsPerQ[queryInd] == spaceAllocQ[queryInd])
+    {
+        extendPriorityQSearDist(queryInd);
+    }
+    
+    priorityQSear[queryInd][pattsPerQ[queryInd]].dist = dist;
+    priorityQSear[queryInd][pattsPerQ[queryInd]].ind1 = ind1;
+    priorityQSear[queryInd][pattsPerQ[queryInd]].ind2 = ind2;
+    priorityQSear[queryInd][pattsPerQ[queryInd]].searchFileID = searchFileID;
+    priorityQSear[queryInd][pattsPerQ[queryInd]].patternID1 = -1;
+    priorityQSear[queryInd][pattsPerQ[queryInd]].patternID2 = subSeqPtr[ind2].id;  
+    
+    pattsPerQ[queryInd]+=1;
+    
+    return 1;       
+}
+
+
 int TSApool::initPattStorage(TSAIND nQueries, int lenMotifReal)
 {
     longTermDataStorage = (TSAmotifDataStorage_t **)malloc(sizeof(TSAmotifDataStorage_t*)*nQueries);
