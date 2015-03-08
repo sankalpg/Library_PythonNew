@@ -11,7 +11,7 @@ int main( int argc , char *argv[])
     int verbos;
     TSADIST realDist, LB_kim_FL, LB_Keogh_EQ, LB_Keogh_EC, bsf_local;
     TSAIND searchFileID;
-
+    
     
     procParams_t *myProcParamsPtr;
     fileExts_t *myFileExtsPtr;
@@ -20,7 +20,7 @@ int main( int argc , char *argv[])
     fileNameHandler fHandle;    
     
     //checking if the number of input arguments are correct 
-    if(argc < 6 || argc > 7)
+    if(argc < 5 || argc > 6)
     {
         printf("\nInvalid number of arguments!!!\n");
         exit(1);
@@ -29,7 +29,7 @@ int main( int argc , char *argv[])
     char *baseName = argv[1];
     char *paramFile = argv[2];
     char *fileExtFile = argv[3];
-    int kNN = atoi(argv[4]);
+    float distThshld = atof(argv[4]);
     if( argc == 6 ){verbos = atoi(argv[5]);}    
     
     //read params from the paramFile
@@ -46,7 +46,7 @@ int main( int argc , char *argv[])
     //create a data handler object
     TSAdataHandler *TSData1 = new TSAdataHandler(baseName, &logs.procLogs, myFileExtsPtr, myProcParamsPtr);
     TSAIND NPatternsFile1 = TSData1->getNumLines(TSData1->fHandle.getSubSeqInfoFileName());
-    printf("Number of lines in file %lld\n",NPatternsFile1);
+    //printf("Number of lines in file %lld\n",NPatternsFile1);
     //reading data from stored subsequences
     TSData1->calculateDiffMotifLengths();   //note that this give lengths of patterns before any downsampling. Need it for estimating subseqlen
     int subSeqLen = TSData1->procParams.motifLengths[TSData1->procParams.indexMotifLenLongest];
@@ -54,13 +54,14 @@ int main( int argc , char *argv[])
     TSData1->procParams.pattParams.subSeqLen = subSeqLen;
     TSData1->readSubSeqData(TSData1->fHandle.getSubSeqFileName(), NPatternsFile1);
     TSData1->readSubSeqInfo(TSData1->fHandle.getSubSeqInfoFileName());
-    TSData1->setSubSeqLengthsTStamps();
     TSData1->downSampleSubSeqs();
     TSData1->calculateDiffMotifLengths();   //this will give us the motif lengths that we should be using (i.e. lengths after downsampling)
     int lenMotifReal = TSData1->procParams.motifLengths[TSData1->procParams.indexMotifLenReal];
     int nInterFact = TSData1->procParams.pattParams.nInterpFac;
     TSData1->setSubSeqLengthsFIX(lenMotifReal);
     TSData1->genUniScaledSubSeqsVarLen();
+    TSData1->initializeBlackList(NPatternsFile1);
+    TSData1->loadBlackList(TSData1->fHandle.getBlackListSegFileName());//because they overlapped with others who were much stronger candidate(simply had low distance neighbor)
     
     
     
@@ -68,10 +69,9 @@ int main( int argc , char *argv[])
     dtwUCR.configureTSASimilarity(lenMotifReal, lenMotifReal, TSData1->procParams.distParams.DTWBand);
     dtwUCR.setQueryPtr(TSData1->subSeqPtr, TSData1->nSubSeqs);
     dtwUCR.computeQueryEnvelops();
-    dtwUCR.initArrayBSF(NPatternsFile1);
     
-    TSApool pool(kNN);
-    pool.initPriorityQSear(NPatternsFile1);
+    TSApool pool(-1);
+    pool.initPriorityQSearDist(NPatternsFile1);
     
     fHandle.loadSearchFileList();
     TSAIND queryInd=0;
@@ -81,7 +81,7 @@ int main( int argc , char *argv[])
     for(TSAIND ss=0; ss < fHandle.nSearchFiles; ss++)
     {
         searchFileID = ss;
-        //printf("Processing searchfile %s\n",fHandle.searchFileNames[ss]);
+        
         TSAdataHandler *TSData2 = new TSAdataHandler(fHandle.searchFileNames[ss], &logs.procLogs, myFileExtsPtr, myProcParamsPtr);
         TSAIND NPatternsFile2 = TSData2->getNumLines(TSData2->fHandle.getSubSeqInfoFileName());
         TSData2->procParams.pattParams.subSeqLen = subSeqLen;
@@ -89,31 +89,38 @@ int main( int argc , char *argv[])
         TSData2->procParams.pattParams.subSeqLen = subSeqLen;
         TSData2->readSubSeqData(TSData2->fHandle.getSubSeqFileName(), NPatternsFile2);
         TSData2->readSubSeqInfo(TSData2->fHandle.getSubSeqInfoFileName());
-        TSData2->setSubSeqLengthsTStamps();
         TSData2->downSampleSubSeqs();
         TSData2->setSubSeqLengthsFIX(lenMotifReal);
         TSData2->genUniScaledSubSeqsVarLen();
+        TSData2->initializeBlackList(NPatternsFile2);
+        TSData2->loadBlackList(TSData2->fHandle.getBlackListSegFileName());//because they overlapped with others who were much stronger candidate(simply had low distance neighbor)
+    
        
         dtwUCR.setCandPtr(TSData2->subSeqPtr, TSData2->nSubSeqs);
         dtwUCR.computeCandEnvelops();
-        
+         
         for(TSAIND ii=0;ii< NPatternsFile1;ii++)
         {
-            //printf("%lld",ii);
+            if (TSData1->blacklist[ii]==1){continue;}
+            
+            //printf("%d",TSData1->blacklist[ii]);
+            
             for(TSAIND jj=0;jj< NPatternsFile2;jj++)
             {
+                if (TSData2->blacklist[jj]==1){continue;}
                 //printf("%lld",jj);
                 queryInd = ii;
                 ind1 = ii*nInterFact;
                 ind2 = jj*nInterFact;
                 
-                //we have to avoid overlapping patterns being detected as neighbors
+                //we have to avoid overlapping patterns being detected as close distance pairs
                 if ((strcmp(baseName, fHandle.searchFileNames[ss])==0)&& (fabs(TSData1->subSeqPtr[ind1].sTime-TSData2->subSeqPtr[ind2].sTime)< TSData1->procParams.pattParams.blackDur))
                     //beware that basename and searchFile name should both have either full path or relative path but should be in the same format always.
                 {
                     continue;
                 }
-                bsf_local = dtwUCR.bsfArray[queryInd];
+                
+                bsf_local = distThshld;
                 for (int pp = 0; pp < nInterFact; pp++)
                 {
                     for (int mm = 0; mm < nInterFact; mm++)
@@ -125,15 +132,16 @@ int main( int argc , char *argv[])
                         logs.procLogs.nLB_KIM_FL++;
                         if (LB_kim_FL< bsf_local) 
                         {
-                            LB_Keogh_EQ = computeKeoghsLB(dtwUCR.envUQueryPtr[ind1+pp],dtwUCR.envLQueryPtr[ind1+pp],dtwUCR.accLB_Keogh_EQ, TSData2->subSeqPtr[ind2+mm].pData,lenMotifReal, dtwUCR.bsfArray[queryInd], SqEuclidean);
+                            LB_Keogh_EQ = computeKeoghsLB(dtwUCR.envUQueryPtr[ind1+pp],dtwUCR.envLQueryPtr[ind1+pp],dtwUCR.accLB_Keogh_EQ, TSData2->subSeqPtr[ind2+mm].pData,lenMotifReal, bsf_local, SqEuclidean);
                             logs.procLogs.nLB_Keogh_EQ++;
                             if(LB_Keogh_EQ < bsf_local)
                             {
-                                LB_Keogh_EC = computeKeoghsLB(dtwUCR.envUCandPtr[ind2+mm],dtwUCR.envLCandPtr[ind2+mm],dtwUCR.accLB_Keogh_EC, TSData1->subSeqPtr[ind1+pp].pData,lenMotifReal, dtwUCR.bsfArray[queryInd], SqEuclidean);
+                                LB_Keogh_EC = computeKeoghsLB(dtwUCR.envUCandPtr[ind2+mm],dtwUCR.envLCandPtr[ind2+mm],dtwUCR.accLB_Keogh_EC, TSData1->subSeqPtr[ind1+pp].pData,lenMotifReal, bsf_local, SqEuclidean);
                                 logs.procLogs.nLB_Keogh_EC++;
                                 if(LB_Keogh_EC < bsf_local)
                                 {
-                                    realDist = dtw1dBandConst(TSData1->subSeqPtr[ind1+pp].pData, TSData2->subSeqPtr[ind2+mm].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, dtwUCR.bsfArray[queryInd], dtwUCR.accLB_Keogh_EQ);
+                                    realDist = dtw1dBandConst(TSData1->subSeqPtr[ind1+pp].pData, TSData2->subSeqPtr[ind2+mm].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, bsf_local, dtwUCR.accLB_Keogh_EQ);
+                                    //printf("%f\n",realDist);
                                     logs.procLogs.nDTW_EA++;
                                     if(realDist < bsf_local)
                                     {
@@ -144,13 +152,13 @@ int main( int argc , char *argv[])
                         }
                     }
                 }
-                if (bsf_local <= dtwUCR.bsfArray[queryInd])
+                if (bsf_local < distThshld)
                 {
-                    if (bsf_local==0)
+                    if (bsf_local==0)//this is to avoid same pattern treated as a candidate
                     {
                         continue;
                     }
-                    dtwUCR.bsfArray[queryInd] = pool.managePriorityQSear(queryInd, TSData2->subSeqPtr,  ind1, ind2, bsf_local, searchFileID, TSData1->procParams.pattParams.blackDur);
+                    pool.managePriorityQSearDIST(queryInd, TSData2->subSeqPtr,  ind1, ind2, bsf_local, searchFileID);
                     logs.procLogs.nPriorityUpdates++;
                 }
             }
@@ -162,7 +170,8 @@ int main( int argc , char *argv[])
         
         
     }
-    TSData1->dumpPatternKNNInfo(TSData1->fHandle.getOutFileName(), pool.priorityQSear, NPatternsFile1, kNN, verbos);
+    TSData1->dumpPatternDISTInfo(TSData1->fHandle.getOutFileName(), pool.priorityQSear, NPatternsFile1, pool.pattsPerQ, verbos);
+    //printf("%lld\n",pool.pattsPerQ[1]);
     delete TSData1;
     
     
