@@ -11,10 +11,10 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../../batchProcessing')
 import batchProcessing as BP
 
 myUser = 'sankalp'
-myDatabase = 'motifCarnatic_CONF2'
+#myDatabase = 'motifCarnatic_CONF2'
 
 
-root_path = '/media/Data/Datasets/MotifDiscovery_Dataset/CompMusic/'
+#root_path = '/media/Data/Datasets/MotifDiscovery_Dataset/CompMusic/'
 
     
         
@@ -27,9 +27,7 @@ def fetchMBID(mp3File):
     return mbid
 
         
-def getPatternsPerFile():
-    
-    extension = '.allPatternsInfoConf2'
+def getPatternsPerFile(root_path, myDatabase = '', outExt = '.allPatts'):
     
     cmd1 = "select id, filename, mbid from file where hasseed=1"
     cmd2 = "select id, start_time, end_time from pattern where file_id = %d"
@@ -38,6 +36,7 @@ def getPatternsPerFile():
     try:
         con = psy.connect(database=myDatabase, user=myUser) 
         cur = con.cursor()
+        print "Successfully connected to the server"
         cur.execute(cmd1)
         output = cur.fetchall()
         fileIds = [x[0] for x in output]
@@ -51,7 +50,7 @@ def getPatternsPerFile():
             cur.execute(cmd2%(fileId))
             allPatterns = cur.fetchall()
             allPatterns = np.array(allPatterns)
-            np.savetxt(os.path.join(root_path, filename+extension), allPatterns, fmt = ['%ld', '%f', '%f'], delimiter = '\t')
+            np.savetxt(os.path.join(root_path, filename+outExt), allPatterns, fmt = ['%ld', '%f', '%f'], delimiter = '\t')
     
     except psy.DatabaseError, e:
         print 'Error %s' % e
