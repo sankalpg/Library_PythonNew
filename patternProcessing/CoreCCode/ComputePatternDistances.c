@@ -340,7 +340,7 @@ int main( int argc , char *argv[])
             continue;
         }
         memset(tempFilename, '\0', sizeof(char)*400);
-        strcat(tempFilename,baseName);
+        strcat(tempFilename,searchFileNames[ss]);
         strcat(tempFilename,blackListExt);         
         isBlackListed2 = (int*)malloc(sizeof(int)*NPatternsFile2);
         readBlackListDump(tempFilename, isBlackListed2);
@@ -390,8 +390,10 @@ int main( int argc , char *argv[])
 
         for (ii=0; ii < NPatternsFile1; ii++)
         {
+            //printf("%d\n",isBlackListed1[ii]);
             if (isBlackListed1[ii]==1)
             {
+                //printf("Hello1 %lld\n",ii);
                 continue;
             }
             for (jj=0; jj < NPatternsFile2; jj++)  
@@ -399,6 +401,7 @@ int main( int argc , char *argv[])
                 
                 if(isBlackListed2[jj]==1)
                 {
+                    //printf("Hello2 %lld\n",jj);
                     continue;
                 }
                 

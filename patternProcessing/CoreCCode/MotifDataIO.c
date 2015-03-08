@@ -520,6 +520,7 @@ int readBlackListDump(char *blacklistFile, int *isRemoved)
      while(fscanf(fp,"%d\n", &temp)!=EOF)
     {
         isRemoved[ii] = temp;
+        ii++;
     }
     fclose(fp);
     

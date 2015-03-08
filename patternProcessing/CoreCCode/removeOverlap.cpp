@@ -68,23 +68,23 @@ int main( int argc , char *argv[])
 
     for (ii=0;ii<NFilesSearch;ii++)
     {
-        printf("file: %s\n", searchFileNames[ii]);	
+        printf("file: %s\n", searchFileNames[ii]);    
         strcat(tempFilename,searchFileNames[ii]);
         strcat(tempFilename,patternInfoExt);
         err =  readPatternDump(tempFilename, &patternInfo, &nPatterns);
         memset(tempFilename, '\0', sizeof(char)*400);
         if (err == 0)
-	{
-		continue;
-	}
+        {
+            continue;
+        }
         strcat(tempFilename,searchFileNames[ii]);
         strcat(tempFilename,patternKNNExt);
         err = readKNNDump(tempFilename, &patternDist, &NPairs);
         memset(tempFilename, '\0', sizeof(char)*400);
-	if (err == 0)
-	{
-		continue;
-	}
+        if (err == 0)
+        {
+            continue;
+        }
         if ( nPatterns != NPairs)
         {
             if (verbos ==1)
@@ -101,22 +101,22 @@ int main( int argc , char *argv[])
         
         //sorting the pairs according to ascending order of the distance values
         sortArr = (sortArr_t *)malloc(sizeof(sortArr_t)*nPatterns);
-	for(jj=0;jj<nPatterns;jj++)
-	{
-	  sortArr[jj].value = patternDist[jj].dist;
-	  sortArr[jj].index = jj;
-	}
+        for(jj=0;jj<nPatterns;jj++)
+        {
+        sortArr[jj].value = patternDist[jj].dist;
+        sortArr[jj].index = jj;
+        }
         qsort (sortArr, nPatterns, sizeof(sortArr_t), comparePairs);
-	patternInfo_s = (patternInfo_t*)malloc(sizeof(patternInfo_t)*nPatterns);
-	patternDist_s = (patternDist_t*)malloc(sizeof(patternDist_t)*nPatterns);
-	for(jj=0;jj<nPatterns;jj++)
-	{
-	  patternInfo_s[jj] = patternInfo[sortArr[jj].index];
-	  patternDist_s[jj] = patternDist[sortArr[jj].index];
-	}
-	free(patternInfo);
-	free(patternDist);
-	
+        patternInfo_s = (patternInfo_t*)malloc(sizeof(patternInfo_t)*nPatterns);
+        patternDist_s = (patternDist_t*)malloc(sizeof(patternDist_t)*nPatterns);
+        for(jj=0;jj<nPatterns;jj++)
+        {
+        patternInfo_s[jj] = patternInfo[sortArr[jj].index];
+        patternDist_s[jj] = patternDist[sortArr[jj].index];
+        }
+        free(patternInfo);
+        free(patternDist);
+    
 
         // finding out the longest time stamp in the current file
         for(jj=0; jj< nPatterns; jj++)
@@ -184,12 +184,12 @@ int main( int argc , char *argv[])
         }
         fclose(fp1);
         memset(blackListFile, '\0', sizeof(char)*400);
-	
-	free(blackListArray);
-	free(patternInfo_s);
-	free(patternDist_s);
-	free(sortArr);
-	free(overlapArray);
+    
+    free(blackListArray);
+    free(patternInfo_s);
+    free(patternDist_s);
+    free(sortArr);
+    free(overlapArray);
         
      
     }
