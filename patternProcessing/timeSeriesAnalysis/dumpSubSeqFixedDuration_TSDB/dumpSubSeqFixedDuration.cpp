@@ -77,9 +77,18 @@ int main( int argc , char *argv[])
     {
         fwrite(TSData1->subSeqPtr[ii].pData, sizeof(TSADATA), lenRawMotifData, fp);
     }
+    
+    
+    if (verbos){
+        printf("Processing done!\n");
+        printf("Downsampling factor %d\n",TSData1->procParams.repParams.dsFactor);
+        printf("HopSize %f\n",TSData1->pHop);
+        printf("Subsequence length dumped %d\n",lenRawMotifData);
+        
+    }
+    
     delete TSData1;
     
-    if (verbos){printf("Processing done!\n");}
     return 1;
 }
 
