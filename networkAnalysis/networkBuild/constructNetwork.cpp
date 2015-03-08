@@ -151,7 +151,7 @@ int main(int argc, char* argv[])
     if( argc == 6 ){verbos = atoi(argv[5]);}
     
    
-   createPatternGraphPerCollection(listFile, patternKNNExt, Graph, 0, ThshldArray[thresholdBin-1]);
+   createPatternGraphPerCollection(listFile, patternKNNExt, Graph, 0, 10.0*ThshldArray[thresholdBin-1]);
 
     clusterCoff = TSnap::GetClustCf(Graph);
     
