@@ -3,6 +3,9 @@
 #include "../TSApool.h"
 #include "../TSAlogs.h"
 
+#define OPTIMIZED_CODE_FOR_SMALL_DATA
+//#define OPTIMIZED_CODE_FOR_BIG_DATA
+
 using namespace std;
 
 int main( int argc , char *argv[])
@@ -11,6 +14,7 @@ int main( int argc , char *argv[])
     int verbos;
     TSADIST realDist, LB_kim_FL, LB_Keogh_EQ, LB_Keogh_EC, bsf_local;
     TSAIND searchFileID;
+    TSADATA *out1, *out2;
     
     
     procParams_t *myProcParamsPtr;
@@ -60,11 +64,13 @@ int main( int argc , char *argv[])
     int nInterFact = TSData1->procParams.pattParams.nInterpFac;
     TSData1->setSubSeqLengthsFIX(lenMotifReal);
     TSData1->genUniScaledSubSeqsVarLen();
+    TSData1->computeMeanSubSeqs(lenMotifReal);
     TSData1->normalizeSubSeqs(TSData1->procParams.repParams.normType);
     TSData1->initializeBlackList(NPatternsFile1);
     TSData1->loadBlackList(TSData1->fHandle.getBlackListSegFileName());//because they overlapped with others who were much stronger candidate(simply had low distance neighbor)
     
-    
+    out1 = (TSADATA *)malloc(sizeof(TSADATA)*lenMotifReal);
+    out2 = (TSADATA *)malloc(sizeof(TSADATA)*lenMotifReal);
     
     TSAdtwSimilarity dtwUCR( &logs.procLogs);
     dtwUCR.configureTSASimilarity(lenMotifReal, lenMotifReal, TSData1->procParams.distParams.DTWBand);
@@ -93,7 +99,8 @@ int main( int argc , char *argv[])
         TSData2->downSampleSubSeqs();
         TSData2->setSubSeqLengthsFIX(lenMotifReal);
         TSData2->genUniScaledSubSeqsVarLen();
-        TSData2->normalizeSubSeqs(TSData1->procParams.repParams.normType);
+        TSData2->computeMeanSubSeqs(lenMotifReal);
+        TSData2->normalizeSubSeqs(TSData2->procParams.repParams.normType);
         TSData2->initializeBlackList(NPatternsFile2);
         TSData2->loadBlackList(TSData2->fHandle.getBlackListSegFileName());//because they overlapped with others who were much stronger candidate(simply had low distance neighbor)
     
@@ -123,6 +130,8 @@ int main( int argc , char *argv[])
                 }
                 
                 bsf_local = distThshld;
+                
+#ifdef OPTIMIZED_CODE_FOR_BIG_DATA                
                 for (int pp = 0; pp < nInterFact; pp++)
                 {
                     for (int mm = 0; mm < nInterFact; mm++)
@@ -154,6 +163,30 @@ int main( int argc , char *argv[])
                         }
                     }
                 }
+#endif
+
+#ifdef OPTIMIZED_CODE_FOR_SMALL_DATA
+                for (int pp = 0; pp < nInterFact; pp++)
+                {
+                    for (int mm = 0; mm < nInterFact; mm++)
+                    {                
+                        if (paramHand.procParams.combMTX[pp][mm]==0)
+                            continue;
+                        
+                        TSData1->copyAndNormalizeSubSeqsPASA(out1, out2, TSData1->subSeqPtr[ind1+pp].pData, TSData2->subSeqPtr[ind2+mm].pData, TSData1->subSeqPtr[ind1+pp].mean, TSData2->subSeqPtr[ind2+mm].mean, lenMotifReal);
+                        
+                        realDist = dtw1dBandConst_localConst(out1, out2, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, INF, dtwUCR.accLB_Keogh_EQ);
+                        logs.procLogs.nDTW_EA++;
+                        if(realDist < bsf_local)
+                        {
+                            bsf_local = realDist;
+                        }
+
+                    }
+                }
+
+#endif
+                
                 if (bsf_local < distThshld)
                 {
                     if (bsf_local==0)//this is to avoid same pattern treated as a candidate

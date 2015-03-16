@@ -280,6 +280,8 @@ int TSAdataHandler::loadMotifDataTemplate1()
     
     genUniScaledSubSeqs();
     
+    computeMeanSubSeqs(procParams.motifLengths[procParams.indexMotifLenReal]);
+    
     normalizeSubSeqs(procParams.repParams.normType);
     
     
@@ -583,7 +585,7 @@ int TSAdataHandler::genTemplate1SubSeqs()
     
     genUniScaledSubSeqs();
     
-    computeMeanSubSeqs();
+    computeMeanSubSeqs(procParams.motifLengths[procParams.indexMotifLenReal]);
     
     normalizeSubSeqs(procParams.repParams.normType);
     
@@ -898,13 +900,11 @@ int TSAdataHandler::computeStdTSLocal(float **std, int varSam)
 /*
  * This function computes mean of all the subsequences
  */
-int TSAdataHandler::computeMeanSubSeqs()
+int TSAdataHandler::computeMeanSubSeqs(int len)
 {
-    int lenMotifReal = procParams.motifLengths[procParams.indexMotifLenReal];
-    
     for(TSAIND ii=0; ii < nSubSeqs; ii++)
     {
-        subSeqPtr[ii].mean  = computeMean(subSeqPtr[ii].pData, lenMotifReal);
+        subSeqPtr[ii].mean  = computeMean(subSeqPtr[ii].pData, len);
     }
     
 }
