@@ -60,6 +60,7 @@ int main( int argc , char *argv[])
     int nInterFact = TSData1->procParams.pattParams.nInterpFac;
     TSData1->setSubSeqLengthsFIX(lenMotifReal);
     TSData1->genUniScaledSubSeqsVarLen();
+    TSData1->normalizeSubSeqs(TSData1->procParams.repParams.normType);
     TSData1->initializeBlackList(NPatternsFile1);
     TSData1->loadBlackList(TSData1->fHandle.getBlackListSegFileName());//because they overlapped with others who were much stronger candidate(simply had low distance neighbor)
     
@@ -92,6 +93,7 @@ int main( int argc , char *argv[])
         TSData2->downSampleSubSeqs();
         TSData2->setSubSeqLengthsFIX(lenMotifReal);
         TSData2->genUniScaledSubSeqsVarLen();
+        TSData2->normalizeSubSeqs(TSData1->procParams.repParams.normType);
         TSData2->initializeBlackList(NPatternsFile2);
         TSData2->loadBlackList(TSData2->fHandle.getBlackListSegFileName());//because they overlapped with others who were much stronger candidate(simply had low distance neighbor)
     

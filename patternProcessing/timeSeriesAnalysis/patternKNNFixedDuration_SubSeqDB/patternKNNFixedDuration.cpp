@@ -61,6 +61,7 @@ int main( int argc , char *argv[])
     int nInterFact = TSData1->procParams.pattParams.nInterpFac;
     TSData1->setSubSeqLengthsFIX(lenMotifReal);
     TSData1->genUniScaledSubSeqsVarLen();
+    TSData1->normalizeSubSeqs(TSData1->procParams.repParams.normType);
     
     
     
@@ -93,6 +94,7 @@ int main( int argc , char *argv[])
         TSData2->downSampleSubSeqs();
         TSData2->setSubSeqLengthsFIX(lenMotifReal);
         TSData2->genUniScaledSubSeqsVarLen();
+        TSData2->normalizeSubSeqs(TSData1->procParams.repParams.normType);
        
         dtwUCR.setCandPtr(TSData2->subSeqPtr, TSData2->nSubSeqs);
         dtwUCR.computeCandEnvelops();
