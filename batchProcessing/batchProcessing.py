@@ -442,8 +442,16 @@ def batchDeleteFiles(RootDir, delExts= [""]):
             print "File removed " + filename
             os.remove(filename)            
     
-            
-            
+def batchRenameFiles(RootDir, renExts= [{}]):            
+    """
+    provide new and old extionsions like {'oldExt':'xx','newExt':'yy'}
+    """
+     
+    for extExt in renExts:
+        filenames = GetFileNamesInDir(RootDir, extExt['oldExt'])        
+        for filename in filenames:
+            fname ,ext = os.path.splitext(filename)
+            os.rename(fname + extExt['oldExt'], fname + extExt['newExt'])
         
         
 def validateMotifSearchDB(root_dir, fileout):
