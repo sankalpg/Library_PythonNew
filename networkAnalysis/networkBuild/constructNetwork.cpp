@@ -229,7 +229,12 @@ int main(int argc, char* argv[])
     fclose(fp2);
     
     sprintf(outInfoFile, "%d_NetworkInfo.txt", thresholdBin);
-    TSnap::PrintInfo(Graph, "",outInfoFile, 0);
+    //TSnap::PrintInfo(Graph, "",outInfoFile, 0);
+    
+    
+    //save graph
+    TSnap::SaveEdgeList(Graph, "GraphEdgeListFile", "Save as tab-separated list of edges");
+    TSnap::SavePajek(Graph, "GraphPajekFile"); 
     
     printf("Number of nodes are: %d\n",Graph->GetNodes());
     randomizeGraph(Graph, (int)1);
@@ -242,7 +247,7 @@ int main(int argc, char* argv[])
     fclose(fp2);
     
     sprintf(outInfoFile, "%d_NetworkInfo_RANDOM.txt", thresholdBin);
-    TSnap::PrintInfo(Graph, "",outInfoFile, 0);
+    //TSnap::PrintInfo(Graph, "",outInfoFile, 0);
     
     
     
@@ -256,8 +261,7 @@ int main(int argc, char* argv[])
     
     
     
-    //TSnap::SaveEdgeList(Graph, outputNetworkFile, "Save as tab-separated list of edges");
-    //TSnap::SavePajek(Graph, outputNetworkFile); 
+
 	
 	//TSnap::SaveEdgeList(Graph, "test.txt", "Save as tab-separated list of edges");
     
