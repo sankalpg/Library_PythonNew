@@ -14,5 +14,3 @@ removeTaniSegs: 1
 dumpLogs: 1
 maxNMotifsPairs: 25
 pitchHop: 0.0222
-
-
