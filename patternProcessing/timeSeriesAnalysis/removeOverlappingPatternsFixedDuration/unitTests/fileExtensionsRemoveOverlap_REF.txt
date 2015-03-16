@@ -1,0 +1,7 @@
+tsFileExt: .pitch
+tonicExt: .tonic
+blackTimeExt: .blackPatterns_REF
+searchListExt: .flist
+subSeqFileExt: .patternData
+subSeqInfoFileExt: .patternInfo
+patternKNNExt: .KNN

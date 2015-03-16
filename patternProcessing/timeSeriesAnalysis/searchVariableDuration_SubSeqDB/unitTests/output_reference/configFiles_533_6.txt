@@ -1,0 +1,25 @@
+nInterpFac: 1
+pitchHop: 0.0029
+binsPOct: 1200
+TSRepType: 0
+varDur: -1
+distType: 1
+threshold: -1
+blackDurFact: 1
+maxPauseDur: -1
+rankRefDistType: 0
+quantSize: -1
+flatThreshold: -1
+DTWType: 1
+dumpLogs: 1
+maxNMotifsPairs: -1
+DTWBand: 0.9
+durMotif: -1
+normType: 3
+minPossiblePitch: 60
+subSeqLen: 800
+sampleRate: 15
+methodVariant: 1
+removeTaniSegs: -1
+complexityMeasure: 0
+

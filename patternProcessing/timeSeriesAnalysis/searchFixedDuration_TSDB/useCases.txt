@@ -1,0 +1,8 @@
+Comments: If you have a a fixed duration patterns from the discovery phase (time stamps) and you want to search for KNN of these patterns given other pitch sequences. You can use this code. 
+
+
+Input type: this method works on time series of pitch sequence
+Task type: search
+patterns input: fixed duration patterns, basically the output of discovery
+patterns input type: time stamps of couplets
+output type: for each input pattern, it searches for N nearest neighbors and return their time stamps and file indices

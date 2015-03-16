@@ -1,0 +1,12 @@
+Comments: If you have manyally annotated phrases or patterns and they happen to be of different lenths, you can use this code to find their repetitive instances in other files. Other files are provided as pitch sequene
+. Also if you want to do this task of search for entire database, there is a differnet code for that which optimizes loading of data. Otherwise you can always do it for a single file.
+
+NOTE: this code hasn't been used much and so it might not be very matured. Instead what is matured is the variable pattern search code written for supervised search experiments (ICASSP). That code accepts input as subsequences and handles variable length queries and candidate patterns.
+
+
+Input type: this method works on time series of pitch sequence
+Task type: search
+patterns input: variable duration queries, annotated for example
+patterns input type: time stamps of couplets and type of pattern (tab separated)
+output type: for each input pattern, it searches for N nearest neighbors and return their time stamps and file indices
+

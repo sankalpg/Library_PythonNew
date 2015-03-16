@@ -1,0 +1,8 @@
+Comments: This function is to discover fixed duration patterns within a audio recording. If you have a continuous pitch sequence of a recording you can use this function to get N time segment pairs for which pitch sequence had lowest distance according to DTW distance.
+
+
+Input type: time series of pitch sequence
+Task type: discovery
+patterns input: None
+patterns input type: NA
+output type: couplets of pattenrs with distances

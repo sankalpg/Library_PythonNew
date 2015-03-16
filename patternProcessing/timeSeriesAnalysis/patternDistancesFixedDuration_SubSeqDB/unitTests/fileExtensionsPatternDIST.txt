@@ -1,0 +1,11 @@
+tsFileExt: .pitch
+tonicExt: .tonic
+blackTimeExt: .blackPatterns
+logFileExt: .searchLogs
+paramsDumpExt: .searchParams
+outFileExt: .pattDistances
+mappFileExt: .searchMap
+searchListExt: .flist
+queryFileExt: .anot
+subSeqFileExt: .patternData
+subSeqInfoFileExt: .patternInfo
