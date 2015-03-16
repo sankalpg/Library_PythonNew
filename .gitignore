@@ -3,8 +3,8 @@
 *.so
 *.DS_Store
 *~
-*.txt
 *.arff
 *.swp
 *.bin
+*.mp3
 
