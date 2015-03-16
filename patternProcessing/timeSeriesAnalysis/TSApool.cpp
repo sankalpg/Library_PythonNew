@@ -216,6 +216,7 @@ int TSApool::updatePattStorageData(TSAIND queryInd, TSAsubSeq_t *subSeqPtr, int 
                 longTermDataStorage[queryInd][emptySpacePtr[0]].patternID = priorityQSear[queryInd][pp].patternID;
                 longTermDataStorage[queryInd][emptySpacePtr[0]].sTime = subSeqPtr[priorityQSear[queryInd][pp].ind2].sTime;
                 longTermDataStorage[queryInd][emptySpacePtr[0]].eTime = subSeqPtr[priorityQSear[queryInd][pp].ind2].eTime;
+                longTermDataStorage[queryInd][emptySpacePtr[0]].mean = subSeqPtr[priorityQSear[queryInd][pp].ind2].mean;
                 priorityQSear[queryInd][pp].storagePtr = &longTermDataStorage[queryInd][emptySpacePtr[0]];
                 emptySpacePtr++;
                 emptySpaceCnt--;

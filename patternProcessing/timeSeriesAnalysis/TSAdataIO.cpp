@@ -44,6 +44,11 @@ int TSAparamHandle::readParamsFromFile(char *paramFile)
     char field[100]={'\0'};
     char value[100]={'\0'};
     
+    //Initilizations
+    procParams.repParams.normType=0;
+    
+    
+    
     fp = fopen(paramFile, "r");
     if (fp == NULL){printf("Error opening file %s\n", paramFile);exit(0);}
     while(fgets(tempFilename, 400, fp))
@@ -274,6 +279,8 @@ int TSAdataHandler::loadMotifDataTemplate1()
     genSubSeqsWithTStarts(queryTStamps, nQueries);
     
     genUniScaledSubSeqs();
+    
+    normalizeSubSeqs(procParams.repParams.normType);
     
     
 }
@@ -576,8 +583,49 @@ int TSAdataHandler::genTemplate1SubSeqs()
     
     genUniScaledSubSeqs();
     
+    computeMeanSubSeqs();
+    
+    normalizeSubSeqs(procParams.repParams.normType);
+    
     procLogPtr->nProcSubSeq+=nSubSeqs;
 
+}
+
+int TSAdataHandler::copyAndNormalizeSubSeqsPASA(TSADATA *out1, TSADATA *out2, TSADATA *inp1, TSADATA *inp2, float mean1, float mean2, int len)
+{
+    memcpy(out1, inp1, sizeof(TSADATA)*len);
+    memcpy(out2, inp2, sizeof(TSADATA)*len);
+    
+    if (procParams.repParams.normType != TONIC_NORM_PASAPA)
+    {
+        return 1;
+    }
+    
+    float diff = mean1-mean2;
+    float sign=1;
+    if (diff!=0) 
+    { sign= diff/fabs(diff);}
+    
+    float offset=0;    
+    if ((fabs(diff)>550) && (fabs(diff)<850))
+    {
+        offset=sign*700;
+    }
+    else if  ((fabs(diff)>1050) && (fabs(diff)<1350))
+    {
+        offset=sign*1200;
+    }
+    else if((fabs(diff)>1750) && (fabs(diff)<2050))
+    {
+        offset=sign*1900;
+    }
+
+    for(int ii=0;ii<len;ii++)
+    {
+        out1[ii]-=offset;
+    }
+    
+    return 1;
 }
 
 int TSAdataHandler::genUniScaledSubSeqsVarLen()
@@ -844,6 +892,20 @@ int TSAdataHandler::computeStdTSLocal(float **std, int varSam)
     
     *std = stdVec;
     free(mean);
+    
+}
+
+/*
+ * This function computes mean of all the subsequences
+ */
+int TSAdataHandler::computeMeanSubSeqs()
+{
+    int lenMotifReal = procParams.motifLengths[procParams.indexMotifLenReal];
+    
+    for(TSAIND ii=0; ii < nSubSeqs; ii++)
+    {
+        subSeqPtr[ii].mean  = computeMean(subSeqPtr[ii].pData, lenMotifReal);
+    }
     
 }
 

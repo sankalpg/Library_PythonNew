@@ -30,6 +30,9 @@ typedef struct TSAsubSeq
     float eTime;
     int len;
     int fileId;
+    float mean;
+    float std;
+    
 }TSAsubSeq_t;
 
 typedef struct TSAmotifInfo
@@ -55,9 +58,8 @@ typedef struct TSAmotifDataStorage
     int len;
     float sTime;
     float eTime;
-    
-    
-    
+    float mean;
+    float std;    
 }TSAmotifDataStorage_t;
 
 typedef struct TSAmotifInfoExt
