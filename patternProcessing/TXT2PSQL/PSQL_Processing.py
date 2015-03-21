@@ -83,10 +83,11 @@ def fillFileTableWithRagaIds(myDatabase, collection = 'carnatic'):
 		cur.execute(getMBIDs)
 		mbids = cur.fetchall()
 		
-		for mbid in mbids:
+		for ii,mbid in enumerate(mbids):
 			mbid = mbid[0]
+			print ii
 			recData = tradition.get_recording(mbid)
-			ragaId = recData['raaga']['id']
+			ragaId = recData['raaga']['uuid']
 			cur.execute(cmd1%(ragaId, mbid))
 		con.commit()
 		print "Successfully updated file table in %s database"%(myDatabase)
@@ -205,9 +206,11 @@ def createPatternMatchTable(root_dir, logFile, myDatabase=''):
     
     t1 = time.time()
     #important stuff
-    motifDiscExt = '.disPatts'
-    motifSearchExt = ['.srhPattsSqEuclidean', '.srhPattsCityBlock', '.srhPattsShiftCityBlock', '.srhPattsShiftLinExp']
-    motifSearchMappExt = '.srhMap'
+    motifDiscExt = '.disPatts1'
+    #motifSearchExt = ['.srhPatts1SqEuclidean', '.srhPatts1CityBlock', '.srhPatts1ShiftCityBlock', '.srhPatts1ShiftLinExp']
+    motifSearchExt = ['.srhPatts1SqEuclidean']
+    mainDistanceIndex = 0           # this is basically index of extions stored in motifSearchExt which is the main distance files
+    motifSearchMappExt = '.srhMap1'
     
     #lets get all the files in the root_dir
     fileNames = BP.GetFileNamesInDir(root_dir, motifDiscExt)
@@ -331,7 +334,7 @@ def createPatternMatchTable(root_dir, logFile, myDatabase=''):
             ### Insert first data for one file so that we know what patterns have what id in the "pattern" table and then for rest of the version we can directly get these ids for storing in match table
             
             #now inserting searched data
-            SearchExt = motifSearchExt[3]
+            SearchExt = motifSearchExt[mainDistanceIndex]
             version=3
             motifSearchFile = fname + SearchExt
             #reading searched motifs file
@@ -358,8 +361,10 @@ def createPatternMatchTable(root_dir, logFile, myDatabase=''):
                     
             
             #now inserting searched data
-            for version,SearchExt in enumerate(motifSearchExt[:3]):
+            for version,SearchExt in enumerate(motifSearchExt):
                 
+                if SearchExt == motifSearchExt[mainDistanceIndex]:
+                    continue
                 motifSearchFile = fname + SearchExt
                 #reading searched motifs file
                 try:
