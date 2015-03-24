@@ -1,6 +1,63 @@
-import networkx as net
 import numpy as np
+import matplotlib.pyplot as plt
+import os
+import sys
+import networkx as net
 
+def plotClusteringCoff(root_dir, nFiles, plotName=-1):
+    """
+    This function plots clustering cofficient as a function of threshold using which the network was build. It also plots the CC corresponding to the randomized network.
+    """
+    
+    baseClusterCoffFileName = '_ClusteringCoff'
+    randomizationSuffix = '_RANDOM'
+    baseNetworkPropFileName = '_NetworkInfo'
+    CC = []
+    CC_Rand = []    
+    for ii in range(1, nFiles+1):
+
+        try:
+            cc = np.loadtxt(os.path.join(root_dir, str(ii)+baseClusterCoffFileName+'.txt'))
+            cc_rand = np.loadtxt(os.path.join(root_dir,str(ii)+baseClusterCoffFileName+randomizationSuffix+'.txt'))
+        except:
+            cc = 0
+            cc_rand = 0
+         
+        CC.append(cc)
+        CC_Rand.append(cc_rand)
+    
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    plt.hold(True)
+    fsize = 22
+    fsize2 = 14
+    font="Times New Roman"
+    
+    plt.xlabel("threshold bin", fontsize = fsize, fontname=font)
+    plt.ylabel("Clustering Coff", fontsize = fsize, fontname=font, labelpad=fsize2)
+    
+    
+    pLeg = []
+    p, = plt.plot(CC, 'r', linewidth=2)
+    pLeg.append(p)
+    p, = plt.plot(CC_Rand, 'b--', linewidth=2)
+    pLeg.append(p)
+    
+    xLim = ax.get_xlim()
+    yLim = ax.get_ylim()
+    
+    ax.set_aspect((xLim[1]-xLim[0])/(2*float(yLim[1]-yLim[0])))
+    plt.legend(pLeg, ['Original Network', 'Randomized Network'], loc ='lower right', ncol = 1, fontsize = fsize2, scatterpoints=1, frameon=True, borderaxespad=0.1)
+    #plt.tick_params(axis='both', which='major', labelsize=fsize2)
+    
+    
+    if isinstance(plotName, int):
+        plt.show()
+    elif isinstance(plotName, str):
+        fig.savefig(plotName)
+    
+    
+    
 
 
 def filter_graph_edges(G, DISPARITY_FILTER_SIGNIF_LEVEL, verbose=True, print_prefix='', field='weight'):
@@ -61,11 +118,13 @@ def filter_graph_edges(G, DISPARITY_FILTER_SIGNIF_LEVEL, verbose=True, print_pre
 
 
 def computeRaagaClusters(networkFile):
-	
-	#reading network
-	G = networkx.read_pajek(networkFile)
+    
+    #reading network
+    G = networkx.read_pajek(networkFile)
 
-	
+    
 
 
 
+    
+    
