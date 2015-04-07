@@ -1,4 +1,4 @@
-yes#include "../TSAdataIO.h"
+#include "../TSAdataIO.h"
 #include "../TSAsimilarity.h"
 #include "../TSApool.h"
 #include "../TSAlogs.h"
@@ -18,8 +18,7 @@ int main( int argc , char *argv[])
     procParams_t *myProcParamsPtr;
     fileExts_t *myFileExtsPtr;
     TSAparamHandle paramHand;
-    TSAlogs logs;yes
-    patterns
+    TSAlogs logs;
     fileNameHandler fHandle;
     
     

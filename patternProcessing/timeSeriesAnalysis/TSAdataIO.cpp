@@ -190,6 +190,10 @@ int TSAparamHandle::readFileExtsInfoFile(char *fileExtsFile)
         if (strcmp(field, "subSeqTNFileExt:")==0){strcat(fileExts.subSeqTNFileExt, value);}
         if (strcmp(field, "subSeqInfoFileExt:")==0){strcat(fileExts.subSeqInfoFileExt, value);}
         if (strcmp(field, "patternKNNExt:")==0){strcat(fileExts.patternKNNExt, value);}
+        
+        memset(tempFilename, '\0', sizeof(char)*400);
+        memset(field, '\0', sizeof(char)*100);
+        memset(value, '\0', sizeof(char)*100);
     }
     fclose(fp);
     
