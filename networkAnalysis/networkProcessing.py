@@ -2,63 +2,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import sys
-import networkx as net
+import networkx as nx
+import snap
+import community
+import psycopg2 as psy
 
-def plotClusteringCoff(root_dir, nFiles, plotName=-1):
-    """
-    This function plots clustering cofficient as a function of threshold using which the network was build. It also plots the CC corresponding to the randomized network.
-    """
-    
-    baseClusterCoffFileName = '_ClusteringCoff'
-    randomizationSuffix = '_RANDOM'
-    baseNetworkPropFileName = '_NetworkInfo'
-    CC = []
-    CC_Rand = []    
-    for ii in range(1, nFiles+1):
 
-        try:
-            cc = np.loadtxt(os.path.join(root_dir, str(ii)+baseClusterCoffFileName+'.txt'))
-            cc_rand = np.loadtxt(os.path.join(root_dir,str(ii)+baseClusterCoffFileName+randomizationSuffix+'.txt'))
-        except:
-            cc = 0
-            cc_rand = 0
-         
-        CC.append(cc)
-        CC_Rand.append(cc_rand)
-    
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    plt.hold(True)
-    fsize = 22
-    fsize2 = 14
-    font="Times New Roman"
-    
-    plt.xlabel("threshold bin", fontsize = fsize, fontname=font)
-    plt.ylabel("Clustering Coff", fontsize = fsize, fontname=font, labelpad=fsize2)
-    
-    
-    pLeg = []
-    p, = plt.plot(CC, 'r', linewidth=2)
-    pLeg.append(p)
-    p, = plt.plot(CC_Rand, 'b--', linewidth=2)
-    pLeg.append(p)
-    
-    xLim = ax.get_xlim()
-    yLim = ax.get_ylim()
-    
-    ax.set_aspect((xLim[1]-xLim[0])/(2*float(yLim[1]-yLim[0])))
-    plt.legend(pLeg, ['Original Network', 'Randomized Network'], loc ='lower right', ncol = 1, fontsize = fsize2, scatterpoints=1, frameon=True, borderaxespad=0.1)
-    #plt.tick_params(axis='both', which='major', labelsize=fsize2)
-    
-    
-    if isinstance(plotName, int):
-        plt.show()
-    elif isinstance(plotName, str):
-        fig.savefig(plotName)
-    
-    
-    
-
+myUser = 'sankalp'
 
 def filter_graph_edges(G, DISPARITY_FILTER_SIGNIF_LEVEL, verbose=True, print_prefix='', field='weight'):
     '''
@@ -101,7 +51,7 @@ def filter_graph_edges(G, DISPARITY_FILTER_SIGNIF_LEVEL, verbose=True, print_pre
             #    continue
 
             # FOR UNDIRECTED
-            pij = float(G[i][j][0][field])/float(strength[i])
+            pij = float(G[i][j][field])/float(strength[i])
             aij = (1-pij)**(degree[i]-1)
             if aij < DISPARITY_FILTER_SIGNIF_LEVEL:
                 continue
@@ -116,13 +66,52 @@ def filter_graph_edges(G, DISPARITY_FILTER_SIGNIF_LEVEL, verbose=True, print_pre
 
     return G
 
-
-def computeRaagaClusters(networkFile):
+def filterAndSaveNetwork(networkFile, outputNetworkFile, DISPARITY_FILTER_SIGNIF_LEVEL):
+    """
+    This function filters the network and saves it in another file for further analysis
     
-    #reading network
-    G = networkx.read_pajek(networkFile)
-
+    """
     
+    G = nx.read_pajek(networkFile)
+    
+    #converting to undirected network
+    G = nx.Graph(G)
+    
+    if DISPARITY_FILTER_SIGNIF_LEVEL>0:
+        G = filter_graph_edges(G,DISPARITY_FILTER_SIGNIF_LEVEL)
+    
+    #saving weighted network/graph as a pajek file
+    nx.write_pajek(G, outputNetworkFile)
+    
+
+def detectCommunitiesInNewtworkNX(networkFile, outputFile, DISPARITY_FILTER_SIGNIF_LEVEL):
+    """
+    This function detects communities in the network using "community" module for networkX.
+    There is an option to perform a disparity filtering. The output has nodes per community, their ragaids and fileids.
+    
+    :networkFile: network file which is saved as a pajek file
+    :outputFile: file in whicn community information is written
+    :DISPARITY_FILTER_SIGNIF_LEVEL: significance level of the disparity filtering. If negative no filtering is performed
+    """    
+    G = nx.read_pajek(networkFile)
+    
+    #converting to undirected network
+    G = nx.Graph(G)
+    
+    if DISPARITY_FILTER_SIGNIF_LEVEL>0:
+        G = filter_graph_edges(G,DISPARITY_FILTER_SIGNIF_LEVEL)
+    
+    partition = community.best_partition(G)
+    fid = open(outputFile,'w')
+    for com in set(partition.values()):
+        list_nodes = [nodes for nodes in partition.keys()
+                                if partition[nodes] == com]
+        for n in list_nodes:
+            fid.write("%s\t%s\n"%(str(n),str(com)))
+    
+    fid.close()
+        
+
 
 
 
