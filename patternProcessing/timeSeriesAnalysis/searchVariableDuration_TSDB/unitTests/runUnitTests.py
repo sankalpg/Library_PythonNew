@@ -57,13 +57,14 @@ if __name__ == "__main__":
     print "####################################"
     print "testing for searchPatternsAllDBQuery"
     print "####################################"  
-    
+    outExt = '.motifSearch_ALL'
+    outExt_REF = '.motifSearch_REF_ALL'
     ########## test1 #########
     testInd = 1
     fileName = 'ALB_Bhairavi1_70albmgpnganesan'
     
-    cmd1 = './searchPatternsAllDBQuery_O3_REF ' +'"'+ baseDir +fileName +'"'+ ' '+ 'procParamsSearch.txt fileExtensionsSearchVarLen_REF.txt 10 -1 0'
-    cmd2 = './../searchPatternsAllDBQuery_O3 ' +'"'+ baseDir +fileName +'"'+ ' '+ 'procParamsSearch.txt fileExtensionsSearchVarLen.txt 10 -1 0'
+    cmd1 = './searchPatternsAllDBQuery_O3_REF ' +'"'+ baseDir +fileName +'"'+ ' '+ 'procParamsSearch.txt fileExtensionsSearchVarLen_REF_ALL.txt 10 -1 0'
+    cmd2 = './../searchPatternsAllDBQuery_O3 ' +'"'+ baseDir +fileName +'"'+ ' '+ 'procParamsSearch.txt fileExtensionsSearchVarLen_ALL.txt 10 -1 0'
     
     os.system(cmd1)
     os.system(cmd2)
@@ -81,8 +82,8 @@ if __name__ == "__main__":
     testInd = 2
     fileName = 'Sanjay_Bhairavi1_FASfeb2001'
     
-    cmd1 = './searchPatternsAllDBQuery_O3_REF ' +'"'+ baseDir +fileName +'"'+ ' '+ 'procParamsSearch.txt fileExtensionsSearchVarLen_REF.txt 10 -1 0'
-    cmd2 = './../searchPatternsAllDBQuery_O3 ' +'"'+ baseDir +fileName +'"'+ ' '+ 'procParamsSearch.txt fileExtensionsSearchVarLen.txt 10 -1 0'
+    cmd1 = './searchPatternsAllDBQuery_O3_REF ' +'"'+ baseDir +fileName +'"'+ ' '+ 'procParamsSearch.txt fileExtensionsSearchVarLen_REF_ALL.txt 10 -1 0'
+    cmd2 = './../searchPatternsAllDBQuery_O3 ' +'"'+ baseDir +fileName +'"'+ ' '+ 'procParamsSearch.txt fileExtensionsSearchVarLen_ALL.txt 10 -1 0'
     
     os.system(cmd1)
     os.system(cmd2)

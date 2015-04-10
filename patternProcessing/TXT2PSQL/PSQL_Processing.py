@@ -66,6 +66,18 @@ def stripPrefix(audiofile):
         
     return audiofile_WOPre
 
+
+ raagaBins = {'bf4662d4-25c3-4cad-9249-4de2dc513c06':0,
+ 'a9413dff-91d1-4e29-ad92-c04019dce5b8':1,
+ 'f0866e71-33b2-47db-ab75-0808c41f2401':2,
+ '123b09bd-9901-4e64-a65a-10b02c9e0597':3,
+ 'd5285bf4-c3c5-454e-a659-fec30075990b':4,
+ '09c179f3-8b19-4792-a852-e9fa0090e409':5,
+ '700e1d92-7094-4c21-8a3b-d7b60c550edf':6,
+ '77bc3583-d798-4077-85a3-bd08bc177881':7,
+ 'aa5f376f-06cd-4a69-9cc9-b1077104e0b0':8,
+ '85ccf631-4cdf-4f6c-a841-0edfcf4255d1':9}
+
 def fillFileTableWithRagaIds(myDatabase, collection = 'carnatic'):
 	
 	dn.set_token("60312f59428916bb854adaa208f55eb35c3f2f07")

@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 
 import batchProcessing as BP
 import psycopg2 as psy
+import networkProcessing as netPro
 
 FLT_MAX = np.finfo(np.float).max
 
@@ -179,7 +180,7 @@ def constructNetworkSNAP(fileListFile, outputNetworkFile, thresholdBin, pattDist
     
 
     
-def constructNetwork_Weighted_NetworkX(fileListFile, outputNetworkFile, thresholdBin, pattDistExt, wghtMethod):
+def constructNetwork_Weighted_NetworkX(fileListFile, outputNetworkFile, thresholdBin, pattDistExt, wghtMethod, DISPARITY_FILTER_SIGNIF_LEVEL):
     """
     This function uses networkX library to generate a weighted network.
     
@@ -191,32 +192,30 @@ def constructNetwork_Weighted_NetworkX(fileListFile, outputNetworkFile, threshol
                     The threshold values are found to be an optimal range for this problem.
     :pattDistExt:   file extension for the file where we store pattern distances 
     :wghtMethod:    0 -> wght = 1/distance, 1 -> wght = exp(-distance/mean(distances)), -1->unweighted
+    :DISPARITY_FILTER_SIGNIF_LEVEL: significance level of the disparity filtering. If negative no filtering is performed
     """
     
     if thresholdBin > 0:
         distanceThsld = ThshldArray[thresholdBin-1]
     else:
         distanceThsld = FLT_MAX
-    
-    
+        
     #initialize an graph
     G=nx.Graph()
+    meanDist=1
     #estimating mean distance value in case wghtMethod=1
     if wghtMethod == 1:
         distances = 0
         n_distances = 0
         filenames = open(fileListFile).readlines()
-        for filename in filenames:
+        for ii, filename in enumerate(filenames):
+            print "Processing file for average distance %d\n"%(ii+1)
             fname = filename.strip() + pattDistExt
             data = np.loadtxt(fname)
-            for ii in range(data.shape[0]):
-                dist = float(data[ii][2])
-                if dist >= distanceThsld:
-                    continue            
-                distances += dist
-                n_distances +=1
-        
-        meanDist = distances/n_distances
+            ind_valid = np.where(data[:,2] < distanceThsld)[0]
+            distances += np.sum(data[ind_valid,2])
+            n_distances += len(ind_valid)
+        meanDist = distances/float(n_distances)
 
     # creating the network
     filenames = open(fileListFile).readlines()
@@ -225,21 +224,26 @@ def constructNetwork_Weighted_NetworkX(fileListFile, outputNetworkFile, threshol
         print "processing file %d\n"%(ii+1)
         fname = filename.strip() + pattDistExt
         data = np.loadtxt(fname)
-        for ii in range(data.shape[0]):
-            id1 = int(data[ii][0])
-            id2 = int(data[ii][1])
-            dist = float(data[ii][2])
-            if dist >= distanceThsld:
-                continue
-            if wghtMethod == 0:
-                G.add_edge(id1,id2, weight=1/dist)
-            elif wghtMethod == 1:
-                G.add_edge(id1,id2, weight=np.exp(-dist/meanDist))
-            elif wghtMethod == -1:
-                G.add_edge(id1,id2)
-    
+        ind_valid = np.where(data[:,2] < distanceThsld)[0]
+        
+        if wghtMethod == 0:
+            edge_list = [(int(data[ii][0]), int(data[ii][1]), float(1.0/data[ii][2])) for ii in ind_valid]
+        elif wghtMethod == 1:
+            edge_list = [(int(data[ii][0]), int(data[ii][1]), float(np.exp(-data[ii][2]/meanDist))) for ii in ind_valid]
+        elif wghtMethod == -1:
+            edge_list = [(int(data[ii][0]), int(data[ii][1]), 1.0) for ii in ind_valid]
+        
+        G.add_weighted_edges_from(edge_list)
+        
+    if DISPARITY_FILTER_SIGNIF_LEVEL > 0:
+        G = netPro.filter_graph_edges(G,DISPARITY_FILTER_SIGNIF_LEVEL)
+        
     #saving weighted network/graph as a pajek file
-    nx.write_pajek(G, outputNetworkFile)
+    if not outputNetworkFile == None:
+        nx.write_pajek(G, outputNetworkFile)
+    else:
+        return G
+    
 
         
     
