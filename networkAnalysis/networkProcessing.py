@@ -6,7 +6,7 @@ import networkx as nx
 import snap
 import community
 import psycopg2 as psy
-
+import json
 
 
 myUser = 'sankalp'
@@ -85,22 +85,17 @@ def filterAndSaveNetwork(networkFile, outputNetworkFile, DISPARITY_FILTER_SIGNIF
     nx.write_pajek(G, outputNetworkFile)
     
 
-def detectCommunitiesInNewtworkNX(networkFile, outputFile, DISPARITY_FILTER_SIGNIF_LEVEL):
+def detectCommunitiesInNewtworkNX(networkFile, outputFile):
     """
     This function detects communities in the network using "community" module for networkX.
-    There is an option to perform a disparity filtering. The output has nodes per community, their ragaids and fileids.
     
     :networkFile: network file which is saved as a pajek file
     :outputFile: file in whicn community information is written
-    :DISPARITY_FILTER_SIGNIF_LEVEL: significance level of the disparity filtering. If negative no filtering is performed
     """    
     G = nx.read_pajek(networkFile)
     
     #converting to undirected network
     G = nx.Graph(G)
-    
-    if DISPARITY_FILTER_SIGNIF_LEVEL>0:
-        G = filter_graph_edges(G,DISPARITY_FILTER_SIGNIF_LEVEL)
     
     partition = community.best_partition(G)
     fid = open(outputFile,'w')
@@ -111,10 +106,23 @@ def detectCommunitiesInNewtworkNX(networkFile, outputFile, DISPARITY_FILTER_SIGN
             fid.write("%s\t%s\n"%(str(n),str(com)))
     
     fid.close()
-        
 
 
-
+def computeBetweenesCentrality(netFile, outFile):
+    
+    G = nx.read_pajek(netFile)
+    G = nx.Graph(G)
+    bc = nx.betweenness_centrality(G)
+    json.dump(bc, open(outFile,'w'))
+    
+    
+def computeDegreeDistribution(netFile, outFile):
+    
+    G = nx.read_pajek(netFile)
+    G = nx.Graph(G)
+    nodes = G.nodes()
+    d = G.degree(nodes)
+    json.dump(d, open(outFile,'w'))    
 
     
     
