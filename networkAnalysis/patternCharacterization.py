@@ -218,7 +218,7 @@ def convertFormat(sec):
     return str(hours) + ':' + str(minutes) + ':' + str(seconds)  
 
 
-def extractRagaPhrases(audio_root, root_name, N, comRankExt = '', netExt= '', myDatabase= '', betcenExt = '', degreeExt = ''):
+def extractRagaPhrases(audio_root, root_name, N, comRankExt = '', netExt= '', myDatabase= '', betcenExt = '', degreeExt = '', audioGutter = 0):
     """
     This function parses community rank file and select best N community from each raga.
     The phrases corresponding to these selected communities are dumped in mp3 format.
@@ -298,7 +298,7 @@ def extractRagaPhrases(audio_root, root_name, N, comRankExt = '', netExt= '', my
                     audioFile = os.path.join(audio_root, filePath)                    
                     outfile = os.path.join(phrasePath, '%d_%s_%s.mp3'%(kk,comData[comId][nodeInd]['nId'], comData[comId][nodeInd]['ragaId']))
         
-                    cmd = "sox \"%s\" \"%s\" trim %s =%s"%(audioFile, outfile, convertFormat(start_time), convertFormat(end_time))
+                    cmd = "sox \"%s\" \"%s\" trim %s =%s"%(audioFile, outfile, convertFormat(start_time-audioGutter), convertFormat(end_time+audioGutter))
                     os.system(cmd)
 
     except psy.DatabaseError, e:
