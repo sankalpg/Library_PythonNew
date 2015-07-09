@@ -59,16 +59,21 @@ def computeDutationSongs(root_dir, FileExt2Proc='.mp3'):
         audiofilenames = GetFileNamesInDir(root_dir, FileExt2Proc)
         
         totalLen = 0
+	length = []
         for audiofile in audiofilenames:
             if  FileExt2Proc=='.mp3':
                 audio = MP3(audiofile)
                 totalLen += audio.info.length
+		length.append(audio.info.length)		
             elif FileExt2Proc=='.wav':
                 totalLen +=ES.MetadataReader(filename = audiofile)()[7]
-                
-                
+		length.append(ES.MetadataReader(filename = audiofile)()[7]) 
         print "total files %d\n"%len(audiofilenames)
         print "Total length %d\n"%totalLen
+	print "Max length %d\n"%np.max(length)
+	print "Min length %d\n"%np.min(length)
+	print "Mean length %d\n"%np.mean(length)
+	print "median length %d\n"%np.median(length)
                 
 
 # This function is to batch process 

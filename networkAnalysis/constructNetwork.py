@@ -14,8 +14,21 @@ FLT_MAX = np.finfo(np.float).max
 
 myUser = 'sankalp'
 
-ISMIR2015_10RAGASCarnatic = ['55', '10', '27', '8', '9', '137', '159', '20', '13', '210']
-colors = {'55':'red', '10':'blue', '27':'black', '8':'green', '9':'yellow', '137':'pink', '159':'orange', '20':'magenta', '13':'cyan', '210':'purple'}
+
+colors = {
+'09c179f3-8b19-4792-a852-e9fa0090e409': 'red',
+'77bc3583-d798-4077-85a3-bd08bc177881': 'blue', 
+'85ccf631-4cdf-4f6c-a841-0edfcf4255d1': 'black',
+'123b09bd-9901-4e64-a65a-10b02c9e0597': 'green',
+'700e1d92-7094-4c21-8a3b-d7b60c550edf': 'yellow',
+'a9413dff-91d1-4e29-ad92-c04019dce5b8': 'pink',
+'aa5f376f-06cd-4a69-9cc9-b1077104e0b0': 'orange',
+'bf4662d4-25c3-4cad-9249-4de2dc513c06': 'magenta',
+'d5285bf4-c3c5-454e-a659-fec30075990b': 'cyan',
+'f0866e71-33b2-47db-ab75-0808c41f2401': 'purple'
+}
+
+#colors = {'55':'red', '10':'blue', '27':'black', '8':'green', '9':'yellow', '137':'pink', '159':'orange', '20':'magenta', '13':'cyan', '210':'purple'}
 
 ThshldArray = np.array([0.0,
 2082.47,
@@ -68,7 +81,7 @@ ThshldArray = np.array([0.0,
 4798000.83,
 5000000.00])
 
-def constructNetworkSNAP_NodeLabels(fileListFile, outputNetworkFile, thresholdBin, pattDistExt, myDatabase=''):
+def constructNetworkSNAP_NodeLabels(fileListFile, outputNetworkFile, thresholdBin, pattDistExt, myDatabase='', colors = colors):
     """
     This function uses Snap library to generate a labelled network. 
     :fileListFile: file which contains list of filenames which are to be used for the network generation
@@ -143,6 +156,48 @@ def constructNetworkSNAP_NodeLabels(fileListFile, outputNetworkFile, thresholdBi
     
     snap.SavePajek_PNEANet(G, outputNetworkFile)
     #snap.SavePajek_PNEANet(G, outputNetworkFile, NIdColorH,NIdLabelH)
+    
+    
+    
+def colorifyNetworkSnap(pajekInput, pajekOutput, myDatabase=''):
+    """
+    This functions takes in a pajek file and output a pajek file. It assign a color label for each node
+    """    
+    
+    #initialize an graph
+    G = snap.LoadPajek_PUNGraph(pajekInput)
+    
+    #annotating netowrk nodes with raga labels and edges with distances
+    cmd1 = "select raagaId from file where id = (select file_id from pattern where id =%d)"
+    NIdColorH = snap.TIntStrH()
+    NIdLabelH = snap.TIntStrH()
+    
+    try:
+        con = psy.connect(database=myDatabase, user=myUser) 
+        cur = con.cursor()
+        print "Successfully connected to the server"
+        
+        for NI in G.Nodes():
+            nid = NI.GetId()
+            cur.execute(cmd1%(nid))
+            ragaId = cur.fetchone()[0]
+            print ragaId
+            NIdLabelH[nid]=str(ragaId)
+            NIdColorH[nid]=colors[str(ragaId)]
+            
+            
+    except psy.DatabaseError, e:
+        print 'Error %s' % e
+        if con:
+            con.rollback()
+            con.close()
+        sys.exit(1)
+    
+    if con:
+        con.close()
+    
+    #saving network as a pajek file
+    snap.SavePajek_PUNGraph(G, pajekOutput, NIdColorH,NIdLabelH) 
     
 def constructNetworkSNAP(fileListFile, outputNetworkFile, thresholdBin, pattDistExt):
     """

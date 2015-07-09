@@ -107,6 +107,39 @@ def detectCommunitiesInNewtworkNX(networkFile, outputFile):
     
     fid.close()
 
+def attachRagaLabelToNodes(communityFile, outputFile, myDatabase = ''):
+    """
+    Temporary function
+    """
+    #annotating netowrk nodes with raga labels and edges with distances
+    cmd1 = "select raagaId from file where id = (select file_id from pattern where id =%d)"
+    data = np.loadtxt(communityFile)
+    fid = open(outputFile,'w')
+    
+    try:
+        con = psy.connect(database=myDatabase, user=myUser) 
+        cur = con.cursor()
+        print "Successfully connected to the server"
+        output = []
+        for ii in range(data.shape[0]):
+            nodeId = data[ii,0]
+            cur.execute(cmd1%(int(nodeId)))
+            ragaId = cur.fetchone()[0]
+            fid.write("%d\t%d\t%s\n"%(nodeId, data[ii,1], ragaId))
+            
+    except psy.DatabaseError, e:
+        print 'Error %s' % e
+        if con:
+            con.rollback()
+            con.close()
+        sys.exit(1)
+    
+    if con:
+        con.close()
+    
+    fid.close()
+        
+
 
 def computeBetweenesCentrality(netFile, outFile):
     
