@@ -231,7 +231,10 @@ def constructNetworkSNAP(fileListFile, outputNetworkFile, thresholdBin, pattDist
                 G.AddEdge(id1,id2)
     
     #saving network as a pajek file
-    snap.SavePajek_PNEANet(G, outputNetworkFile)
+    if isinstance(outputNetworkFile, str):
+        snap.SavePajek_PNEANet(G, outputNetworkFile)
+    else:
+        return G
     
 
     
