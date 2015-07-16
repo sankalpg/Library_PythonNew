@@ -9,6 +9,7 @@ import psycopg2 as psy
 from sklearn import cross_validation as cross_val
 import time
 import networkProcessing as net_pro
+import communityCharacterization as comm_char
 
 ######## TASKS TO BE DONE IN V1 OF RAGA RECOGNITION
 
@@ -120,6 +121,7 @@ def raga_recognition_V1(fileListFile, thresholdBin, pattDistExt, n_fold = 16):
     cval = cross_val.StratifiedKFold(label_list, n_folds=n_fold)
     
     #splitting folds.
+    fold_cnt = 1
     for train_ind, test_ind in cval:
         mbid_list = [raga_mbid[i][1] for i in test_ind]
         phrases_remove = get_phrase_ids_for_files(mbid_list, myDatabase, myUser)
@@ -129,9 +131,18 @@ def raga_recognition_V1(fileListFile, thresholdBin, pattDistExt, n_fold = 16):
         #removing the edges and nodes which corresponding to the testing data
         g = remove_nodes_graph(g, phrases_remove)
         
-        nx.write_pajek(g, 'graph_temp_training')
+        training_graph_filename = 'graph_temp_training'
+        nx.write_pajek(g, training_graph_filename)
         
-        net_pro.detectCommunitiesInNewtworkNX('graph_temp_training', 'comm')
+        comm_filename = 'comm'+'_'+str(fold_cnt)+'.community'
+        net_pro.detectCommunitiesInNewtworkNX(training_graph_filename, comm_filename)
+        
+        comm_rank_filename  = 'comm'+'_'+str(fold_cnt)+'.communityRank'
+        comm_char.rankCommunities(comm_filename, comm_rank_filename)
+        
+        
+        
+        
     
     
     
