@@ -98,15 +98,18 @@ def detectCommunitiesInNewtworkNX(networkFile, outputFile):
     G = nx.Graph(G)
     
     partition = community.best_partition(G)
-    fid = open(outputFile,'w')
+    comm_data = {}
     for com in set(partition.values()):
+        if not comm_data.has_key(int(com)):
+            comm_data[int(com)] = []
         list_nodes = [nodes for nodes in partition.keys()
                                 if partition[nodes] == com]
         for n in list_nodes:
-            fid.write("%s\t%s\n"%(str(n),str(com)))
+            comm_data[int(com)].append({'nId': int(n), 'ragaId':'', 'mbid':'', 'compId':''})
     
-    fid.close()
-
+    json.dump(comm_data, open(outputFile, 'w'))
+    
+    
 def attachRagaLabelToNodes(communityFile, outputFile, myDatabase = ''):
     """
     Temporary function
@@ -157,5 +160,9 @@ def computeDegreeDistribution(netFile, outFile):
     d = G.degree(nodes)
     json.dump(d, open(outFile,'w'))    
 
-    
+
+if __name__=="__main__":    
+#unit test stuff
+# community detection
+    detectCommunitiesInNewtworkNX('unitTests/Weight_-1___DTshld_10___PostFilt___C.edges', 'unitTests/Weight_-1___DTshld_10___PostFilt___C.community')
     

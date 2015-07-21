@@ -7,6 +7,7 @@ import snap
 import community
 import psycopg2 as psy
 import json
+from collections import Counter
 
 
 myUser = 'sankalp'
@@ -52,41 +53,25 @@ def cmpBC_Nodes(a,b):
         else:
             return 0
 
-def rankCommunities(communityInfoFile, outputFile, myDatabase= ''):
-    """
-    This function assigns ranks to detected communities. In order to obtain the best set of parameters 
-    for the network analysis we plan to rank communities and empirically come up with a way to obtain 
-    best set of prameters based on predefined criterions.
-    
-    """
-    
-    communityData = np.loadtxt(communityInfoFile)
-    
-    community = {}
-    #creating dictionary of communities
-    for row in communityData:
-        if not community.has_key(row[1]):
-            community[row[1]] = []
-        community[row[1]].append({'nId': row[0], 'ragaId':'', 'mbid':''})
-    
-    print "Total number of communities are: %d\n"%(len(community.keys()))
 
-    #obtaining raga and file id for every node in every community
+def fetch_phrase_attributes(community_dict, database = '', user= ''):
+    """
+    This function fetches mbid raagaId and compId for all the phrases in the file community_dict.
+    These attributes are fetched from the database.
+    community_dict: is a dict with format {'community_id':{nId:<>,'ragaId':<>, 'mbid':<>, 'compId':<>}}
+    """
+    #obtaining raga and file id for every node in every community_dict
+    con = psy.connect(database=database, user=user) 
     try:
-        con = psy.connect(database=myDatabase, user=myUser) 
         cur = con.cursor()
         query = "select raagaid, mbid from file where id = (select file_id from pattern where id = %s)"
-        cnt=0
-        for comId in community.keys():
-            for nodeInfo in community[comId]:
+        for comId in community_dict.keys():
+            for nodeInfo in community_dict[comId]:
                 cur.execute(query%int(nodeInfo['nId']))
                 ragaId, mbid = cur.fetchone()
                 nodeInfo['ragaId'] = ragaId
                 nodeInfo['mbid'] = mbid
-                cnt+=1
-                #if cnt%100==0:
-                    #print cnt
-       
+        
     except psy.DatabaseError, e:
         print 'Error %s' % e
         if con:
@@ -96,64 +81,82 @@ def rankCommunities(communityInfoFile, outputFile, myDatabase= ''):
     
     if con:
         con.close()    
+    return community_dict
+
+def get_histogram_sorted(data_list):
+    """
+    given a list of data points this function creates a sorted histogram
+    """
     
+    cntr = Counter(data_list)
+    sort_data = cntr.most_common()
+    
+    hist = [s[1] for s in sort_data]
+    items = [s[0] for s in sort_data]
+    
+    return hist, items
+    
+
+def rank_community_raga_phrases(comm_data):
+    """
+    This function ranks a community given the data (comm_dat) for that community. comm_data comprises
+    phrases in the community along with their attributes.
+    
+    The rank given by this function is such that higher the rank more likely is that the community 
+    represent a cluster of raga characteristic phrases.    
+    """
+    
+    ragaIds = [r['ragaId']  for r in comm_data]
+    nIds = [r['nId']  for r in comm_data]
+    mbids = [r['mbid']  for r in comm_data]
+    
+    raga_hist, raga_val = get_histogram_sorted(ragaIds)
+    mbid_hist, mbid_val = get_histogram_sorted(mbids)
+    
+    single_raga_fraction = float(raga_hist[0])/float(np.sum(raga_hist))
+    
+    raga_phrase_rank = np.round(len(np.unique(nIds))*(single_raga_fraction**4)*fileCentroid(mbid_hist),2)
+    
+    #NOTE this is a hard threshold to avoid big hubs with lots of nodes and junky info
+    if len(raga_val) >=2:
+            if (single_raga_fraction) < 0.8:
+                 raga_phrase_rank = -100
+    
+    return raga_phrase_rank, len(np.unique(nIds)), len(mbid_val), len(raga_val)
+    
+    
+
+def rankCommunities(communityInfoFile, outputFile, myDatabase= '', myUser = ''):
+    """
+    This function parses the community file and assigns a rank to each community based on a criterion.
+    
+    The criterion for ISMIR2015-initial submission paper was: "np.round(len(np.unique(nIds))*((float(ragaIdHist[sortInd[-1]])/float(np.sum(ragaIdHist)))**4)*fileCentroid(mbidHist),2"
+    
+    This is set empirically looking at the data and distribution of various attributes within the community.
+    """
+    
+    #reading community data
+    community = json.load(open(communityInfoFile, 'r'))
+    #print "Total number of communities are: %d\n"%(len(community.keys()))
+    
+    #fetching attributes from database needed for assigning ranks to communities
+    community = fetch_phrase_attributes(community, myDatabase, myUser)    
+
     communityRank = []
     #ranking communities based on their number of nodes, number of different ragaIds and number of different mbids
     # We rank a community high-> 1) Least number of unique ragas associated with it, 2) Max number of nodes 3) Max number of unique mbids
     for ii, comId in enumerate(community.keys()):
         
-        ragaIds = [r['ragaId']  for r in community[comId]]
-        nIds = [r['nId']  for r in community[comId]]
-        mbids = [r['mbid']  for r in community[comId]]
+        raga_rank, n_nodes, n_files, n_ragas = rank_community_raga_phrases(community[comId])
         
-        uniqueRagaIds = np.unique(ragaIds)
-        ragaIdHist = []
-        for uniqueRagaId in uniqueRagaIds:
-            ragaIdHist.append(ragaIds.count(uniqueRagaId))
-        
-        sortInd = np.argsort(ragaIdHist)
-        
-        uniqueMBIDs = np.unique(mbids)
-        mbidHist = []
-        for mbid in uniqueMBIDs:
-            mbidHist.append(mbids.count(mbid))
-        
-        communityRank.append({'rank':0, 'comId':-1 , 'nNodes':-1, 'nFiles':-1, 'nRagas':-1})
-        ### TODO Criterion1: communityRank[-1]['rank'] = len(uniqueMBIDs)*len(np.unique(nIds))*(float(ragaIdHist[sortInd[-1]])/float(np.sum(ragaIdHist)))/peakiness(mbidHist)
-        ### TODO Ctriterion2:
-        mbidHist = np.array(mbidHist).astype(np.float)
-        communityRank[-1]['rank'] = np.round(len(np.unique(nIds))*((float(ragaIdHist[sortInd[-1]])/float(np.sum(ragaIdHist)))**4)*fileCentroid(mbidHist),2)
-        communityRank[-1]['comId'] = comId
-        communityRank[-1]['nNodes'] = len(np.unique(nIds))
-        communityRank[-1]['nFiles'] = len(uniqueMBIDs)
-        communityRank[-1]['nRagas'] = len(uniqueRagaIds)
-        
-        #hard thresholds
-        if len(uniqueRagaIds) >=2:
-            if (float(ragaIdHist[sortInd[-1]])/float(np.sum(ragaIdHist))) < 0.8:
-                 communityRank[-1]['rank'] = -100
-                 
-        """
-        communityRank.append({'ragaRank':0, 'nodesRank':0, 'filesRank':0, 'comId':-1 })
-        ragaIds = [r['ragaId']  for r in community[comId]]
-        nIds = [r['nId']  for r in community[comId]]
-        mbids = [r['mbid']  for r in community[comId]]
-        
-        uniqueRagaIds = np.unique(ragaIds)
-        ragaIdHist = []
-        for uniqueRagaId in uniqueRagaIds:
-            ragaIdHist.append(ragaIds.count(uniqueRagaId))
-        sortInd = np.argsort(ragaIdHist)
-        ragaRank = float(ragaIdHist[sortInd[-1]])/float(np.sum(ragaIdHist))
-        communityRank[-1]['ragaRank'] = ragaRank 
-        communityRank[-1]['nodesRank'] = len(np.unique(nIds))
-        communityRank[-1]['filesRank'] = len(np.unique(mbids))
-        communityRank[-1]['comId'] = comId
-        """
+        communityRank.append({'rank':raga_rank, 'comId':comId , 'nNodes':n_nodes, 'nFiles':n_files, 'nRagas':n_ragas})
     
     communityRank.sort(cmp=cmpComm, reverse=True)
     
     json.dump({'comData':community, 'comRank': communityRank}, open(outputFile,'w'))
+    
+    
+
 
 def fileCentroid(d):
     d = np.array(d)
@@ -164,49 +167,7 @@ def fileCentroid(d):
     
     return centroid
 
-def reRankCommunity(inpComm, outComm):
-    
-    com1 = json.load(open(inpComm))
-    community = com1['comData']
-    
-    communityRank = []
-    #ranking communities based on their number of nodes, number of different ragaIds and number of different mbids
-    # We rank a community high-> 1) Least number of unique ragas associated with it, 2) Max number of nodes 3) Max number of unique mbids
-    for ii, comId in enumerate(community.keys()):
-        
-        ragaIds = [r['ragaId']  for r in community[comId]]
-        nIds = [r['nId']  for r in community[comId]]
-        mbids = [r['mbid']  for r in community[comId]]
-        
-        uniqueRagaIds = np.unique(ragaIds)
-        ragaIdHist = []
-        for uniqueRagaId in uniqueRagaIds:
-            ragaIdHist.append(ragaIds.count(uniqueRagaId))
-        
-        sortInd = np.argsort(ragaIdHist)
-        
-        uniqueMBIDs = np.unique(mbids)
-        mbidHist = []
-        for mbid in uniqueMBIDs:
-            mbidHist.append(mbids.count(mbid))
-        
-        communityRank.append({'rank':0, 'comId':-1 , 'nNodes':-1, 'nFiles':-1, 'nRagas':-1})
-        
-        communityRank[-1]['rank'] = np.round(len(np.unique(nIds))*((float(ragaIdHist[sortInd[-1]])/float(np.sum(ragaIdHist)))**2)*fileCentroid(mbidHist),2)
-        communityRank[-1]['comId'] = comId
-        communityRank[-1]['nNodes'] = len(np.unique(nIds))
-        communityRank[-1]['nFiles'] = len(uniqueMBIDs)
-        communityRank[-1]['nRagas'] = len(uniqueRagaIds)
-        
-        #hard thresholds
-        if len(uniqueRagaIds) >=2:
-            if (float(ragaIdHist[sortInd[-1]])/float(np.sum(ragaIdHist))) <.75:
-                 communityRank[-1]['rank'] = -100
-            
-    
-    communityRank.sort(cmp=cmpComm, reverse=True)
-    
-    json.dump({'comData':community, 'comRank': communityRank}, open(outComm,'w'))
+
     
 def convertFormat(sec):
         
@@ -216,6 +177,35 @@ def convertFormat(sec):
     seconds = sec - ( hours*3600 + minutes*60)
     
     return str(hours) + ':' + str(minutes) + ':' + str(seconds)  
+
+
+def select_topN_community_per_raaga(comm_rank_file, N):
+    """
+    Given a community rank file, this function selectes the top N community according to the rank.
+    """
+    
+    data = json.load(open(comm_rank_file))
+    comData = data['comData']
+    comRank = data['comRank']
+    
+    top_comms = {}
+    #iterating over all the communities and selecting top N per raga
+    for c in comRank:
+        comm = comData[str(c['comId'])]
+        ragaIds = [r['ragaId']  for r in comm]
+        #assigning a raga to the community based on the majority voting of each node's raga
+        raga_hist, raga_names = get_histogram_sorted(ragaIds)
+        comm_raga = raga_names[0]
+        
+        if not top_comms.has_key(comm_raga):
+            top_comms[comm_raga]= []
+        
+        if len(top_comms[comm_raga])<= N:
+            top_comms[comm_raga].append({'rank':c['rank'], 'comId':c['comId']})
+
+    return top_comms
+        
+    
 
 
 def extractRagaPhrases(audio_root, root_name, N, comRankExt = '', netExt= '', myDatabase= '', betcenExt = '', degreeExt = '', audioGutter = 0):
@@ -233,31 +223,12 @@ def extractRagaPhrases(audio_root, root_name, N, comRankExt = '', netExt= '', my
     #bc = nx.betweenness_centrality(G)
     bc = json.load(open(root_name+betcenExt))
     degree = json.load(open(root_name+degreeExt))
-    
-    phrases = {}
-    
+
     data = json.load(open(root_name+comRankExt))
     comData = data['comData']
     comRank = data['comRank']
-    comRank.sort(cmp=cmpComm, reverse=True)
-    
-    for c in comRank:
-        community = comData[str(c['comId'])]
-        ragaIds = [r['ragaId']  for r in community]
-        
-        uniqueRagaIds = np.unique(ragaIds)
-        ragaIdHist = []
-        for uniqueRagaId in uniqueRagaIds:
-            ragaIdHist.append(ragaIds.count(uniqueRagaId))
-        
-        sortInd = np.argsort(ragaIdHist)
-        raagaClass = uniqueRagaIds[sortInd[-1]]
-        
-        if not phrases.has_key(raagaClass):
-            phrases[raagaClass]= []
-        
-        if len( phrases[raagaClass])<= N:
-            phrases[raagaClass].append({'rank':c['rank'], 'comId':c['comId']})
+
+    phrases = select_topN_community_per_raaga(root_name+comRankExt, N)
         
     if not os.path.isdir(root_name):
         os.makedirs(root_name)
@@ -315,10 +286,16 @@ def extractRagaPhrases(audio_root, root_name, N, comRankExt = '', netExt= '', my
             
             
         
-        
+if  __name__ == "__main__":       
+    #pass
 # Refactor this file. The code is written in a quite messy way. Split functions into smaller functions.    
+
+#Unit test stuff    
+#performing community detection   
     
+    #rankCommunities('unitTests/Weight_-1___DTshld_10___PostFilt___C.community', 'unitTests/Weight_-1___DTshld_10___PostFilt___C.communityRank', myDatabase= 'ISMIR2015_10RAGA_TONICNORM', myUser = myUser)
     
+    extractRagaPhrases('/media/Data/Datasets/PatternProcessing_DB/unsupervisedDBs/carnaticDB/Carnatic10RagasISMIR2015DB/audio', 'unitTests/Weight_-1___DTshld_10___PostFilt___C', 2, comRankExt = '.communityRank', netExt= '', myDatabase= 'ISMIR2015_10RAGA_TONICNORM', betcenExt = '.bwcen', degreeExt = '.degree', audioGutter = 0)
     
     
     
