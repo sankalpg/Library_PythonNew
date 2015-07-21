@@ -10,6 +10,9 @@ from sklearn import cross_validation as cross_val
 import time
 import networkProcessing as net_pro
 import communityCharacterization as comm_char
+import json
+
+INF = np.finfo(np.float).max
 
 ######## TASKS TO BE DONE IN V1 OF RAGA RECOGNITION
 
@@ -68,12 +71,16 @@ def generate_raga_mapping(raga_ids):
 def get_phrase_ids_for_files(mbids, database = '', user= ''):
     
     cmd = "select id from pattern where file_id in (select id from file where mbid in %s)"
+    cmd1 = "select id from pattern where file_id in (select id from file where mbid = '%s')"
     
     try:
         con = psy.connect(database=database, user=user) 
         cur = con.cursor()
         print "Successfully connected to the server"
-        cur.execute(cmd%str(tuple(mbids)))
+        if len(mbids) ==1:
+            cur.execute(cmd1%str(mbids[0]))
+        else:
+            cur.execute(cmd%str(tuple(mbids)))
         results = cur.fetchall()
         
     except psy.DatabaseError, e:
@@ -99,7 +106,68 @@ def remove_nodes_graph(g, node_ids):
     
     return g
 
-def raga_recognition_V1(fileListFile, thresholdBin, pattDistExt, n_fold = 16):
+def find_1NN_comms_per_phrase(G, phrases, comm_data, raga_comms, comb_criterion):
+    """
+    This function finds the nearest community in "raga_comms" to the phrases inputted. 
+    The community details are in the comm_datae. The distance of a phrase to another phrase 
+    of a community is determined based on the input network G. Note that since G already has a threshold
+    applied for some phrases there might not even be a connection with any community. There are different
+    ways to combine the distances of a phrase to phrases of a community in order to obtain a single score
+    for each community. 
+    
+    Input:
+        G: input graph based on which the distances are to be obtained
+        phrase: phrases for which the nearest communities are to be obtained
+        comm_data: dictionary containing details of the community
+        raga_comms: communities corresponding to various ragas
+        comb_criterion: criterion to be used to combine the distances of all the phrases of a community to a single number
+    Output:
+        [(dist, comm_id, raga_id), (), ()]
+    """
+    
+    nn_comms = []
+    for ii, phrase in enumerate(phrases):
+        if not G.has_node(str(phrase)):
+            nn_comms.append((-1*INF, -1, ''))
+            continue
+        dist_overall = []
+        for raga in raga_comms.keys():
+            dist_raga = []
+            for raga_comm in raga_comms[raga]:
+                comId = raga_comm['comId']
+                comm_phrases = [r['nId']  for r in comm_data[comId]]
+                dist_comm = []
+                for ii, p in enumerate(comm_phrases):
+                    if G.has_edge(str(phrase),str(p)):
+                        #print "Aaya", comm_data[comId][ii]['ragaId']
+                        dist_comm.append(G.get_edge_data(str(phrase),str(p))[0]['weight'])
+                if len(dist_comm)==0:
+                    dist_comm = -1*INF
+                else:
+                    dist_comm = np.max(dist_comm)
+                dist_raga.append(dist_comm)
+            
+            dist_raga = np.max(dist_raga)
+            dist_overall.append(dist_raga)
+        
+        ind_max = np.argmax(dist_overall)
+        nn_comms.append((dist_overall[ind_max], -1, raga_comms.keys()[ind_max]))
+        
+        
+    return nn_comms
+        
+        
+def classify_file(nn_comms):
+    
+    dists = [r[0] for r in nn_comms]
+    ind_max = np.argmax(dists)
+    
+    return nn_comms[ind_max][2]
+    
+    
+    
+
+def raga_recognition_V1(fileListFile, thresholdBin, pattDistExt, n_fold = 16, top_N_com = 10, force_build_network=1):
     """
     This is a wrapper function which performs raga recognition (V1).
     """
@@ -107,7 +175,13 @@ def raga_recognition_V1(fileListFile, thresholdBin, pattDistExt, n_fold = 16):
     
     #constructing the network
     t1 = time.time()
-    #full_net = cons_net.constructNetworkSNAP(fileListFile, 'graph_temp', thresholdBin, pattDistExt)
+    wghtd_graph_filename = 'graph_temp'+'_'+str(thresholdBin)
+    
+    if force_build_network or not os.path.isfile(wghtd_graph_filename):
+        cons_net.constructNetwork_Weighted_NetworkX(fileListFile, wghtd_graph_filename , thresholdBin, pattDistExt, 0 , -1)
+    
+    full_net = nx.read_pajek(wghtd_graph_filename)
+    
     t2 = time.time()
     print "time taken = %f"%(t2-t1)
     
@@ -122,23 +196,55 @@ def raga_recognition_V1(fileListFile, thresholdBin, pattDistExt, n_fold = 16):
     
     #splitting folds.
     fold_cnt = 1
+    predicted_raga = ['' for r in range(len(raga_mbid))]
+    
     for train_ind, test_ind in cval:
-        mbid_list = [raga_mbid[i][1] for i in test_ind]
-        phrases_remove = get_phrase_ids_for_files(mbid_list, myDatabase, myUser)
+        mbid_list_test = [raga_mbid[i][1] for i in test_ind]
+        raga_list_test = [raga_mbid[i][0] for i in test_ind]
+        phrases_remove = get_phrase_ids_for_files(mbid_list_test, myDatabase, myUser)
         
         #reading the original graph from the file
-        g = nx.read_pajek('graph_temp')
+        g = nx.read_pajek(wghtd_graph_filename)
         #removing the edges and nodes which corresponding to the testing data
         g = remove_nodes_graph(g, phrases_remove)
         
-        training_graph_filename = 'graph_temp_training'
+        training_graph_filename = 'graph_training'
         nx.write_pajek(g, training_graph_filename)
         
         comm_filename = 'comm'+'_'+str(fold_cnt)+'.community'
         net_pro.detectCommunitiesInNewtworkNX(training_graph_filename, comm_filename)
         
         comm_rank_filename  = 'comm'+'_'+str(fold_cnt)+'.communityRank'
-        comm_char.rankCommunities(comm_filename, comm_rank_filename)
+        comm_char.rankCommunities(comm_filename, comm_rank_filename, myDatabase = myDatabase, myUser = myUser)
+        
+        raga_comm  = comm_char.select_topN_community_per_raaga(comm_rank_filename, top_N_com)
+        
+        comm_data = json.load(open(comm_filename,'r'))
+        comm_char.fetch_phrase_attributes(comm_data, database = myDatabase, user= myUser)
+    
+        for ii, mbid in enumerate(mbid_list_test):
+            phrases_recording = get_phrase_ids_for_files([mbid], myDatabase, myUser)
+            
+            nn_comms = find_1NN_comms_per_phrase(full_net, phrases_recording, comm_data, raga_comm, '')
+            
+            raga_id_classify = classify_file(nn_comms)
+            
+            predicted_raga[test_ind[ii]] = raga_id_classify
+            #print raga_list_test[ii], raga_id_classify
+            
+    cnt = 0
+    for i in range(len(predicted_raga)):
+        if raga_list[i] == predicted_raga[i]:
+            cnt+=1
+    
+    print "You got %d number of ragas right for a total of %d number of recordings"%(cnt, len(predicted_raga))
+       
+    
+    return
+        
+        
+        
+        
         
         
         
