@@ -58,7 +58,9 @@ def get_mbids_raagaIds_for_collection(database = '', user= ''):
     return raga_mbid
 
 def generate_raga_mapping(raga_ids):
-    
+    """
+    Function to map raga_ids to integers
+    """
     raga_map = {}
     map_raga = {}
     for ii, r in enumerate(np.unique(raga_ids)):
@@ -106,7 +108,7 @@ def remove_nodes_graph(g, node_ids):
     
     return g
 
-def find_1NN_comms_per_phrase(G, phrases, comm_data, raga_comms, comb_criterion):
+def find_1NN_comms_per_phrase(G, phrases, comm_data, raga_comms, dthresh=-1, comb_criterion = 'mean', myDatabase = '', myUser = ''):
     """
     This function finds the nearest community in "raga_comms" to the phrases inputted. 
     The community details are in the comm_datae. The distance of a phrase to another phrase 
@@ -121,38 +123,61 @@ def find_1NN_comms_per_phrase(G, phrases, comm_data, raga_comms, comb_criterion)
         comm_data: dictionary containing details of the community
         raga_comms: communities corresponding to various ragas
         comb_criterion: criterion to be used to combine the distances of all the phrases of a community to a single number
+        dthresh : is the distance threshold applied while computing distance of a phrase from the community.
     Output:
         [(dist, comm_id, raga_id), (), ()]
     """
+    cmd = "select distance from network where source_id = %s and target_id = %s"
     
-    nn_comms = []
-    for ii, phrase in enumerate(phrases):
-        if not G.has_node(str(phrase)):
-            nn_comms.append((-1*INF, -1, ''))
-            continue
-        dist_overall = []
-        for raga in raga_comms.keys():
-            dist_raga = []
-            for raga_comm in raga_comms[raga]:
-                comId = raga_comm['comId']
-                comm_phrases = [r['nId']  for r in comm_data[comId]]
-                dist_comm = []
-                for ii, p in enumerate(comm_phrases):
-                    if G.has_edge(str(phrase),str(p)):
-                        #print "Aaya", comm_data[comId][ii]['ragaId']
-                        dist_comm.append(G.get_edge_data(str(phrase),str(p))[0]['weight'])
-                if len(dist_comm)==0:
-                    dist_comm = -1*INF
-                else:
-                    dist_comm = np.max(dist_comm)
-                dist_raga.append(dist_comm)
+    try:
+        con = psy.connect(database=myDatabase, user=myUser) 
+        cur = con.cursor()
+        print "Successfully connected to the server"
+        
+        nn_comms = []
+        for ii, phrase in enumerate(phrases):
+            print "processing %d of total %d phrases"%(ii+1, len(phrases))
+            dist_overall = []
+            for raga in raga_comms.keys():
+                dist_across_comms = []
+                for raga_comm in raga_comms[raga]:
+                    comId = raga_comm['comId']
+                    comm_phrases = [r['nId']  for r in comm_data[comId]]
+                    dist_within_comm = []
+                    for ii, p in enumerate(comm_phrases):
+                        cur.execute(cmd%(phrase,p))
+                        dist = cur.fetchone()
+                        if dist == None:
+                            dist_within_comm.append(cons_net.ThshldArray[-1])
+                        else:
+                            dist_within_comm.append(dist[0])
+                    if len(dist_within_comm)==0:
+                        dist_comm = cons_net.ThshldArray[-1]
+                    else:
+                        if comb_criterion == 'min':
+                            dist_comm = np.min(dist_within_comm)
+                        elif comb_criterion == 'mean':
+                            dist_comm = np.mean(dist_within_comm)
+                        
+                    
+                    dist_across_comms.append(dist_comm)
+                
+                dist_raga = np.min(dist_across_comms)
+                dist_overall.append(dist_raga)
             
-            dist_raga = np.max(dist_raga)
-            dist_overall.append(dist_raga)
-        
-        ind_max = np.argmax(dist_overall)
-        nn_comms.append((dist_overall[ind_max], -1, raga_comms.keys()[ind_max]))
-        
+            ind_min = np.argmin(dist_overall)
+            nn_comms.append((dist_overall[ind_min], -1, raga_comms.keys()[ind_min]))
+    
+    except psy.DatabaseError, e:
+        print 'Error %s' % e
+        if con:
+            con.rollback()
+            con.close()
+        sys.exit(1)
+    
+    if con:
+        con.close()
+            
         
     return nn_comms
         
@@ -160,9 +185,23 @@ def find_1NN_comms_per_phrase(G, phrases, comm_data, raga_comms, comb_criterion)
 def classify_file(nn_comms):
     
     dists = [r[0] for r in nn_comms]
-    ind_max = np.argmax(dists)
+    ind_min = np.argmin(dists)
     
-    return nn_comms[ind_max][2]
+    return nn_comms[ind_min][2]
+    
+    
+def compute_raga_phrase_distance_distribution(nn_comms, unique_raga_ids):
+    """
+    This function computed ragas #nodes and distance distribution for a given recording.
+    nn_comms contains distances and ragaids for all the phrases in a file.
+    """
+    
+    for rid in unique_raga_ids:
+        ind_rids = [i]
+        return True
+    
+    
+    
     
     
     
@@ -225,12 +264,12 @@ def raga_recognition_V1(fileListFile, thresholdBin, pattDistExt, n_fold = 16, to
         for ii, mbid in enumerate(mbid_list_test):
             phrases_recording = get_phrase_ids_for_files([mbid], myDatabase, myUser)
             
-            nn_comms = find_1NN_comms_per_phrase(full_net, phrases_recording, comm_data, raga_comm, '')
+            nn_comms = find_1NN_comms_per_phrase(full_net, phrases_recording, comm_data, raga_comm, myDatabase = myDatabase, myUser = myUser)
             
             raga_id_classify = classify_file(nn_comms)
             
             predicted_raga[test_ind[ii]] = raga_id_classify
-            #print raga_list_test[ii], raga_id_classify
+            print raga_list_test[ii], raga_id_classify
             
     cnt = 0
     for i in range(len(predicted_raga)):

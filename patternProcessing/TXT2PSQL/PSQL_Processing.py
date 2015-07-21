@@ -450,19 +450,24 @@ def upload_network_data(fileListFile, pattDistExt = '', myDatabase = '', myUser 
     other such phrases. This is the final data obtained for building the network.
     
     """
-    cmd = "insert into network (source_id, target_id, distance) values (%d, %d, %f)"
+    cmd = "INSERT INTO network (source_id, target_id, distance) VALUES (%s, %s, %s)"
+    
     try:
         con = psy.connect(database=myDatabase, user=myUser) 
         cur = con.cursor()
         print "Successfully connected to %s database"%(myDatabase)
         
         filenames = open(fileListFile).readlines()
-        for filename in filenames:
+        for ii, filename in enumerate(filenames):
+            print "uploading phrases for file number %d, name: %s"%(ii, filename)
             fname = filename.strip() + pattDistExt
             data = np.loadtxt(fname)
-            for ii in range(data.shape[0]):
-                cur.execute(cmd%(int(data[ii][0]), int(data[ii][1]), float(data[ii][2])))
-        con.commit()
+            dump = []
+            #for ii in range(data.shape[0]):
+                #dump.append((int(data[ii][0]), int(data[ii][1]), float(data[ii][2])))
+                
+            cur.executemany(cmd, data)
+            con.commit()
         
     except psy.DatabaseError, e:
         print 'Error %s' % e
