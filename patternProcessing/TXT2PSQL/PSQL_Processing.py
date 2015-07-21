@@ -67,16 +67,16 @@ def stripPrefix(audiofile):
     return audiofile_WOPre
 
 
- raagaBins = {'bf4662d4-25c3-4cad-9249-4de2dc513c06':0,
- 'a9413dff-91d1-4e29-ad92-c04019dce5b8':1,
- 'f0866e71-33b2-47db-ab75-0808c41f2401':2,
- '123b09bd-9901-4e64-a65a-10b02c9e0597':3,
- 'd5285bf4-c3c5-454e-a659-fec30075990b':4,
- '09c179f3-8b19-4792-a852-e9fa0090e409':5,
- '700e1d92-7094-4c21-8a3b-d7b60c550edf':6,
- '77bc3583-d798-4077-85a3-bd08bc177881':7,
- 'aa5f376f-06cd-4a69-9cc9-b1077104e0b0':8,
- '85ccf631-4cdf-4f6c-a841-0edfcf4255d1':9}
+ #raagaBins = {'bf4662d4-25c3-4cad-9249-4de2dc513c06':0,
+ #'a9413dff-91d1-4e29-ad92-c04019dce5b8':1,
+ #'f0866e71-33b2-47db-ab75-0808c41f2401':2,
+ #'123b09bd-9901-4e64-a65a-10b02c9e0597':3,
+ #'d5285bf4-c3c5-454e-a659-fec30075990b':4,
+ #'09c179f3-8b19-4792-a852-e9fa0090e409':5,
+ #'700e1d92-7094-4c21-8a3b-d7b60c550edf':6,
+ #'77bc3583-d798-4077-85a3-bd08bc177881':7,
+ #'aa5f376f-06cd-4a69-9cc9-b1077104e0b0':8,
+ #'85ccf631-4cdf-4f6c-a841-0edfcf4255d1':9}
 
 def fillFileTableWithRagaIds(myDatabase, collection = 'carnatic'):
 	
@@ -443,6 +443,38 @@ def createPatternMatchTable(root_dir, logFile, myDatabase=''):
     
     print "Everything went fine, enjoy!! Time taken for inserting all results into DB %f\n"%(time.time()-t1)
 
+
+def upload_network_data(fileListFile, pattDistExt = '', myDatabase = '', myUser = ''):
+    """
+    This function uploads the distances obtained from all the non-overlapping phrases to all the 
+    other such phrases. This is the final data obtained for building the network.
+    
+    """
+    cmd = "insert into network (source_id, target_id, distance) values (%d, %d, %f)"
+    try:
+        con = psy.connect(database=myDatabase, user=myUser) 
+        cur = con.cursor()
+        print "Successfully connected to %s database"%(myDatabase)
+        
+        filenames = open(fileListFile).readlines()
+        for filename in filenames:
+            fname = filename.strip() + pattDistExt
+            data = np.loadtxt(fname)
+            for ii in range(data.shape[0]):
+                cur.execute(cmd%(int(data[ii][0]), int(data[ii][1]), float(data[ii][2])))
+        con.commit()
+        
+    except psy.DatabaseError, e:
+        print 'Error %s' % e
+        if con:
+            con.close()
+        sys.exit(1)
+        
+    if con:
+        con.close()    
+    
+                
+
 def fetchMBID(mp3File):
     try:
         mbid = easyid3.ID3(mp3File)['UFID:http://musicbrainz.org'].data
@@ -479,6 +511,13 @@ CREATE TABLE match (
     distance double precision NOT NULL,
     version int not null
 );
+
+CREATE TABLE network (
+    source_id bigint not null references pattern(id),
+    target_id bigint not null references pattern(id),
+    distance double precision NOT NULL
+);
+
 
 sudo -u postgres dropdb motif_local
 sudo -u postgres createdb motif_local -O sankalp
