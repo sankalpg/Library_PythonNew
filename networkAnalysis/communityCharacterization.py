@@ -200,7 +200,7 @@ def select_topN_community_per_raaga(comm_rank_file, N):
         if not top_comms.has_key(comm_raga):
             top_comms[comm_raga]= []
         
-        if len(top_comms[comm_raga])<= N:
+        if len(top_comms[comm_raga])< N:
             top_comms[comm_raga].append({'rank':c['rank'], 'comId':c['comId']})
 
     return top_comms
