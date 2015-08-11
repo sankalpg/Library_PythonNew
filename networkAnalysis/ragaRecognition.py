@@ -14,8 +14,11 @@ import json
 from collections import Counter
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
+
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import SGDClassifier
+from sklearn import svm
+
 
 INF = np.finfo(np.float).max
 
@@ -410,11 +413,32 @@ def get_per_recording_data(comm_data):
             
     return per_rec_data
         
-def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, force_build_network=0):
+        
+        
+def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, force_build_network=0, feature_type = 0, classifier = 'svm'):
     """
     Raga recognition system using document classification and topic modelling techniques.
     In this approach we treat phrases of a recording as words (basically cluster id). 
-    We build tf-idf for each recording and perform a classification
+    phrases->communities(Words)->word frequencies per file->tf-idf kind of features->classification
+    Input:
+        fileListFile: file which lists all the files to be considered for this anlyasis (there is relevant data extracted and stored in a structed manner from these files)
+        thresholdBin: distance threshold (in bins) which is applied the network
+        pattDistExt: extension of the file that stores pattern distances
+        n_fold: number of cross fold validations
+        force_build_network: if 0 the network is not rebuild if it exists on the disk, if 1 its built again no matter what
+        feature_type: the type of feature to be used for the classification. Options are
+                      'tf': term frequency
+                      'tp': term presence (binary value to indicate if the term is present or not)
+                      'tf-idf': the typicall term frequency * inverse document frequency
+                      'tf-idf_pp' this is normal tf-idf but with a preprocessing to explicitely remove crappy phrases (gamakas). This is like removing stop words from word count computation.
+                                    NOTE: It feels like this should be taken care of by the IDF computation, but for a small corpus if there is a lot of frequency, the weight is high no matter what. Just to try it out, brain worms!!
+        
+        classifier: the classifier to be used for the classification task. Options are:
+                    'NB': Naive naive bayes
+                    'SVM': support vector machines
+                    'SGD': svms with SGD training. Somewhere it was recommended for text classification.
+                    
+    
     
     """
     #constructing the network
@@ -470,11 +494,20 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
                 per_rec_words = ''
             docs_train.append(per_rec_words)
         
+        #Computing term frequencies (training set)
         X_train_counts = count_vect.fit_transform(docs_train)
+        
+        #computing features from term frequencies (training set)
         X_train_tfidf = tfidf_transformer.fit_transform(X_train_counts)
         
         #training the model with the obtained tf-idf features
-        #clf = MultinomialNB().fit(X_train_tfidf, label_list[train_inds])
+        if classifier == 'NB':
+            #clf = MultinomialNB().fit(X_train_tfidf, label_list[train_inds])
+        elif classifier == 'SVM':
+        elif classifier == 'SVM':
+        else:
+            print "Print choose"
+            
         clf = SGDClassifier(loss='hinge', penalty='l2', alpha=1e-3, n_iter=5, random_state=42).fit(X_train_tfidf, label_list[train_inds])
         
         docs_test = []
@@ -486,7 +519,10 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
                 per_rec_words = ''
             docs_test.append(per_rec_words)
         
+        #Computing term frequencies (testing set)
         X_test_counts = count_vect.transform(docs_test)
+        
+        #computing features from term frequencies (testing set)
         X_test_tfidf = tfidf_transformer.transform(X_test_counts)
         
         #performing prediction of labels using the trained model
