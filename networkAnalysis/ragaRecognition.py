@@ -414,15 +414,17 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
     """
     Raga recognition system using document classification and topic modelling techniques.
     In this approach we treat phrases of a recording as words (basically cluster id). 
-    """
+    We build tf-idf for each recording and perform a classification
     
+    """
     #constructing the network
     t1 = time.time()
     wghtd_graph_filename = 'graph_temp'+'_'+str(thresholdBin)
-    
+    #building network only when its not already present on the disk
     if force_build_network or not os.path.isfile(wghtd_graph_filename):
         cons_net.constructNetwork_Weighted_NetworkX(fileListFile, wghtd_graph_filename , thresholdBin, pattDistExt, 0 , -1)
     
+    #reading the network on the disk (either build in the current call or from previous ones)
     full_net = nx.read_pajek(wghtd_graph_filename)
     
     #performing community detection on the built network
@@ -433,7 +435,7 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
     comm_data = json.load(open(comm_filename,'r'))
     comm_char.fetch_phrase_attributes(comm_data, database = myDatabase, user= myUser)
     
-    #getting per document (recording) words (community index)
+    #getting per document (recording) words (community index, phrase instanes)
     per_rec_data = get_per_recording_data(comm_data)
 
     t2 = time.time()
@@ -450,21 +452,19 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
     cval = cross_val.StratifiedKFold(label_list, n_folds=n_fold)
     
     #splitting folds.
-    fold_cnt = 1
-    predicted_raga = ['' for r in range(len(raga_mbid))]
+    predicted_raga = ['' for r in range(len(raga_mbid))]    #placeholder for storing predicted ragas
     
+    #initializers needed for analysis of words (community indexes)
     count_vect = CountVectorizer()
     tfidf_transformer = TfidfTransformer()
+    
+    #starting crossfold validation loop
     for train_inds, test_inds in cval:
-        docs_train = []
+        docs_train = []                 #storing documents (phrases per recording)
+        
+        #preparing tf-idf matrix for the training data
         for train_ind in train_inds:
-            #if per_rec_data.has_key(mbid_list[test_ind]):
-                #print mbid_list[test_ind], len(per_rec_data[mbid_list[test_ind]])
-                #per_rec_words = [p[0] for p in per_rec_data[mbid_list[test_ind]]]
-                #print per_rec_words
-            #else:
-                #print mbid_list[test_ind], 0
-            if per_rec_data.has_key(mbid_list[train_ind]):
+            if per_rec_data.has_key(mbid_list[train_ind]):  #not every file has phrases found!! (there is one stupid file for which there are no phrases within this distance threshold)
                 per_rec_words = ' '.join([p[0] for p in per_rec_data[mbid_list[train_ind]]])
             else:
                 per_rec_words = ''
@@ -472,17 +472,14 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
         
         X_train_counts = count_vect.fit_transform(docs_train)
         X_train_tfidf = tfidf_transformer.fit_transform(X_train_counts)
+        
+        #training the model with the obtained tf-idf features
         #clf = MultinomialNB().fit(X_train_tfidf, label_list[train_inds])
         clf = SGDClassifier(loss='hinge', penalty='l2', alpha=1e-3, n_iter=5, random_state=42).fit(X_train_tfidf, label_list[train_inds])
         
         docs_test = []
+        #preparing the tf-idf matrix for the testing data.
         for test_ind in test_inds:
-            #if per_rec_data.has_key(mbid_list[test_ind]):
-                #print mbid_list[test_ind], len(per_rec_data[mbid_list[test_ind]])
-                #per_rec_words = [p[0] for p in per_rec_data[mbid_list[test_ind]]]
-                #print per_rec_words
-            #else:
-                #print mbid_list[test_ind], 0
             if per_rec_data.has_key(mbid_list[test_ind]):
                 per_rec_words = ' '.join([p[0] for p in per_rec_data[mbid_list[test_ind]]])
             else:
@@ -492,6 +489,7 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
         X_test_counts = count_vect.transform(docs_test)
         X_test_tfidf = tfidf_transformer.transform(X_test_counts)
         
+        #performing prediction of labels using the trained model
         predicted = clf.predict(X_test_tfidf)
         for ii, pred_val in enumerate(predicted):
             predicted_raga[test_inds[ii]] = map_raga[pred_val]
@@ -501,7 +499,6 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
     for i in range(len(predicted_raga)):
         if raga_list[i] == predicted_raga[i]:
             cnt+=1
-    
     print "You got %d number of ragas right for a total of %d number of recordings"%(cnt, len(predicted_raga))
        
     
