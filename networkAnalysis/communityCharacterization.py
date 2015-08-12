@@ -95,7 +95,56 @@ def get_histogram_sorted(data_list):
     items = [s[0] for s in sort_data]
     
     return hist, items
+
+
+def rank_community_gamaka_phrases(comm_data):
+    """
+    This function ranks the communities so that communities which are likely to represent gamakas 
+    (generic phrases) receive a high rank. 
+    The logic applied is somewhat similar to what is applied for ranking communities for raga phrases, 
+    but in a inverse way. There might be small changes in terms of the thresholds etc.
+    """
+    ragaIds = [r['ragaId']  for r in comm_data]
+    nIds = [r['nId']  for r in comm_data]
+    mbids = [r['mbid']  for r in comm_data]
     
+    raga_hist, raga_val = get_histogram_sorted(ragaIds)
+    mbid_hist, mbid_val = get_histogram_sorted(mbids)
+    
+    gamaka_phrase_rank = np.round(len(np.unique(nIds))*(compute_centroid(raga_hist))*compute_centroid(mbid_hist),2)
+    
+    return gamaka_phrase_rank, len(np.unique(nIds)), len(mbid_val), len(raga_val)
+
+
+def find_gamaka_communities(comms_data, max_mbids_per_raga = 16):
+    """
+    This function selects gamaka communities from the community data. This is a wrapper function for
+    selecting top gamaka communities.
+    """
+    communityRank = []
+    for comId in comms_data.keys():
+        comm_rank, n_nodes, n_files, n_ragas = rank_community_gamaka_phrases(comms_data[comId])
+        communityRank.append({'rank':comm_rank, 'comId':comId , 'nNodes':n_nodes, 'nFiles':n_files, 'nRagas':n_ragas})
+        
+    communityRank.sort(cmp=cmpComm, reverse=True) 
+    
+    commIds = []
+    for comm in communityRank:
+        if comm['nNodes'] > max_mbids_per_raga: #since this for sure means somethign is not correct with this comm
+            commIds.append(comm['comId'])    
+    return commIds
+    
+def get_comm_1MBID(comms_data):
+    """
+    This function fetches all the commId of the communities that are comprised of only one MBID.
+    """
+    output_comm = []
+    for commId in comms_data.keys():
+        mbids = [r['mbid']  for r in comms_data[commId]]
+        if len(np.unique(mbids))>1:
+            output_comm.append(commId)
+    
+    return output_comm
 
 def rank_community_raga_phrases(comm_data):
     """
@@ -115,7 +164,7 @@ def rank_community_raga_phrases(comm_data):
     
     single_raga_fraction = float(raga_hist[0])/float(np.sum(raga_hist))
     
-    raga_phrase_rank = np.round(len(np.unique(nIds))*(single_raga_fraction**4)*fileCentroid(mbid_hist),2)
+    raga_phrase_rank = np.round(len(np.unique(nIds))*(single_raga_fraction**4)*compute_centroid(mbid_hist),2)
     
     #NOTE this is a hard threshold to avoid big hubs with lots of nodes and junky info
     if len(raga_val) >=2:
@@ -130,7 +179,7 @@ def rankCommunities(communityInfoFile, outputFile, myDatabase= '', myUser = ''):
     """
     This function parses the community file and assigns a rank to each community based on a criterion.
     
-    The criterion for ISMIR2015-initial submission paper was: "np.round(len(np.unique(nIds))*((float(ragaIdHist[sortInd[-1]])/float(np.sum(ragaIdHist)))**4)*fileCentroid(mbidHist),2"
+    The criterion for ISMIR2015-initial submission paper was: "np.round(len(np.unique(nIds))*((float(ragaIdHist[sortInd[-1]])/float(np.sum(ragaIdHist)))**4)*compute_centroid(mbidHist),2"
     
     This is set empirically looking at the data and distribution of various attributes within the community.
     """
@@ -158,7 +207,7 @@ def rankCommunities(communityInfoFile, outputFile, myDatabase= '', myUser = ''):
     
 
 
-def fileCentroid(d):
+def compute_centroid(d):
     d = np.array(d)
     d = d[np.argsort(d)[::-1]]
     

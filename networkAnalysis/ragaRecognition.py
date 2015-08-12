@@ -15,9 +15,11 @@ from collections import Counter
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.linear_model import SGDClassifier
+from sklearn.naive_bayes import MultinomialNB as NB
+from sklearn.linear_model import SGDClassifier as SGD
 from sklearn import svm
+from sklearn import tree
+from scipy.sparse import csc
 
 
 INF = np.finfo(np.float).max
@@ -430,8 +432,9 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
                       'tf': term frequency
                       'tp': term presence (binary value to indicate if the term is present or not)
                       'tf-idf': the typicall term frequency * inverse document frequency
-                      'tf-idf_pp' this is normal tf-idf but with a preprocessing to explicitely remove crappy phrases (gamakas). This is like removing stop words from word count computation.
+                      'tf-idf_pp1': this is normal tf-idf but with a preprocessing to explicitely remove crappy phrases (gamakas). This is like removing stop words from word count computation.
                                     NOTE: It feels like this should be taken care of by the IDF computation, but for a small corpus if there is a lot of frequency, the weight is high no matter what. Just to try it out, brain worms!!
+                      'tf-idf_pp2': Along with the gamaka phrases (communities), we also remove (as stop word) the communities which are consists of only one mbid. 
         
         classifier: the classifier to be used for the classification task. Options are:
                     'NB': Naive naive bayes
@@ -478,14 +481,18 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
     #splitting folds.
     predicted_raga = ['' for r in range(len(raga_mbid))]    #placeholder for storing predicted ragas
     
+    #if there has to be a pre-processing done to remove specific communities, estimating them to put them as stop words
+    stop_words = []
+    if feature_type == 'tf-idf_pp1':
+        stop_words = comm_char.find_gamaka_communities(comm_data, max_mbids_per_raga = 16)
+    
     #initializers needed for analysis of words (community indexes)
-    count_vect = CountVectorizer()
+    count_vect = CountVectorizer(stop_words = stop_words)
     tfidf_transformer = TfidfTransformer()
     
     #starting crossfold validation loop
     for train_inds, test_inds in cval:
         docs_train = []                 #storing documents (phrases per recording)
-        
         #preparing tf-idf matrix for the training data
         for train_ind in train_inds:
             if per_rec_data.has_key(mbid_list[train_ind]):  #not every file has phrases found!! (there is one stupid file for which there are no phrases within this distance threshold)
@@ -494,21 +501,44 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
                 per_rec_words = ''
             docs_train.append(per_rec_words)
         
+        
         #Computing term frequencies (training set)
         X_train_counts = count_vect.fit_transform(docs_train)
+        print X_train_counts.shape
         
-        #computing features from term frequencies (training set)
-        X_train_tfidf = tfidf_transformer.fit_transform(X_train_counts)
+        if feature_type == 'tf':
+            features_train = X_train_counts.toarray()
+        elif feature_type == 'tp':
+            features_train = X_train_counts.toarray()
+            features_train = np.where(features_train >= 1,1,features_train)
+        elif feature_type == 'tf-idf' or feature_type == 'tf-idf_pp1' or feature_type == 'tf-idf_pp2':
+            #computing features from term frequencies (training set)
+            features_train = tfidf_transformer.fit_transform(X_train_counts)            
+            features_train = features_train.toarray()
+        else:
+            print "Please specify a valid feature type"
+            return False
+        
+        
         
         #training the model with the obtained tf-idf features
         if classifier == 'NB':
-            #clf = MultinomialNB().fit(X_train_tfidf, label_list[train_inds])
+            clf = NB()
         elif classifier == 'SVM':
-        elif classifier == 'SVM':
+            clf = svm.SVC()
+        elif classifier == 'SGD':
+            clf = SGD(loss='hinge', penalty='l2', alpha=1e-3, n_iter=5, random_state=42)
+        elif classifier == 'tree':
+            clf = tree.DecisionTreeClassifier()
         else:
-            print "Print choose"
-            
-        clf = SGDClassifier(loss='hinge', penalty='l2', alpha=1e-3, n_iter=5, random_state=42).fit(X_train_tfidf, label_list[train_inds])
+            print "Print choose a valid classifier"
+            return False
+        
+        if classifier == 'SGD':
+            #TODO: Strangely the SGD classifier was giving diff results if we pass dense matrix or sparse matrix. So for this classifier use sparse for now but look into it later. I couldn't find anything on the web.
+            clf.fit(csc.csc_matrix(features_train), label_list[train_inds])
+        else:
+            clf.fit(features_train, label_list[train_inds])
         
         docs_test = []
         #preparing the tf-idf matrix for the testing data.
@@ -521,12 +551,26 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
         
         #Computing term frequencies (testing set)
         X_test_counts = count_vect.transform(docs_test)
-        
-        #computing features from term frequencies (testing set)
-        X_test_tfidf = tfidf_transformer.transform(X_test_counts)
+
+        if feature_type == 'tf':
+            features_test = X_test_counts.toarray()
+        elif feature_type == 'tp':
+            features_test = X_test_counts.toarray()
+            features_test = np.where(features_test >= 1,1,features_test)
+        elif feature_type == 'tf-idf' or feature_type == 'tf-idf_pp1' or feature_type == 'tf-idf_pp2':
+            #computing features from term frequencies (training set)
+            features_test = tfidf_transformer.transform(X_test_counts)            
+            features_test = features_test.toarray()
+        else:
+            print "Please specify a valid feature type"
+            return False        
         
         #performing prediction of labels using the trained model
-        predicted = clf.predict(X_test_tfidf)
+        if classifier == 'SGD':
+            predicted = clf.predict(csc.csc_matrix(features_test))
+        else:
+            predicted = clf.predict(features_test)
+                
         for ii, pred_val in enumerate(predicted):
             predicted_raga[test_inds[ii]] = map_raga[pred_val]
         
