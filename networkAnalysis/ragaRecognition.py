@@ -417,7 +417,7 @@ def get_per_recording_data(comm_data):
         
         
         
-def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, force_build_network=0, feature_type = 0, classifier = 'svm'):
+def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, force_build_network=0, feature_type = 0, classifier = 'svm', pre_processing = -1):
     """
     Raga recognition system using document classification and topic modelling techniques.
     In this approach we treat phrases of a recording as words (basically cluster id). 
@@ -433,7 +433,7 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
                       'tp': term presence (binary value to indicate if the term is present or not)
                       'tf-idf': the typicall term frequency * inverse document frequency
                       'tf-idf_pp1': this is normal tf-idf but with a preprocessing to explicitely remove crappy phrases (gamakas). This is like removing stop words from word count computation.
-                                    NOTE: It feels like this should be taken care of by the IDF computation, but for a small corpus if there is a lot of frequency, the weight is high no matter what. Just to try it out, brain worms!!
+                                    
                       'tf-idf_pp2': Along with the gamaka phrases (communities), we also remove (as stop word) the communities which are consists of only one mbid. 
         
         classifier: the classifier to be used for the classification task. Options are:
@@ -441,7 +441,12 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
                     'SVM': support vector machines
                     'SGD': svms with SGD training. Somewhere it was recommended for text classification.
                     
-    
+        pre_processing: -1 for no preprocessing
+                         1 for removing gamaka communities from the analysis (treating them as stop words)
+                         NOTE: It feels like this should be taken care of by the IDF computation, but for a small corpus if there is a lot of frequency, the weight is high no matter what. Just to try it out, brain worms!!
+                         2: for removing communities which have only one mbid in them. 
+                         3: for removing communities for option 1 and 2
+                         
     
     """
     #constructing the network
@@ -483,9 +488,17 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
     
     #if there has to be a pre-processing done to remove specific communities, estimating them to put them as stop words
     stop_words = []
-    if feature_type == 'tf-idf_pp1':
-        stop_words = comm_char.find_gamaka_communities(comm_data, max_mbids_per_raga = 16)
-    
+    if pre_processing == 1:
+        stop_words.extend(comm_char.find_gamaka_communities(comm_data, max_mbids_per_raga = 16))
+        print type(stop_words), len(stop_words)
+    if pre_processing == 2:
+        stop_words.extend(comm_char.get_comm_1MBID(comm_data))
+        print type(stop_words), len(stop_words)
+    if pre_processing == 3:
+        stop_words.extend(comm_char.find_gamaka_communities(comm_data, max_mbids_per_raga = 16))
+        stop_words.extend(comm_char.get_comm_1MBID(comm_data))
+        print type(stop_words), len(stop_words)
+
     #initializers needed for analysis of words (community indexes)
     count_vect = CountVectorizer(stop_words = stop_words)
     tfidf_transformer = TfidfTransformer()
@@ -511,7 +524,7 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
         elif feature_type == 'tp':
             features_train = X_train_counts.toarray()
             features_train = np.where(features_train >= 1,1,features_train)
-        elif feature_type == 'tf-idf' or feature_type == 'tf-idf_pp1' or feature_type == 'tf-idf_pp2':
+        elif feature_type == 'tf-idf':
             #computing features from term frequencies (training set)
             features_train = tfidf_transformer.fit_transform(X_train_counts)            
             features_train = features_train.toarray()
@@ -557,7 +570,7 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
         elif feature_type == 'tp':
             features_test = X_test_counts.toarray()
             features_test = np.where(features_test >= 1,1,features_test)
-        elif feature_type == 'tf-idf' or feature_type == 'tf-idf_pp1' or feature_type == 'tf-idf_pp2':
+        elif feature_type == 'tf-idf':
             #computing features from term frequencies (training set)
             features_test = tfidf_transformer.transform(X_test_counts)            
             features_test = features_test.toarray()

@@ -141,7 +141,7 @@ def get_comm_1MBID(comms_data):
     output_comm = []
     for commId in comms_data.keys():
         mbids = [r['mbid']  for r in comms_data[commId]]
-        if len(np.unique(mbids))>1:
+        if len(np.unique(mbids))==1:
             output_comm.append(commId)
     
     return output_comm
