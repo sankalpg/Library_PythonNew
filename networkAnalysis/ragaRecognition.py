@@ -14,6 +14,7 @@ import json
 from collections import Counter
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
+from sklearn.decomposition import TruncatedSVD
 
 from sklearn.naive_bayes import MultinomialNB as NB
 from sklearn.linear_model import SGDClassifier as SGD
@@ -417,7 +418,7 @@ def get_per_recording_data(comm_data):
         
         
         
-def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, force_build_network=0, feature_type = 0, classifier = 'svm', pre_processing = -1):
+def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, force_build_network=0, feature_type = 0, classifier = 'svm', pre_processing = -1, LSA_dimension = -1):
     """
     Raga recognition system using document classification and topic modelling techniques.
     In this approach we treat phrases of a recording as words (basically cluster id). 
@@ -446,6 +447,9 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
                          NOTE: It feels like this should be taken care of by the IDF computation, but for a small corpus if there is a lot of frequency, the weight is high no matter what. Just to try it out, brain worms!!
                          2: for removing communities which have only one mbid in them. 
                          3: for removing communities for option 1 and 2
+        
+        LSA_dimension: -1 for doing nothing
+                        N if we want to perform LSA and reduce the number of components to N in the feature space
                          
     
     """
@@ -505,6 +509,10 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
     
     #starting crossfold validation loop
     for train_inds, test_inds in cval:
+        
+        if LSA_dimension >0:
+            svd = TruncatedSVD(n_components=LSA_dimension)
+        
         docs_train = []                 #storing documents (phrases per recording)
         #preparing tf-idf matrix for the training data
         for train_ind in train_inds:
@@ -513,7 +521,6 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
             else:
                 per_rec_words = ''
             docs_train.append(per_rec_words)
-        
         
         #Computing term frequencies (training set)
         X_train_counts = count_vect.fit_transform(docs_train)
@@ -532,7 +539,8 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
             print "Please specify a valid feature type"
             return False
         
-        
+        if LSA_dimension >0:
+            features_train = svd.inverse_transform(svd.fit_transform(features_train))
         
         #training the model with the obtained tf-idf features
         if classifier == 'NB':
@@ -578,6 +586,10 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
             print "Please specify a valid feature type"
             return False        
         
+        if LSA_dimension >0:
+            features_test = svd.inverse_transform(svd.transform(features_test))
+
+
         #performing prediction of labels using the trained model
         if classifier == 'SGD':
             predicted = clf.predict(csc.csc_matrix(features_test))
@@ -599,7 +611,10 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
     
     
         
-        
+def raga_recognition_V3():
+    """
+    This version combines V1 and V2. TF-IDF are computed using KNN words of the given words, since many documents have no words from the given vocabulary. 
+    """
         
         
     
