@@ -116,10 +116,23 @@ def rank_community_gamaka_phrases(comm_data):
     return gamaka_phrase_rank, len(np.unique(nIds)), len(mbid_val), len(raga_val)
 
 
-def find_gamaka_communities(comms_data, max_mbids_per_raga = 16):
+def find_gamaka_communities(comms_data, max_mbids_per_comm = -1, max_ragas_per_comm = -1, max_rot_logic = True):
     """
-    This function selects gamaka communities from the community data. This is a wrapper function for
-    selecting top gamaka communities.
+    This function selects gamaka communities from the community data. This is a wrapper function 
+    around gamaka rating function to select the gamaka communities given their rank.
+    
+    Logic: the crucial component of this process is trying to identify a thresold at which there is
+    a big change in the rank of the community. In the cumulative distribution of the rank of the communities (
+    where rank is the gamaka rank) it corresponds to the knee of the curve. The knee of this curve is
+    determined by rotating the curve so that the start of the curve and the end of the curve are both
+    at x axis (y=0) and then we pick the max location of this curve. This is super non parameteric way
+    to do this task. In addition to this we can also apply addional set of rules like community > certain number of mbids or ragas
+    are bound to be a gamaka community, if you have an idea about it. 
+    
+    max_mbids_per_comm: if positive, every comm with #mbids > this number is a gamaka community. If negative, ignored.
+    max_ragas_per_commL if positive, every comm with #ragas > this number is a gamaka community. If negative, ignored.
+    max_rot_logic: if True the logic of rotation of cumsum curve and taking max to detect knee is applied otherwise not.
+    
     """
     communityRank = []
     for comId in comms_data.keys():
@@ -129,10 +142,35 @@ def find_gamaka_communities(comms_data, max_mbids_per_raga = 16):
     communityRank.sort(cmp=cmpComm, reverse=True) 
     
     commIds = []
+    
+    if max_rot_logic:
+        #detecting the knee of the gamaka rank curve ofcommunities        
+        rank = []
+        for d in communityRank:
+            rank.append(d['rank'])
+        cumsum = np.cumsum(rank)
+        cumsum = cumsum - cumsum[0]
+        rad = -1*np.arctan((cumsum[-1]-cumsum[0])/float(len(cumsum)))   #rotation angle needed to flatten the extreme points
+        rot_mtx = [[np.cos(rad), -np.sin(rad)], [np.sin(rad), np.cos(rad)]]
+        rank_rot = np.dot(rot_mtx, np.array([np.arange(cumsum.size), cumsum]))
+        max_point = np.argmax(rank_rot[1])
+        rad = rad*-1
+        rot_mtx = [[np.cos(rad), -np.sin(rad)], [np.sin(rad), np.cos(rad)]]
+        point_rot = np.dot(rot_mtx, np.array([rank_rot[0][max_point], rank_rot[1][max_point]]))
+        
+        for ii in range(int(np.floor(point_rot[0]))):
+            if communityRank[ii]['nRagas']>1: #nomatter what happens, for us a gamaka community is dangerous if it has multiple ragas. Thats our definitely to detect gamaks.
+                commIds.append(communityRank[ii]['comId'])
+    
+    #if other rules are provided apply them to detect more explicitely gamaka communities
+    
     for comm in communityRank:
-        if comm['nNodes'] > max_mbids_per_raga: #since this for sure means somethign is not correct with this comm
+        if max_mbids_per_comm > 0 and comm['nFiles'] > max_mbids_per_comm: #this for sure means somethign is not correct with this comm
             commIds.append(comm['comId'])    
-    return commIds
+        if max_ragas_per_comm > 0 and comm['nRagas'] > max_ragas_per_comm:
+            commIds.append(comm['comId'])
+    
+    return commIds, communityRank
     
 def get_comm_1MBID(comms_data):
     """
