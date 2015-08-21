@@ -483,9 +483,10 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
     mbid_list = [r[1] for r in raga_mbid]
     raga_map, map_raga = generate_raga_mapping(raga_list)
     label_list = np.array([raga_map[r] for r in raga_list])
+    label_list_pred = -1*np.ones(label_list.shape)
     
     #initializing crossfold object
-    cval = cross_val.StratifiedKFold(label_list, n_folds=n_fold)
+    cval = cross_val.StratifiedKFold(label_list, n_folds=n_fold, shuffle = True, random_state=np.random.randint(100))
     
     #splitting folds.
     predicted_raga = ['' for r in range(len(raga_mbid))]    #placeholder for storing predicted ragas
@@ -493,13 +494,13 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
     #if there has to be a pre-processing done to remove specific communities, estimating them to put them as stop words
     stop_words = []
     if pre_processing == 1:
-        stop_words.extend(comm_char.find_gamaka_communities(comm_data, max_mbids_per_raga = 16))
+        stop_words.extend(comm_char.find_gamaka_communities(comm_data, max_mbids_per_comm =label_list.size/np.unique(label_list).size)[0])
         print type(stop_words), len(stop_words)
     if pre_processing == 2:
         stop_words.extend(comm_char.get_comm_1MBID(comm_data))
         print type(stop_words), len(stop_words)
     if pre_processing == 3:
-        stop_words.extend(comm_char.find_gamaka_communities(comm_data, max_mbids_per_raga = 16))
+        stop_words.extend(comm_char.find_gamaka_communities(comm_data, max_mbids_per_comm =label_list.size/np.unique(label_list).size)[0])
         stop_words.extend(comm_char.get_comm_1MBID(comm_data))
         print type(stop_words), len(stop_words)
 
@@ -509,7 +510,7 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
     
     #starting crossfold validation loop
     for train_inds, test_inds in cval:
-        
+        print test_inds
         if LSA_dimension >0:
             svd = TruncatedSVD(n_components=LSA_dimension)
         
@@ -595,7 +596,8 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
             predicted = clf.predict(csc.csc_matrix(features_test))
         else:
             predicted = clf.predict(features_test)
-                
+        
+        label_list_pred[test_inds] = predicted
         for ii, pred_val in enumerate(predicted):
             predicted_raga[test_inds[ii]] = map_raga[pred_val]
         
@@ -607,7 +609,7 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
     print "You got %d number of ragas right for a total of %d number of recordings"%(cnt, len(predicted_raga))
        
     
-    return
+    return label_list, label_list_pred, raga_map, map_raga, mbid_list
     
     
         
