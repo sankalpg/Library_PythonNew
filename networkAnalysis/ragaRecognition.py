@@ -511,8 +511,8 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
     #starting crossfold validation loop
     for train_inds, test_inds in cval:
         print test_inds
-        if LSA_dimension >0:
-            svd = TruncatedSVD(n_components=LSA_dimension)
+        #if LSA_dimension >0:
+            #svd = TruncatedSVD(n_components=LSA_dimension)
         
         docs_train = []                 #storing documents (phrases per recording)
         #preparing tf-idf matrix for the training data
@@ -540,8 +540,8 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
             print "Please specify a valid feature type"
             return False
         
-        if LSA_dimension >0:
-            features_train = svd.inverse_transform(svd.fit_transform(features_train))
+        #if LSA_dimension >0:
+            #features_train = svd.inverse_transform(svd.fit_transform(features_train))
         
         #training the model with the obtained tf-idf features
         if classifier == 'NB':
@@ -587,8 +587,8 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
             print "Please specify a valid feature type"
             return False        
         
-        if LSA_dimension >0:
-            features_test = svd.inverse_transform(svd.transform(features_test))
+        #if LSA_dimension >0:
+            #features_test = svd.inverse_transform(svd.transform(features_test))
 
 
         #performing prediction of labels using the trained model

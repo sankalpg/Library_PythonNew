@@ -78,6 +78,49 @@ def stripPrefix(audiofile):
  #'aa5f376f-06cd-4a69-9cc9-b1077104e0b0':8,
  #'85ccf631-4cdf-4f6c-a841-0edfcf4255d1':9}
 
+def get_db_raga_dunya_raga(outputfile, myDatabase, collection = 'carnatic'):
+	"""
+	Due to changes in raga labels there are cases where the raga labels in the dunya are changed.This function just dumps a file 
+	with mbid, raga in the curent db and in the dunya (from musicbrainz)
+	"""
+	dn.set_token("60312f59428916bb854adaa208f55eb35c3f2f07")
+	if collection == 'hindustani':
+		tradition = hn
+	elif collection == 'carnatic':
+		tradition = ca
+		
+	getMBIDs = "select mbid from file"
+	cmd1 = "select raagaId from file where mbid='%s'"
+		
+	try:
+		con = psy.connect(database=myDatabase, user=myUser) 
+		cur = con.cursor()
+		cur.execute(getMBIDs)
+		mbids = cur.fetchall()
+		
+		for ii,mbid in enumerate(mbids):
+			mbid = mbid[0]
+			try:
+				recData = tradition.get_recording(mbid)
+				ragaId_dunya = recData['raaga'][0]['uuid']
+				cur.execute(cmd1%(mbid))
+				raaga_id = cur.fetchone()[0]
+				print mbid, ragaId_dunya, raaga_id
+			except:
+				pass
+	except psy.DatabaseError, e:
+		print 'Error %s' % e	
+		if con:
+			con.rollback()
+			con.close()
+			sys.exit(1)
+
+	if con:
+		con.close()
+	
+	
+	
+
 def fillFileTableWithRagaIds(myDatabase, collection = 'carnatic'):
 	
 	dn.set_token("60312f59428916bb854adaa208f55eb35c3f2f07")

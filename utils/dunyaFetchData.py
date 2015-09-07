@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+import codecs
 import json, os, sys
 import numpy as np
 import compmusic
@@ -8,6 +10,7 @@ from compmusic.dunya import carnatic as ca
 from compmusic.dunya import docserver as ds
 from compmusic import musicbrainz
 import fixpath
+
 
 ISMIR2015_10RAGASCarnatic = ['55', '10', '27', '8', '9', '137', '159', '20', '13', '210']
 
@@ -35,8 +38,26 @@ def getRagaNameMapping(outFile, ragas = ISMIR2015_10RAGASCarnatic, collection = 
         fid.write("%s\t%s\n"%(raga,unicode(ragaName).encode('utf8')))
     fid.close()
         
+def getRagasWithRecordings_v2(outputFile, collection = 'hindustani'):
+	
+	ragas= {}
+	if collection == 'hindustani':
+		tradition = hn
+	elif collection == 'carnatic':
+		tradition = ca
+	
+	ragas_all = tradition.get_raagas()
+	for raga in ragas_all:
+		recs = recs = ca.get_raaga(raga['uuid'])['recordings']
+		ragas[raga['uuid']]= recs
+	
+	json.dump(ragas,open(outputFile,'w'))
 
 def getRagasWithRecordings(outputFile, collection = 'hindustani', with_bootlegs=False):
+	"""
+	Note that this function will only fetch recordings which have only one raga labelled. This will
+	avoid the situation when thera re two pieces will different ragas in the same recording.
+	"""
 	ragas= {}
 	if collection == 'hindustani':
 		tradition = hn
@@ -54,13 +75,18 @@ def getRagasWithRecordings(outputFile, collection = 'hindustani', with_bootlegs=
 			print "ERROR Encountered for file %s"%rec['mbid']
 			continue
 		#print recData
-		if type(recData['raaga']) == dict:
-			ragaId = recData['raaga']['id']
+		if len(recData['raaga']) == 1:	#only one raga labelled
+			ragaId = recData['raaga'][0]['uuid']
 			if not ragas.has_key(ragaId):
 				ragas[ragaId]={}
-				ragas[ragaId]['name'] = tradition.get_raaga(ragaId)['name']
+				ragas[ragaId]['name'] = recData['raaga'][0]['name']
 				ragas[ragaId]['recs'] = []
-			recData['concert_artist'] = tradition.get_concert(recData['concert']['mbid'])['concert_artists'][0]
+			try:
+				recData['concert_artist'] = tradition.get_concert(recData['concert'][0]['mbid'])['concert_artists'][0]
+			except:
+				print recData['concert'][0]['mbid']
+				recData['concert_artist'] = 'Unknown'
+				
 			ragas[ragaId]['recs'].append(recData)
 	json.dump(ragas,open(outputFile,'w'))
 		
@@ -271,10 +297,119 @@ def downloadRagaDataset(selectedRagaDBFile, outputDir, logFile):
 			
 				
 	fid.close()
+
+
+def generate_data_csv_sheet(outputfile, log_file, collection = 'carnatic'):
+	"""
+	This file generated an csv file with all the recordings in the collection and its relevant data needed
+	to build a raga dataset. Recordings are clubed according to ragas along with their frequencies.
+	Columns in the csv sheet are
+	<mbid><title><release_id><release><release_artist_id><release_artist><work_id><work><form><raaga_name><raga_uuid><duration><dunya_link><mb_link>
+	"""
 	
+	if collection == 'hindustani':
+		tradition = hn
+	elif collection == 'carnatic':
+		tradition = ca
 		
-		
-			
+	fid2 = codecs.open(outputfile,'w',encoding='utf-8')
+	ragas_temp = tradition.get_raagas()
+	raga_name = {}
+	raga_name['null'] = 'null'
+	for r in ragas_temp:
+		raga_name[r['uuid']] = r['name']
+	
+	#fid = open(log_file,'w')
+	#raga_data= {}
+	#ragas = tradition.get_raagas()
+	#for raga in ragas:
+		#recs = ca.get_raaga(raga['uuid'])['recordings']
+		#if len(recs)>0:
+			#raga_data[raga['uuid']]={}
+		#for rec in recs:
+			#raga_data[raga['uuid']][rec['mbid']] = ['from_get_raga']
+	
+	#recs = tradition.get_recordings()
+	#rec_data = {}
+	#con_data = {}
+	#for rec in recs:
+		#rec_data[rec['mbid']] = tradition.get_recording(rec['mbid'])
+		#con_data[rec['mbid']] = tradition.get_concert(rec_data[rec['mbid']]['concert'][0]['mbid'])
+		#if len(rec_data[rec['mbid']]['raaga']) == 1:
+			#if not raga_data.has_key(rec_data[rec['mbid']]['raaga'][0]['uuid']):
+				#raga_data[rec_data[rec['mbid']]['raaga'][0]['uuid']]={}
+				#raga_data[rec_data[rec['mbid']]['raaga'][0]['uuid']][rec['mbid']]= ['from_get_recording']
+			#else:
+				#if not raga_data[rec_data[rec['mbid']]['raaga'][0]['uuid']].has_key(rec['mbid']):
+					#raga_data[rec_data[rec['mbid']]['raaga'][0]['uuid']][rec['mbid']] = ['from_get_recording']
+				#else:
+					#raga_data[rec_data[rec['mbid']]['raaga'][0]['uuid']][rec['mbid']].append('from_get_recording')
+		#else:
+			#fid.write("Warning1: mbid %s got different number of ragas than 1"%rec['mbid'])
+	
+	#fid.close()
+	#json.dump(raga_data, open('raga_data.json','w'))
+	#json.dump(rec_data, open('rec_data.json','w'))
+	#json.dump(con_data, open('con_data.json','w'))
+	
+	raga_data = json.load(codecs.open('raga_data.json','r', encoding = 'utf-8'))
+	rec_data = json.load(codecs.open('rec_data.json','r', encoding = 'utf-8'))
+	con_data = json.load(codecs.open('con_data.json','r', encoding = 'utf-8'))
+	
+	n_recs = []
+	raga_id = []
+	for r in raga_data.keys():
+		n_recs.append(len(raga_data[r].keys()))
+		raga_id.append(r)
+	
+	n_recs = np.array(n_recs)
+	raga_id = np.array(raga_id)
+	ind_sort = np.argsort(n_recs)
+	for ii in ind_sort[::-1]:
+		r_id = raga_id[ii]
+		durs = []
+		rec_id = []
+		for r in raga_data[r_id].keys():
+			durs.append(float(rec_data[r]['length'])/(1000.0*60.0))
+			rec_id.append(r)
+		ind_sort_dur = np.argsort(np.array(durs))
+		for jj in ind_sort_dur[::-1]:
+			mbid = rec_id[jj]
+			#<mbid><title><release_id><release><release_artist_id><release_artist><work_id><work><form><raaga_name><raga_uuid><duration><dunya_link><mb_link>
+			print mbid
+			#fid2.write('%s\t'*14%(mbid, 
+								#rec_data[mbid]['title'],
+								#con_data[mbid]['mbid'],
+								#con_data[mbid]['title'],
+								#con_data[mbid]['concert_artists'][0]['mbid'],
+								#con_data[mbid]['concert_artists'][0]['name'],
+								#rec_data[mbid]['work'][0]['mbid'],
+								#rec_data[mbid]['work'][0]['title'],
+								#rec_data[mbid]['form'][0]['name'],
+								#rec_data[mbid]['raaga'][0]['name'],
+								#rec_data[mbid]['raaga'][0]['uuid'],
+								#rec_data[mbid]['length'],
+								#'http://dunya.compmusic.upf.edu/carnatic/recording/'+mbid,
+								#'https://musicbrainz.org/recording/'+mbid))
+			fid2.write(u"%s\t"*14%(mbid, 
+					rec_data[mbid]['title'],
+					con_data[mbid]['mbid'],
+					con_data[mbid]['title'],
+					con_data[mbid]['concert_artists'],
+					rec_data[mbid]['work'],
+					rec_data[mbid]['form'],
+					rec_data[mbid]['raaga'],
+					r_id,
+					raga_name[r_id],
+					n_recs[ii],
+					rec_data[mbid]['length'],
+					'http://dunya.compmusic.upf.edu/carnatic/recording/'+mbid,
+					'https://musicbrainz.org/recording/'+mbid))
+			fid2.write('\n')
+	fid2.close()
+	
+	
+
 
 """
 Main functinos needed

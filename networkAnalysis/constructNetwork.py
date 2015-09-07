@@ -154,8 +154,9 @@ def constructNetworkSNAP_NodeLabels(fileListFile, outputNetworkFile, thresholdBi
     if con:
         con.close()
     
-    snap.SavePajek_PNEANet(G, outputNetworkFile)
+    #snap.SavePajek_PNEANet(G, outputNetworkFile)
     #snap.SavePajek_PNEANet(G, outputNetworkFile, NIdColorH,NIdLabelH)
+    snap.SavePajek_PNEANet(G, outputNetworkFile, NIdColorH)
     
     
     

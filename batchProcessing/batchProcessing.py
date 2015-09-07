@@ -18,6 +18,8 @@ import numpy as np
 #import eyed3
 import scipy.interpolate as scpyinterp
 from scipy.signal import medfilt
+from mutagen import easyid3
+
 try:
     from mutagen.mp3 import MP3
 except:
@@ -52,28 +54,42 @@ def batchProcessTonicFineTune(root_dir, tonicExt = '.tonic', tonicExtOut = '.ton
     for audiofilename in audiofilenames:
       fname,ext = os.path.splitext(audiofilename)
       fineTuneTonicValue(fname+tonicExt, fname+tonicExtOut, fname+pitchExt)
- 
+
+
+def fetchMBID(mp3File):
+    try:
+        mbid = easyid3.ID3(mp3File)['UFID:http://musicbrainz.org'].data
+    except:
+        print mp3File
+        raise MBIDError('MBID not embedded')
+    return mbid 
 
 def computeDutationSongs(root_dir, FileExt2Proc='.mp3'): 
     
-        audiofilenames = GetFileNamesInDir(root_dir, FileExt2Proc)
-        
-        totalLen = 0
-	length = []
-        for audiofile in audiofilenames:
-            if  FileExt2Proc=='.mp3':
-                audio = MP3(audiofile)
-                totalLen += audio.info.length
-		length.append(audio.info.length)		
-            elif FileExt2Proc=='.wav':
-                totalLen +=ES.MetadataReader(filename = audiofile)()[7]
-		length.append(ES.MetadataReader(filename = audiofile)()[7]) 
-        print "total files %d\n"%len(audiofilenames)
-        print "Total length %d\n"%totalLen
-	print "Max length %d\n"%np.max(length)
-	print "Min length %d\n"%np.min(length)
-	print "Mean length %d\n"%np.mean(length)
-	print "median length %d\n"%np.median(length)
+    audiofilenames = GetFileNamesInDir(root_dir, FileExt2Proc)
+
+    totalLen = 0
+    length = []
+    mbid_dur = {}
+    for audiofile in audiofilenames:
+        if  FileExt2Proc=='.mp3':
+            audio = MP3(audiofile)
+            totalLen += audio.info.length
+            length.append(audio.info.length)		
+            mbid = fetchMBID(audiofile)
+            if not mbid_dur.has_key(mbid):
+                mbid_dur[mbid] = audio.info.length
+        elif FileExt2Proc=='.wav':
+            totalLen +=ES.MetadataReader(filename = audiofile)()[7]
+            length.append(ES.MetadataReader(filename = audiofile)()[7]) 
+    print "total files %d\n"%len(audiofilenames)
+    print "Total length %d\n"%totalLen
+    print "Max length %d\n"%np.max(length)
+    print "Min length %d\n"%np.min(length)
+    print "Mean length %d\n"%np.mean(length)
+    print "median length %d\n"%np.median(length)
+    
+    return mbid_dur
                 
 
 # This function is to batch process 
