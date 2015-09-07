@@ -418,7 +418,7 @@ def get_per_recording_data(comm_data):
         
         
         
-def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, force_build_network=0, feature_type = 0, classifier = 'svm', pre_processing = -1, LSA_dimension = -1):
+def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, force_build_network=0, feature_type = 0, classifier = 'svm', pre_processing = -1):
     """
     Raga recognition system using document classification and topic modelling techniques.
     In this approach we treat phrases of a recording as words (basically cluster id). 
@@ -447,9 +447,6 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
                          NOTE: It feels like this should be taken care of by the IDF computation, but for a small corpus if there is a lot of frequency, the weight is high no matter what. Just to try it out, brain worms!!
                          2: for removing communities which have only one mbid in them. 
                          3: for removing communities for option 1 and 2
-        
-        LSA_dimension: -1 for doing nothing
-                        N if we want to perform LSA and reduce the number of components to N in the feature space
                          
     
     """
@@ -495,14 +492,11 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
     stop_words = []
     if pre_processing == 1:
         stop_words.extend(comm_char.find_gamaka_communities(comm_data, max_mbids_per_comm =label_list.size/np.unique(label_list).size)[0])
-        print type(stop_words), len(stop_words)
     if pre_processing == 2:
         stop_words.extend(comm_char.get_comm_1MBID(comm_data))
-        print type(stop_words), len(stop_words)
     if pre_processing == 3:
         stop_words.extend(comm_char.find_gamaka_communities(comm_data, max_mbids_per_comm =label_list.size/np.unique(label_list).size)[0])
         stop_words.extend(comm_char.get_comm_1MBID(comm_data))
-        print type(stop_words), len(stop_words)
 
     #initializers needed for analysis of words (community indexes)
     count_vect = CountVectorizer(stop_words = stop_words)
@@ -510,9 +504,6 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
     
     #starting crossfold validation loop
     for train_inds, test_inds in cval:
-        print test_inds
-        #if LSA_dimension >0:
-            #svd = TruncatedSVD(n_components=LSA_dimension)
         
         docs_train = []                 #storing documents (phrases per recording)
         #preparing tf-idf matrix for the training data
@@ -525,7 +516,6 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
         
         #Computing term frequencies (training set)
         X_train_counts = count_vect.fit_transform(docs_train)
-        print X_train_counts.shape
         
         if feature_type == 'tf':
             features_train = X_train_counts.toarray()
@@ -540,9 +530,7 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
             print "Please specify a valid feature type"
             return False
         
-        #if LSA_dimension >0:
-            #features_train = svd.inverse_transform(svd.fit_transform(features_train))
-        
+      
         #training the model with the obtained tf-idf features
         if classifier == 'NB':
             clf = NB()
@@ -586,10 +574,6 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
         else:
             print "Please specify a valid feature type"
             return False        
-        
-        #if LSA_dimension >0:
-            #features_test = svd.inverse_transform(svd.transform(features_test))
-
 
         #performing prediction of labels using the trained model
         if classifier == 'SGD':
