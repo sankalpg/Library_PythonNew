@@ -15,6 +15,7 @@ from collections import Counter
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.decomposition import TruncatedSVD
+import uuid
 
 from sklearn.naive_bayes import MultinomialNB as NB
 from sklearn.linear_model import SGDClassifier as SGD
@@ -468,6 +469,12 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
     comm_data = json.load(open(comm_filename,'r'))
     comm_char.fetch_phrase_attributes(comm_data, database = myDatabase, user= myUser)
     
+    #since all the text mining tools consider 0-10 integers as stop words, for making system robust to any unexpected hiccups
+    # all the the comm_ids are mapped to uuids
+    com_id_2_uuid = {}
+    for com_id in comm_data.keys():
+		com_id_2_uuid[com_id] = uuid.uuid1().hex
+    
     #getting per document (recording) words (community index, phrase instanes)
     per_rec_data = get_per_recording_data(comm_data)
 
@@ -497,6 +504,8 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
     if pre_processing == 3:
         stop_words.extend(comm_char.find_gamaka_communities(comm_data, max_mbids_per_comm =label_list.size/np.unique(label_list).size)[0])
         stop_words.extend(comm_char.get_comm_1MBID(comm_data))
+    
+    stop_words = [com_id_2_uuid[s] for s in stop_words]
 
     #initializers needed for analysis of words (community indexes)
     count_vect = CountVectorizer(stop_words = stop_words)
@@ -509,14 +518,14 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
         #preparing tf-idf matrix for the training data
         for train_ind in train_inds:
             if per_rec_data.has_key(mbid_list[train_ind]):  #not every file has phrases found!! (there is one stupid file for which there are no phrases within this distance threshold)
-                per_rec_words = ' '.join([p[0] for p in per_rec_data[mbid_list[train_ind]]])
+                per_rec_words = ' '.join([com_id_2_uuid[p[0]] for p in per_rec_data[mbid_list[train_ind]]])
             else:
                 per_rec_words = ''
             docs_train.append(per_rec_words)
         
-        #Computing term frequencies (training set)
+        #Computing term frequencies (training set) Our vocab is only learned from training examples
         X_train_counts = count_vect.fit_transform(docs_train)
-        
+        print len(count_vect.vocabulary_.keys())
         if feature_type == 'tf':
             features_train = X_train_counts.toarray()
         elif feature_type == 'tp':
@@ -554,7 +563,7 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
         #preparing the tf-idf matrix for the testing data.
         for test_ind in test_inds:
             if per_rec_data.has_key(mbid_list[test_ind]):
-                per_rec_words = ' '.join([p[0] for p in per_rec_data[mbid_list[test_ind]]])
+                per_rec_words = ' '.join([com_id_2_uuid[p[0]] for p in per_rec_data[mbid_list[test_ind]]])
             else:
                 per_rec_words = ''
             docs_test.append(per_rec_words)
