@@ -419,10 +419,10 @@ def get_per_recording_data(comm_data):
         
         
         
-def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, force_build_network=0, feature_type = 0, classifier = 'svm', pre_processing = -1, norm_feature = None):
+def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, force_build_network=0, feature_type = 0, classifier = 'svm', pre_processing = -1, norm_feature = None, network_wght_type = -1):
     """
     Raga recognition system using document classification and topic modelling techniques.
-    In this approach we treat phrases of a recording as words (basically cluster id). 
+    In this approach we treat phrases of a recording as words (basically cluster/community id). 
     phrases->communities(Words)->word frequencies per file->tf-idf kind of features->classification
     Input:
         fileListFile: file which lists all the files to be considered for this anlyasis (there is relevant data extracted and stored in a structed manner from these files)
@@ -449,24 +449,30 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
                          2: for removing communities which have only one mbid in them. 
                          3: for removing communities for option 1 and 2
         norm_feature: Normalize the final feature vector or not (NOTE: when its on the result seems to be affected a lot by the presence of the gamaka communities)
+        network_wght_type: the schema used for weighting edges of the network. Either 0, 1 or -1 for unity weight
                          
     
     """
+    # path to store all the temporary files
+    scratch_dir = 'scratch_raga_recognition'
+    
+    root_filename = os.path.join(scratch_dir, 'network'+'_'+str(thresholdBin)+'_'+pattDistExt.replace('.',''))
+    
     #constructing the network
     t1 = time.time()
-    wghtd_graph_filename = 'graph_temp'+'_'+str(thresholdBin)
+    wghtd_graph_filename = root_filename + '.net'
     #building network only when its not already present on the disk
     if force_build_network or not os.path.isfile(wghtd_graph_filename):
-        cons_net.constructNetwork_Weighted_NetworkX(fileListFile, wghtd_graph_filename , thresholdBin, pattDistExt, 0 , -1)
+        cons_net.constructNetwork_Weighted_NetworkX(fileListFile, wghtd_graph_filename, thresholdBin, pattDistExt, network_wght_type, -1)   # we do not do any significance filtering
     
     #reading the network on the disk (either build in the current call or from previous ones)
     full_net = nx.read_pajek(wghtd_graph_filename)
     
     #performing community detection on the built network
-    comm_filename = 'comm_thresholdBin'+'_'+str(thresholdBin)+ pattDistExt +'.community'
+    comm_filename = root_filename +'.community'
     net_pro.detectCommunitiesInNewtworkNX(wghtd_graph_filename, comm_filename)
     
-    #fetching relevant data for the community
+    #fetching relevant data for the community (raga names and file names to analysis)
     comm_data = json.load(open(comm_filename,'r'))
     comm_char.fetch_phrase_attributes(comm_data, database = myDatabase, user= myUser)
     
@@ -480,7 +486,7 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
     per_rec_data = get_per_recording_data(comm_data)
 
     t2 = time.time()
-    print "time taken = %f"%(t2-t1)
+    print "time taken = %f"%(t2-t1)    
     
     ##########Loop for N_Fold cross validataion##############
     raga_mbid = get_mbids_raagaIds_for_collection(myDatabase, myUser)
