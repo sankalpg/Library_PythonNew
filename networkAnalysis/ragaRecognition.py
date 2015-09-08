@@ -419,7 +419,7 @@ def get_per_recording_data(comm_data):
         
         
         
-def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, force_build_network=0, feature_type = 0, classifier = 'svm', pre_processing = -1):
+def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, force_build_network=0, feature_type = 0, classifier = 'svm', pre_processing = -1, norm_feature = None):
     """
     Raga recognition system using document classification and topic modelling techniques.
     In this approach we treat phrases of a recording as words (basically cluster id). 
@@ -448,6 +448,7 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
                          NOTE: It feels like this should be taken care of by the IDF computation, but for a small corpus if there is a lot of frequency, the weight is high no matter what. Just to try it out, brain worms!!
                          2: for removing communities which have only one mbid in them. 
                          3: for removing communities for option 1 and 2
+        norm_feature: Normalize the final feature vector or not (NOTE: when its on the result seems to be affected a lot by the presence of the gamaka communities)
                          
     
     """
@@ -509,7 +510,7 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
 
     #initializers needed for analysis of words (community indexes)
     count_vect = CountVectorizer(stop_words = stop_words)
-    tfidf_transformer = TfidfTransformer()
+    tfidf_transformer = TfidfTransformer(norm=norm_feature, smooth_idf=False)
     
     #starting crossfold validation loop
     for train_inds, test_inds in cval:
