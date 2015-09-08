@@ -409,7 +409,7 @@ class experimenter(classifiers):
         # Soon after setting experimental params we can initialize variables to store the results/ other stats for each experiment
         ### Variable to store stats of all the experiments
         self.cMTXWhole = np.zeros([len(self.cNames),len(self.cNames)])
-        self.cMTXExp = [[self.cMTXWhole] for x in range(self.nExp)]    #store confusion matrix of each iteration
+        self.cMTXExp = [copy.deepcopy(self.cMTXWhole) for x in range(self.nExp)]    #store confusion matrix of each iteration
         self.accuracy = [[] for x in range(self.nExp)]
         self.decArray = [[] for x in xrange(len(self.classLabelsInt))]  #stores all the decision for each feature vector in all the experiments
         
