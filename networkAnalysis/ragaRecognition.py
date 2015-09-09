@@ -21,9 +21,13 @@ import uuid
 from sklearn.metrics import confusion_matrix
 sys.path.append(os.path.join(os.path.dirname(__file__), '../machineLearning'))
 import mlWrapper as ml
-
-from sklearn.naive_bayes import MultinomialNB as NB
-from sklearn.linear_model import SGDClassifier as SGD
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
+from sklearn import tree
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import SGDClassifier
 from sklearn import svm
 from sklearn import tree
 from scipy.sparse import csc
@@ -559,21 +563,22 @@ def raga_recognition_V2(out_dir, fileListFile, thresholdBin, pattDistExt, networ
                 print "Please specify a valid feature type"
                 return False
 
+            #checking the input classifier params
+            if not isinstance(classifier[1], dict):
+                classifier_params = {}
+            else:
+                classifier_params = classifier[1]
             #training the model with the obtained tf-idf features
             if classifier[0] == 'nbMulti':
-                if classifier[1] == 'default':
-                    clf = NB()
-                else:
-                    clf = NB(**classifier[1])
+                clf = MultinomialNB(**classifier_params)
             elif classifier[0] == 'svm':
-                if classifier[1] == 'default':
-                    clf = svm.SVC()
-                else:
-                    clf = svm.SVC(**classifier[1])
-            elif classifier == 'SGD':
-                clf = SGD(loss='hinge', penalty='l2', alpha=1e-3, n_iter=5, random_state=42)
-            elif classifier == 'tree':
-                clf = tree.DecisionTreeClassifier()
+                clf = SVC(**classifier_params)
+            elif classifier[0] == 'SGD':
+                clf = SGDClassifier(**classifier_params)
+            elif classifier[0] == 'tree':
+                clf = tree.DecisionTreeClassifier(**classifier_params)
+            elif classifier[0] == 'randForest':
+                clf = RandomForestClassifier(**classifier_params)
             else:
                 print "Print choose a valid classifier"
                 return False
