@@ -424,7 +424,7 @@ def get_per_recording_data(comm_data):
         
         
         
-def raga_recognition_V2(out_dir, fileListFile, thresholdBin, pattDistExt, network_wght_type = -1, force_build_network=0, feature_type = 'tf-idf', pre_processing = -1, norm_tfidf = None, norm_features_dim = 0,  smooth_idf = False, classifier = ('nbMulti', "default"), n_fold = 16, n_expts = 10):
+def raga_recognition_V2(out_dir, fileListFile, thresholdBin, pattDistExt, network_wght_type = -1, force_build_network=0, feature_type = 'tf-idf', pre_processing = -1, norm_tfidf = None, norm_features_dim = 0,  smooth_idf = False, classifier = ('nbMulti', "default"), n_fold = 16, n_expts = 10, var1 = True, var2 = True):
     """
     Raga recognition system using document classification and topic modelling techniques.
     In this approach we treat phrases of a recording as words (basically cluster/community id). 
@@ -516,153 +516,160 @@ def raga_recognition_V2(out_dir, fileListFile, thresholdBin, pattDistExt, networ
     
     stop_words = [com_id_2_uuid[s] for s in stop_words]
 
-    ########################### Performing cross fold train testing Variant 1 ###################################
-    #In this variant for each fold we generate a training tf-idf vector. Meaning, vocabulary for each fold is solely determined by the training examples#    
-    
-    #initializing crossfold object
-    cval = cross_val.StratifiedKFold(label_list, n_folds=n_fold, shuffle = True, random_state=np.random.randint(100))
-    
-    # arrays for storing predicted labels and their names
-    label_list_pred = -1*np.ones(label_list.shape)    
-    predicted_raga = ['' for r in range(len(raga_mbid))]    #placeholder for storing predicted ragas
-    
-    #starting crossfold validation loop (NOTE: in this variant we only perform a single experiment)
-    for train_inds, test_inds in cval:
+    if var1:
+        ########################### Performing cross fold train testing Variant 1 ###################################
+        #In this variant for each fold we generate a training tf-idf vector. Meaning, vocabulary for each fold is solely determined by the training examples#    
         
-        #initializers needed for analysis of words (community indexes), WE DO IT IN EVERY FOLD TO MAK SURE EVERYTHING FROM THE PREV FOLD IS REMOVED
+        #initializing crossfold object
+        cval = cross_val.StratifiedKFold(label_list, n_folds=n_fold, shuffle = True, random_state=np.random.randint(100))
+        
+        # arrays for storing predicted labels and their names
+        label_list_pred = -1*np.ones(label_list.shape)    
+        predicted_raga = ['' for r in range(len(raga_mbid))]    #placeholder for storing predicted ragas
+        
+        #starting crossfold validation loop (NOTE: in this variant we only perform a single experiment)
+        for train_inds, test_inds in cval:
+            
+            #initializers needed for analysis of words (community indexes), WE DO IT IN EVERY FOLD TO MAK SURE EVERYTHING FROM THE PREV FOLD IS REMOVED
+            count_vect = CountVectorizer(stop_words = stop_words)
+            tfidf_transformer = TfidfTransformer(norm=norm_tfidf, smooth_idf=smooth_idf)
+            
+            docs_train = []                 #storing documents (phrases per recording)
+            #preparing tf-idf matrix for the training data
+            for train_ind in train_inds:
+                if per_rec_data.has_key(mbid_list[train_ind]):  #not every file has phrases found!! (there is one stupid file for which there are no phrases within this distance threshold)
+                    per_rec_words = ' '.join([com_id_2_uuid[p[0]] for p in per_rec_data[mbid_list[train_ind]]])
+                else:
+                    per_rec_words = ''
+                docs_train.append(per_rec_words)
+            
+            #Computing term frequencies (training set) Our vocab is only learned from training examples
+            X_train_counts = count_vect.fit_transform(docs_train)
+            
+            if feature_type == 'tf':
+                features_train = X_train_counts.toarray()
+            elif feature_type == 'tp':
+                features_train = X_train_counts.toarray()
+                features_train = np.where(features_train >= 1,1,features_train)
+            elif feature_type == 'tf-idf':
+                #computing features from term frequencies (training set)
+                features_train = tfidf_transformer.fit_transform(X_train_counts)            
+                features_train = features_train.toarray()
+            else:
+                print "Please specify a valid feature type"
+                return False
+
+            #training the model with the obtained tf-idf features
+            if classifier[0] == 'nbMulti':
+                if classifier[1] == 'default':
+                    clf = NB()
+                else:
+                    clf = NB(**classifier[1])
+            elif classifier[0] == 'svm':
+                if classifier[1] == 'default':
+                    clf = svm.SVC()
+                else:
+                    clf = svm.SVC(**classifier[1])
+            elif classifier == 'SGD':
+                clf = SGD(loss='hinge', penalty='l2', alpha=1e-3, n_iter=5, random_state=42)
+            elif classifier == 'tree':
+                clf = tree.DecisionTreeClassifier()
+            else:
+                print "Print choose a valid classifier"
+                return False
+            
+            if classifier == 'SGD':
+                #TODO: Strangely the SGD classifier was giving diff results if we pass dense matrix or sparse matrix. 
+                ### So for this classifier use sparse for now but look into it later. I couldn't find anything on the web.
+                clf.fit(csc.csc_matrix(features_train), label_list[train_inds])
+            else:
+                clf.fit(features_train, label_list[train_inds])
+            
+            docs_test = []
+            #preparing the tf-idf matrix for the testing data.
+            for test_ind in test_inds:
+                if per_rec_data.has_key(mbid_list[test_ind]):
+                    per_rec_words = ' '.join([com_id_2_uuid[p[0]] for p in per_rec_data[mbid_list[test_ind]]])
+                else:
+                    per_rec_words = ''
+                docs_test.append(per_rec_words)
+            
+            #Computing term frequencies (testing set)
+            X_test_counts = count_vect.transform(docs_test)
+
+            if feature_type == 'tf':
+                features_test = X_test_counts.toarray()
+            elif feature_type == 'tp':
+                features_test = X_test_counts.toarray()
+                features_test = np.where(features_test >= 1,1,features_test)
+            elif feature_type == 'tf-idf':
+                #computing features from term frequencies (training set)
+                features_test = tfidf_transformer.transform(X_test_counts)            
+                features_test = features_test.toarray()
+            else:
+                print "Please specify a valid feature type"
+                return False        
+
+            #performing prediction of labels using the trained model
+            if classifier == 'SGD':
+                predicted = clf.predict(csc.csc_matrix(features_test))
+            else:
+                predicted = clf.predict(features_test)
+            
+            label_list_pred[test_inds] = predicted
+            for ii, pred_val in enumerate(predicted):
+                predicted_raga[test_inds[ii]] = map_raga[pred_val]
+            
+                
+        cnt = 0
+        for i in range(len(predicted_raga)):
+            if raga_list[i] == predicted_raga[i]:
+                cnt+=1
+        print "You got %d number of ragas right for a total of %d number of recordings (Variant1)"%(cnt, len(predicted_raga))
+        
+        cMTC_var1 =  confusion_matrix(label_list, label_list_pred)
+    
+        ########################## End of variant 1 of cross fold testing ##################################
+    
+    if var2:
+        ########################### Performing cross fold train testing Variant 2 ###################################
+        #In this variant tf-idf vectors are computed for the entire dataset. The only affect this will have is in the computatino of idf term. 
+        # This way is actually better because testing files will also contribute to the importance that is given to a work in the idf term.
+        # Since computation of tf-idf is unsupervised (no raga label used) even this variant should be a valid experimental setup.
         count_vect = CountVectorizer(stop_words = stop_words)
-        tfidf_transformer = TfidfTransformer(norm=norm_tfidf, smooth_idf=smooth_idf)
+        tfidf_transformer = TfidfTransformer(norm=norm_tfidf, smooth_idf=False)
+        mlObj  = ml.experimenter()
+        mlObj.setExperimentParams(nExp = n_expts, typeEval = ("kFoldCrossVal",n_fold), nInstPerClass = -1, classifier = classifier, balanceClasses=1, normalizeFeatures=norm_features_dim)
+        #NOTE: we choose normalizeFeatures = 0 in the experiment setup because that option is tried out (experimented) during the computation of the features itself
+        #NOTE: balanceClasses will make sure each fold has equal number of samples from each class.
         
-        docs_train = []                 #storing documents (phrases per recording)
-        #preparing tf-idf matrix for the training data
-        for train_ind in train_inds:
-            if per_rec_data.has_key(mbid_list[train_ind]):  #not every file has phrases found!! (there is one stupid file for which there are no phrases within this distance threshold)
-                per_rec_words = ' '.join([com_id_2_uuid[p[0]] for p in per_rec_data[mbid_list[train_ind]]])
-            else:
-                per_rec_words = ''
-            docs_train.append(per_rec_words)
+        docs_train = [] # this time we will use all the document in out dataset
+        for ii in range(label_list.size):
+                if per_rec_data.has_key(mbid_list[ii]):  #not every file has phrases found!! (there is one stupid file for which there are no phrases within this distance threshold)
+                    per_rec_words = ' '.join([com_id_2_uuid[p[0]] for p in per_rec_data[mbid_list[ii]]])
+                else:
+                    per_rec_words = ''
+                docs_train.append(per_rec_words)
+                
+        count_all = count_vect.fit_transform(docs_train)
+        features = tfidf_transformer.fit_transform(count_all) 
+        if False:
+            dump = {'features': features.toarray(), 'labels': np.array(label_list)}
+            pickle.dump(dump, open('features_dump_160.pkl','w'))
+        mlObj.setFeaturesAndClassLabels(features.toarray(), np.array(raga_list))
+        mlObj.runExperiment()
         
-        #Computing term frequencies (training set) Our vocab is only learned from training examples
-        X_train_counts = count_vect.fit_transform(docs_train)
+        print "You got %d number of ragas right for a total of %d number of recordings (Variant2)"%(np.round(mlObj.overallAccuracy*len(label_list)), len(label_list))
         
-        if feature_type == 'tf':
-            features_train = X_train_counts.toarray()
-        elif feature_type == 'tp':
-            features_train = X_train_counts.toarray()
-            features_train = np.where(features_train >= 1,1,features_train)
-        elif feature_type == 'tf-idf':
-            #computing features from term frequencies (training set)
-            features_train = tfidf_transformer.fit_transform(X_train_counts)            
-            features_train = features_train.toarray()
-        else:
-            print "Please specify a valid feature type"
-            return False
-
-        #training the model with the obtained tf-idf features
-        if classifier[0] == 'nbMulti':
-            if classifier[1] == 'default':
-                clf = NB()
-            else:
-                clf = NB(**classifier[1])
-        elif classifier[0] == 'svm':
-            if classifier[1] == 'default':
-                clf = svm.SVC()
-            else:
-                clf = svm.SVC(**classifier[1])
-        elif classifier == 'SGD':
-            clf = SGD(loss='hinge', penalty='l2', alpha=1e-3, n_iter=5, random_state=42)
-        elif classifier == 'tree':
-            clf = tree.DecisionTreeClassifier()
-        else:
-            print "Print choose a valid classifier"
-            return False
-        
-        if classifier == 'SGD':
-            #TODO: Strangely the SGD classifier was giving diff results if we pass dense matrix or sparse matrix. 
-            ### So for this classifier use sparse for now but look into it later. I couldn't find anything on the web.
-            clf.fit(csc.csc_matrix(features_train), label_list[train_inds])
-        else:
-            clf.fit(features_train, label_list[train_inds])
-        
-        docs_test = []
-        #preparing the tf-idf matrix for the testing data.
-        for test_ind in test_inds:
-            if per_rec_data.has_key(mbid_list[test_ind]):
-                per_rec_words = ' '.join([com_id_2_uuid[p[0]] for p in per_rec_data[mbid_list[test_ind]]])
-            else:
-                per_rec_words = ''
-            docs_test.append(per_rec_words)
-        
-        #Computing term frequencies (testing set)
-        X_test_counts = count_vect.transform(docs_test)
-
-        if feature_type == 'tf':
-            features_test = X_test_counts.toarray()
-        elif feature_type == 'tp':
-            features_test = X_test_counts.toarray()
-            features_test = np.where(features_test >= 1,1,features_test)
-        elif feature_type == 'tf-idf':
-            #computing features from term frequencies (training set)
-            features_test = tfidf_transformer.transform(X_test_counts)            
-            features_test = features_test.toarray()
-        else:
-            print "Please specify a valid feature type"
-            return False        
-
-        #performing prediction of labels using the trained model
-        if classifier == 'SGD':
-            predicted = clf.predict(csc.csc_matrix(features_test))
-        else:
-            predicted = clf.predict(features_test)
-        
-        label_list_pred[test_inds] = predicted
-        for ii, pred_val in enumerate(predicted):
-            predicted_raga[test_inds[ii]] = map_raga[pred_val]
-        
-            
-    cnt = 0
-    for i in range(len(predicted_raga)):
-        if raga_list[i] == predicted_raga[i]:
-            cnt+=1
-    print "You got %d number of ragas right for a total of %d number of recordings (Variant1)"%(cnt, len(predicted_raga))
-    
-    cMTC_var1 =  confusion_matrix(label_list, label_list_pred)
-    
-    ########################## End of variant 1 of cross fold testing ##################################
-    
-    
-    ########################### Performing cross fold train testing Variant 2 ###################################
-    #In this variant tf-idf vectors are computed for the entire dataset. The only affect this will have is in the computatino of idf term. 
-    # This way is actually better because testing files will also contribute to the importance that is given to a work in the idf term.
-    # Since computation of tf-idf is unsupervised (no raga label used) even this variant should be a valid experimental setup.
-    count_vect = CountVectorizer(stop_words = stop_words)
-    tfidf_transformer = TfidfTransformer(norm=norm_tfidf, smooth_idf=False)
-    mlObj  = ml.experimenter()
-    mlObj.setExperimentParams(nExp = n_expts, typeEval = ("kFoldCrossVal",n_fold), nInstPerClass = -1, classifier = classifier, balanceClasses=1, normalizeFeatures=norm_features_dim)
-    #NOTE: we choose normalizeFeatures = 0 in the experiment setup because that option is tried out (experimented) during the computation of the features itself
-    #NOTE: balanceClasses will make sure each fold has equal number of samples from each class.
-    
-    docs_train = [] # this time we will use all the document in out dataset
-    for ii in range(label_list.size):
-            if per_rec_data.has_key(mbid_list[ii]):  #not every file has phrases found!! (there is one stupid file for which there are no phrases within this distance threshold)
-                per_rec_words = ' '.join([com_id_2_uuid[p[0]] for p in per_rec_data[mbid_list[ii]]])
-            else:
-                per_rec_words = ''
-            docs_train.append(per_rec_words)
-            
-    count_all = count_vect.fit_transform(docs_train)
-    features = tfidf_transformer.fit_transform(count_all) 
-    mlObj.setFeaturesAndClassLabels(features.toarray(), np.array(raga_list))
-    mlObj.runExperiment()
-    
-    print "You got %d number of ragas right for a total of %d number of recordings (Variant2)"%(np.round(mlObj.overallAccuracy*len(label_list)), len(label_list))
-    
-    ########################## End of variant 2 of cross fold testing ##################################
+        ########################## End of variant 2 of cross fold testing ##################################
     
     ##saving experimental results
     fid = open(os.path.join(out_dir,'experiment_results.pkl'),'w')
-    results = {'var1': {'cm': cMTC_var1, 'gt_label': label_list, 'pred_label': label_list_pred, 'mapping': map_raga, 'accuracy': float(cnt)/len(predicted_raga)},
-               'var2': {'cm': mlObj.cMTXExp, 'gt_label': mlObj.classLabelsInt, 'pred_label':mlObj.decArray, 'mapping':mlObj.cNames, 'accuracy': mlObj.overallAccuracy}}
+    results = {}
+    if var1:
+        results.update({'var1': {'cm': cMTC_var1, 'gt_label': label_list, 'pred_label': label_list_pred, 'mapping': map_raga, 'accuracy': float(cnt)/len(predicted_raga)}})
+    if var2:
+        results.update({'var2': {'cm': mlObj.cMTXExp, 'gt_label': mlObj.classLabelsInt, 'pred_label':mlObj.decArray, 'mapping':mlObj.cNames, 'accuracy': mlObj.overallAccuracy}})
     
     pickle.dump(results, fid)
     #also dumping the input params to this function
