@@ -4,18 +4,17 @@ import shutil
 import math
 import yaml
 from sklearn.externals import joblib
-from sklearn.svm import SVC
-from sklearn.ensemble import RandomForestClassifier
-from sklearn import tree
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.linear_model import LogisticRegression
-
+from sklearn import svm , ensemble, linear_model, tree, neighbors, naive_bayes
+#from sklearn.ensemble import RandomForestClassifier
+#from sklearn.tree import DecisionTreeClassifier
+#from sklearn.neighbors import KNeighborsClassifier
+#from sklearn.naive_bayes import MultinomialNB
+#from sklearn.linear_model import LogisticRegression
+from sklearn import preprocessing
 import sklearn.cross_validation as crossVal
 from collections import Counter
 from scipy.stats import mannwhitneyu
 import json
-
 
 
 class classifiers():
@@ -23,16 +22,26 @@ class classifiers():
     classifierName = ""
     classifierParams = {}
     classifierHandle = None
-
+    skl_classifiers = {
+                'svm': {'name': 'SVC', 'handle':svm.SVC, 'feat_norm':'z-norm', "norm_feat_req":True},
+               'svm-lin': {'name': 'LinearSVC', 'handle':svm.LinearSVC, 'feat_norm':'z-norm', "norm_feat_req":True},
+               'sgd': {'name': 'SGDClassifier', 'handle':linear_model.SGDClassifier, 'feat_norm':'z-norm', "norm_feat_req":True},
+               'nb-multi': {'name': 'MultinomialNB', 'handle':naive_bayes.MultinomialNB, 'feat_norm': '', "norm_feat_req":False},
+               'nb-gauss': {'name': 'GaussianNB', 'handle':naive_bayes.GaussianNB, 'feat_norm':'', "norm_feat_req":False},
+               'nb-bern': {'name': 'BernoulliNB', 'handle':naive_bayes.BernoulliNB, 'feat_norm':'', "norm_feat_req":False},
+               'tree': {'name': 'DecisionTreeClassifier', 'handle':tree.DecisionTreeClassifier, 'feat_norm':'', "norm_feat_req":False},
+               'randForest': {'name': 'RandomForestClassifier', 'handle':ensemble.RandomForestClassifier, 'feat_norm':'', "norm_feat_req":False},
+               'logReg': {'name': 'LogisticRegression', 'handle':linear_model.LogisticRegression, 'feat_norm':'z-norm', "norm_feat_req":True},
+               'kNN': {'name': 'KNeighborsClassifier', 'handle':neighbors.KNeighborsClassifier, 'feat_norm':'z-norm', "norm_feat_req":True},
+               'mYkNN': {'name': 'KNeighborsClassifier', 'handle':neighbors.KNeighborsClassifier, 'feat_norm':'z-norm', "norm_feat_req":True},
+               }
+    
     def __init__(self, classifierName="", classifierParams="default"):
         print "Initializing classifier class..."
 
         if len(classifierName) > 0: #set the classifier type in the class variable
             self.setClassifierName(classifierName)
             self.setClassifierParams(classifierParams)
-            self.setClassifierHandle(classifierName)
-            print self.classifierHandle()
-            
         else:
             print "No classifier set yet"
 
@@ -40,7 +49,6 @@ class classifiers():
         
         if len(classifierName) > 0:
             self.classifierName = classifierName
-            self.setClassifierHandle(classifierName)
         else:
             if len(self.classifierName)<0:
                 print "Please set a valid classifier while initialization of the class, or pass into this function"
@@ -54,8 +62,11 @@ class classifiers():
             return self.mYkNN(trainFeatures, trainClassLabels, evalFeatures, self.classifierParams)
         elif self.classifierName == "randC":
             return self.randC(trainFeatures, trainClassLabels, evalFeatures, self.classifierParams)
+        elif not self.skl_classifiers.has_key(self.classifierName):
+            print "Please specify a valid classifier"
+            return False
             
-        classObj = self.classifierHandle(**self.classifierParams)
+        classObj = self.skl_classifiers[self.classifierName]['handle'](**self.classifierParams)
         classObj.fit(trainFeatures, trainClassLabels)
         evalClassLabels = classObj.predict(evalFeatures)
         
@@ -77,20 +88,9 @@ class classifiers():
         if not isinstance(params,dict):
             params = {}
 
-        mYkNNHandle = KNeighborsClassifier(**params)
+        mYkNNHandle = self.skl_classifiers[self.classifierName]['handle'](**params)
         mYkNNHandle.fit(trainFeatures[:,ind_eval], trainClassLabels)
         evalClassLabels = mYkNNHandle.predict(evalFeatures[:,ind_eval])
-
-        """
-        THis is heuristic way of kNN which was kept to just crosschck the results
-        K =5
-        ind = np.argsort(trainFeatures[:,fold_ind])
-        labels_kNN = trainClassLabels[ind[:K]]
-        evalClassLabels1 = np.array([int(np.round((np.sum(labels_kNN)/5.0)))])
-
-        if evalClassLabels[0]!=evalClassLabels1[0]:
-            print "Here is the problem"
-        """
 
         return evalClassLabels
     
@@ -98,88 +98,22 @@ class classifiers():
         
         if not isinstance(params,dict):
             params = {}
-        if classifier=="kNN":
-            classHandle = KNeighborsClassifier(**params)
-        elif classifier=="tree":
-            classHandle = tree.DecisionTreeClassifier(**params)
-        elif classifier=="svm":
-            classHandle = SVC(**params)
-        elif classifier=="logReg":
-            classHandle = LogisticRegression(**params)
-        elif classifier=="nbMulti":
-            classHandle = MultinomialNB(**params)
-        else:
+        
+        if not elf.skl_classifiers.has_key(classifier):
             print "Please provide a valid classifier"
-            return -1
-
+            return False
+        
+        classHandle = self.skl_classifiers[classifier](**params)
         classHandle.fit(trainFeatures, trainClassLabels)
         
         return classHandle
     
- 
-    #def defaultClassifierSettings(self, classifier):
-
-        #if classifier == "svm":
-            #return {"C":1.0, "cache_size":200, "class_weight": None, "coef0":0.0, "degree":3, "gamma":0.0, "kernel":'rbf', "max_iter":-1, "probability": False, "shrinking": True, "tol":0.001, "verbose":False}
-
-        #elif classifier == "tree":
-            #return {"criterion":'gini', "max_depth": None, "min_samples_split": 2, "min_samples_leaf": 1, "min_density": 0.1, "max_features": None, "compute_importances":False, "random_state": None}
-
-        #elif classifier == "kNN":
-            #return {"n_neighbors":5, "weights":'uniform', "algorithm":'auto', "leaf_size":30, "p":2, "metric":'minkowski'}
-
-        #elif classifier == "nbMulti":
-            #return {"alpha":1.0, "fit_prior":True, "class_prior":None}
-
-        #elif classifier == "logReg":
-            #return {"penalty":'l2', "dual":False, "tol":0.0001, "C":1.0, "fit_intercept":True, "intercept_scaling":1, "class_weight":None, "random_state":None}
-        
-        #else:
-            #print "Please provide a valid classifier"
-            #return -1
-
 
     def setClassifierName(self, classifierName):
         self.classifierName = classifierName
     
-    def setClassifierHandle(self, classifierName):
-        print "Setting classifier handle"
-        if classifierName=="kNN":
-            self.classifierHandle = KNeighborsClassifier
-        elif classifierName=="tree":
-            self.classifierHandle = tree.DecisionTreeClassifier
-        elif classifierName=="svm":
-            self.classifierHandle = SVC
-        elif classifierName=="logReg":
-            self.classifierHandle = LogisticRegression
-        elif classifierName=="nbMulti":
-            self.classifierHandle = MultinomialNB
-        elif classifierName=="randForest":
-            self.classifierHandle = RandomForestClassifier
-        else:
-            print "Please provide a valid classifier"
-            return -1
-        
-
     def setClassifierParams(self,classfierParams):
         self.classifierParams = classfierParams
-
-    def requireNormFeatures(self,classifierName):
-
-        if classifierName == "tree":
-            return False
-        if classifierName == "nbMulti":
-            return False
-        if classifierName == "svm":
-            return True
-        if classifierName == "kNN":
-            return True
-        if classifierName == "logReg":
-            return True
-        else:
-            return True
-
-
 
 
 class experimenter(classifiers):
@@ -192,9 +126,11 @@ class experimenter(classifiers):
     classLabelsInt = []
     nExp = 0
     typeEval = ("kFoldCrossVal",10)
+    ftr_scaler = {}
     
     def __init__(self):
         print "Initializing mlUtil class for using wrapper functions around core SkLearn library to perform experiments."
+        self.ftr_scaler['z-norm'] = preprocessing.StandardScaler()
         #self.setExperimentParams()
         #classifiers.__init__(classifierName=self.classifierName, classifierParams=self.classifierParams)
         
@@ -247,19 +183,14 @@ class experimenter(classifiers):
             
             self.classLabelsInt= (self.classLabelsInt).astype(np.int)
 
-    def setExperimentParams(self, nExp = 10, typeEval = ("kFoldCrossVal",10), nInstPerClass = -1, classifier = ('svm',"default"), balanceClasses=1, normalizeFeatures=1):
+    def setExperimentParams(self, nExp = 10, typeEval = ("kFoldCrossVal",10), nInstPerClass = -1, classifier = ('svm',"default"), balanceClasses=1):
         self.nExp = nExp
         self.typeEval = typeEval
         self.nInstPerClass = nInstPerClass  #this means balance the dataset taking least number of instances present in a class
-
         self.setClassifierName(classifier[0])
-        self.setClassifierHandle(classifier[0])
         self.setClassifierParams(classifier[1])
-        
         self.balanceClasses = balanceClasses
-        self.normalizeFeatures = normalizeFeatures
         
-
     def setFeaturesAndClassLabels(self, features, classLabels):
 
         self.features = features
@@ -268,8 +199,6 @@ class experimenter(classifiers):
         self.fNames = range(0,features.shape[1])
         self.convertClassLabels2Int()
         
-    
-
     def genConfMTX(self, origClass, predClass):
         origClass = np.array(origClass)
         predClass = np.array(predClass)
@@ -280,8 +209,8 @@ class experimenter(classifiers):
 
         return mtx
 
-    def normFeatures(self,array):
 
+    def normFeatures(self,array):
         return (array-np.mean(array))/np.sqrt(np.var(array))
     
     
@@ -320,16 +249,16 @@ class experimenter(classifiers):
         if len(self.classifierName) ==0:
             print "Before proceeding setExperimentParams()"
             return -1
-        
+        if not self.skl_classifiers.has_key(self.classifierName):
+            print "please select a classifeir which is supported by this class"
+            return -1
         
         if self.typeEval[0] =='leaveOneID':
             if isinstance(self.filterArray,int):
                 print "In case of leaveOneID evaluation please provide filterArray containing ID mapping <use a function in this class to generate this array>"
                 return -1
         ### TODO <Put additional checks here for other necessary parameters needed to run the experiment>
-        
-        
-        
+
         ### Selection of the features (Select all the user specified features)
         if isinstance(features2Use,int):
             self.featuresSelected = copy.deepcopy(self.features)
@@ -340,11 +269,6 @@ class experimenter(classifiers):
             self.featuresSelected = copy.deepcopy(self.features[:,ind_features])
         else:
             print "Features2Use should be either list of features or -1"
-        
-        
-        ### Feature Normalization (perform normalization only when classifier is not mYkNN)
-        if self.normalizeFeatures==1:
-            self.performFeatureNormalization()
         
         # Soon after setting experimental params we can initialize variables to store the results/ other stats for each experiment
         ### Variable to store stats of all the experiments
@@ -396,8 +320,6 @@ class experimenter(classifiers):
                         kfold = crossVal.StratifiedKFold(self.classLabelsInt[expIndices], n_folds=n_folds, indices=True)
                         for train, test in kfold:
                             train_test_ind.append((train,test))
-                        
-                            
                     
                 else:
                     expIndices = np.arange(self.featuresSelected.shape[0])
@@ -448,7 +370,12 @@ class experimenter(classifiers):
                 print "Please provide a valid evaluation type"
 
             for fold_ind,(train_ind, test_ind) in enumerate(train_test_ind):
-                prediction = self.performTrainTest(self.featuresSelected[expIndices[train_ind],:],self.classLabelsInt[expIndices[train_ind]], self.featuresSelected[expIndices[test_ind],:])
+                ftr_train = copy.deepcopy(self.featuresSelected[expIndices[train_ind],:])
+                ftr_test = copy.deepcopy(self.featuresSelected[expIndices[test_ind],:])
+                if self.skl_classifiers[self.classifierName]['norm_feat_req']:
+                    ftr_train = self.ftr_scaler[self.skl_classifiers[self.classifierName]['feat_norm']].fit_transform(ftr_train)
+                    ftr_test = self.ftr_scaler[self.skl_classifiers[self.classifierName]['feat_norm']].transform(ftr_test)
+                prediction = self.performTrainTest(ftr_train,self.classLabelsInt[expIndices[train_ind]], ftr_test)
                 resultPFold = np.where(prediction==self.classLabelsInt[expIndices[test_ind]])[0]
 
                 for k,ind in enumerate(test_ind):
