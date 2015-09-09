@@ -21,15 +21,7 @@ import uuid
 from sklearn.metrics import confusion_matrix
 sys.path.append(os.path.join(os.path.dirname(__file__), '../machineLearning'))
 import mlWrapper as ml
-from sklearn.svm import SVC
-from sklearn.ensemble import RandomForestClassifier
-from sklearn import tree
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.linear_model import LogisticRegression
-from sklearn.linear_model import SGDClassifier
-from sklearn import svm
-from sklearn import tree
+from sklearn import preprocessing
 from scipy.sparse import csc
 
 
@@ -428,7 +420,7 @@ def get_per_recording_data(comm_data):
         
         
         
-def raga_recognition_V2(out_dir, fileListFile, thresholdBin, pattDistExt, network_wght_type = -1, force_build_network=0, feature_type = 'tf-idf', pre_processing = -1, norm_tfidf = None, norm_features_dim = 0,  smooth_idf = False, classifier = ('nbMulti', "default"), n_fold = 16, n_expts = 10, var1 = True, var2 = True):
+def raga_recognition_V2(out_dir, fileListFile, thresholdBin, pattDistExt, network_wght_type = -1, force_build_network=0, feature_type = 'tf-idf', pre_processing = -1, norm_tfidf = None, smooth_idf = False, classifier = ('nbMulti', "default"), n_fold = 16, n_expts = 10, var1 = True, var2 = True):
     """
     Raga recognition system using document classification and topic modelling techniques.
     In this approach we treat phrases of a recording as words (basically cluster/community id). 
@@ -526,6 +518,8 @@ def raga_recognition_V2(out_dir, fileListFile, thresholdBin, pattDistExt, networ
         
         #initializing crossfold object
         cval = cross_val.StratifiedKFold(label_list, n_folds=n_fold, shuffle = True, random_state=np.random.randint(100))
+        mlObj_var1  = ml.experimenter()
+        sca=preprocessing.StandardScaler()
         
         # arrays for storing predicted labels and their names
         label_list_pred = -1*np.ones(label_list.shape)    
@@ -569,26 +563,16 @@ def raga_recognition_V2(out_dir, fileListFile, thresholdBin, pattDistExt, networ
             else:
                 classifier_params = classifier[1]
             #training the model with the obtained tf-idf features
-            if classifier[0] == 'nbMulti':
-                clf = MultinomialNB(**classifier_params)
-            elif classifier[0] == 'svm':
-                clf = SVC(**classifier_params)
-            elif classifier[0] == 'SGD':
-                clf = SGDClassifier(**classifier_params)
-            elif classifier[0] == 'tree':
-                clf = tree.DecisionTreeClassifier(**classifier_params)
-            elif classifier[0] == 'randForest':
-                clf = RandomForestClassifier(**classifier_params)
-            else:
-                print "Print choose a valid classifier"
+            if not mlObj_var1.skl_classifiers.has_key(classifier[0]):
+                print "Please provide a valid clsasifier name"
                 return False
             
-            if classifier == 'SGD':
-                #TODO: Strangely the SGD classifier was giving diff results if we pass dense matrix or sparse matrix. 
-                ### So for this classifier use sparse for now but look into it later. I couldn't find anything on the web.
-                clf.fit(csc.csc_matrix(features_train), label_list[train_inds])
-            else:
-                clf.fit(features_train, label_list[train_inds])
+            clf = mlObj_var1.skl_classifiers[classifier[0]]['handle'](**classifier_params)
+
+            if mlObj_var1.skl_classifiers[classifier[0]]['norm_feat_req']:
+                features_train = sca.fit_transform(features_train)
+                
+            clf.fit(features_train, label_list[train_inds])
             
             docs_test = []
             #preparing the tf-idf matrix for the testing data.
@@ -616,15 +600,14 @@ def raga_recognition_V2(out_dir, fileListFile, thresholdBin, pattDistExt, networ
                 return False        
 
             #performing prediction of labels using the trained model
-            if classifier == 'SGD':
-                predicted = clf.predict(csc.csc_matrix(features_test))
-            else:
-                predicted = clf.predict(features_test)
+            if mlObj_var1.skl_classifiers[classifier[0]]['norm_feat_req']:
+                features_test = sca.transform(features_test)            
+            
+            predicted = clf.predict(features_test)
             
             label_list_pred[test_inds] = predicted
             for ii, pred_val in enumerate(predicted):
                 predicted_raga[test_inds[ii]] = map_raga[pred_val]
-            
                 
         cnt = 0
         for i in range(len(predicted_raga)):
@@ -644,8 +627,7 @@ def raga_recognition_V2(out_dir, fileListFile, thresholdBin, pattDistExt, networ
         count_vect = CountVectorizer(stop_words = stop_words)
         tfidf_transformer = TfidfTransformer(norm=norm_tfidf, smooth_idf=False)
         mlObj  = ml.experimenter()
-        mlObj.setExperimentParams(nExp = n_expts, typeEval = ("kFoldCrossVal",n_fold), nInstPerClass = -1, classifier = classifier, balanceClasses=1, normalizeFeatures=norm_features_dim)
-        #NOTE: we choose normalizeFeatures = 0 in the experiment setup because that option is tried out (experimented) during the computation of the features itself
+        mlObj.setExperimentParams(nExp = n_expts, typeEval = ("kFoldCrossVal",n_fold), nInstPerClass = -1, classifier = classifier, balanceClasses=1)
         #NOTE: balanceClasses will make sure each fold has equal number of samples from each class.
         
         docs_train = [] # this time we will use all the document in out dataset
