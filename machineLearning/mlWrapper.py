@@ -5,6 +5,7 @@ import math
 import yaml
 from sklearn.externals import joblib
 from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
 from sklearn import tree
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.naive_bayes import MultinomialNB
@@ -20,7 +21,8 @@ import json
 class classifiers():
 
     classifierName = ""
-    classifierParams = ""
+    classifierParams = {}
+    classifierHandle = None
 
     def __init__(self, classifierName="", classifierParams="default"):
         print "Initializing classifier class..."
@@ -28,37 +30,36 @@ class classifiers():
         if len(classifierName) > 0: #set the classifier type in the class variable
             self.setClassifierName(classifierName)
             self.setClassifierParams(classifierParams)
+            self.setClassifierHandle(classifierName)
+            print self.classifierHandle()
+            
         else:
             print "No classifier set yet"
 
     def performTrainTest(self, trainFeatures, trainClassLabels, evalFeatures, classifierName = "", classifierParams = "default"):
-
+        
         if len(classifierName) > 0:
             self.classifierName = classifierName
+            self.setClassifierHandle(classifierName)
         else:
             if len(self.classifierName)<0:
                 print "Please set a valid classifier while initialization of the class, or pass into this function"
                 return "Classifier not set"
-
-        if isinstance(classifierParams,dict):
-            self.classifierParams = classifierParams
-
-        if self.classifierName == "svm":
-            return self.svm(trainFeatures, trainClassLabels, evalFeatures,self.classifierParams)
-        elif self.classifierName == "tree":
-            return self.tree(trainFeatures, trainClassLabels, evalFeatures,self.classifierParams)
-        elif self.classifierName =="mYkNN":
-            return self.mYkNN(trainFeatures, trainClassLabels, evalFeatures,self.classifierParams)
-        elif self.classifierName =="kNN":
-            return self.kNN(trainFeatures, trainClassLabels, evalFeatures,self.classifierParams)
-        elif self.classifierName =="nbMulti":
-            return self.nbMulti(trainFeatures, trainClassLabels, evalFeatures,self.classifierParams)
-        elif self.classifierName =="logReg":
-            return self.logReg(trainFeatures, trainClassLabels, evalFeatures,self.classifierParams)
-        elif self.classifierName =="randC":
-            return self.randC(trainFeatures, trainClassLabels, evalFeatures,self.classifierParams)
-        ###TODO: add another classifiers here
-
+        
+        if not isinstance(classifierParams,dict):
+            classifierParams = {}
+        self.classifierParams = classifierParams
+        
+        if self.classifierName == "mYkNN":
+            return self.mYkNN(trainFeatures, trainClassLabels, evalFeatures, self.classifierParams)
+        elif self.classifierName == "randC":
+            return self.randC(trainFeatures, trainClassLabels, evalFeatures, self.classifierParams)
+            
+        classObj = self.classifierHandle(**self.classifierParams)
+        classObj.fit(trainFeatures, trainClassLabels)
+        evalClassLabels = classObj.predict(evalFeatures)
+        
+        return evalClassLabels
 
     def randC(self, trainFeatures, trainClassLabels, evalFeatures, params = "default"):
 
@@ -73,11 +74,10 @@ class classifiers():
         #you have to estimate which is the test vector here, because based on that you have to estimate which column to take for kNN evaluation
         ind_eval = np.where(evalFeatures==0)[1]
         mYkNNParam = self.defaultClassifierSettings("kNN")
-        if isinstance(params,dict):
-            for key in params.keys():
-                mYkNNParam[key]=params[key]
+        if not isinstance(params,dict):
+            params = {}
 
-        mYkNNHandle = KNeighborsClassifier(**mYkNNParam)
+        mYkNNHandle = KNeighborsClassifier(**params)
         mYkNNHandle.fit(trainFeatures[:,ind_eval], trainClassLabels)
         evalClassLabels = mYkNNHandle.predict(evalFeatures[:,ind_eval])
 
@@ -93,101 +93,21 @@ class classifiers():
         """
 
         return evalClassLabels
-
-    def nbMulti(self, trainFeatures, trainClassLabels, evalFeatures,params = "default"):
-
-        nbMultiParam = self.defaultClassifierSettings("nbMulti")
-        if isinstance(params,dict):
-            for key in params.keys():
-                nbMultiParam[key]=params[key]
-        nbMultiHandle = MultinomialNB(**nbMultiParam)
-        nbMultiHandle.fit(trainFeatures, trainClassLabels)
-        evalClassLabels = nbMultiHandle.predict(evalFeatures)
-
-        return evalClassLabels
-
-    def logReg(self, trainFeatures, trainClassLabels, evalFeatures,params = "default"):
-
-        logRegParam = self.defaultClassifierSettings("logReg")
-        if isinstance(params,dict):
-            for key in params.keys():
-                logRegParam[key]=params[key]
-        logRegHandle = LogisticRegression(**logRegParam)
-        logRegHandle.fit(trainFeatures, trainClassLabels)
-        evalClassLabels = logRegHandle.predict(evalFeatures)
-
-        return evalClassLabels
-
-    def kNN(self, trainFeatures, trainClassLabels, evalFeatures,params = "default"):
-
-        kNNParam = self.defaultClassifierSettings("kNN")
-        if isinstance(params,dict):
-            for key in params.keys():
-                kNNParam[key]=params[key]
-
-        kNNHandle = KNeighborsClassifier(**kNNParam)
-        kNNHandle.fit(trainFeatures, trainClassLabels)
-        evalClassLabels = kNNHandle.predict(evalFeatures)
-
-        return evalClassLabels
-
-    def svm(self, trainFeatures, trainClassLabels, evalFeatures, params = "default"):
-        """
-        trains a svm classifier on trainFeatures using trainClassLabels as ground truths and then predict the class for features in evalFeatures
-        Returns classLabels of the evalFeatures
-        params is a dictionary to specify the parameters used in svm classifier in sklearn library. if its set to "default" (string) it will use default parameters.
-        """
-
-        svmParams = self.defaultClassifierSettings("svm")
-        if isinstance(params,dict):
-            for key in params.keys():
-                svmParams[key]=params[key]
-
-        svmHandle = SVC(**svmParams)
-        #svmHandle = SVC(C=svmParams['C'], cache_size=svmParams['cache_size'], class_weight=svmParams['class_weight'], coef0=svmParams['coef0'], degree=svmParams['degree'], gamma=svmParams['gamma'], kernel=svmParams['kernel'], max_iter=svmParams['max_iter'], probability=svmParams['probability'], shrinking=svmParams['shrinking'], tol=svmParams['tol'], verbose=svmParams['verbose'])
-        svmHandle.fit(trainFeatures, trainClassLabels)
-        evalClassLabels = svmHandle.predict(evalFeatures)
-
-        return evalClassLabels
-
-
-    def tree(self, trainFeatures, trainClassLabels, evalFeatures, params = "default"):
-        """
-        trains a svm classifier on trainFeatures using trainClassLabels as ground truths and then predict the class for features in evalFeatures
-        Returns classLabels of the evalFeatures
-        params is a dictionary to specify the parameters used in svm classifier in sklearn library. if its set to "default" (string) it will use default parameters.
-        """
-
-        treeParams = self.defaultClassifierSettings("tree")
-        if isinstance(params,dict):
-            for key in params.keys():
-                treeParams[key]=params[key]
-
-        treeHandle = tree.DecisionTreeClassifier(**treeParams)
-        #treeHandle = tree.DecisionTreeClassifier(criterion=treeParams["criterion"], max_depth=treeParams["max_depth"], min_samples_split=treeParams["min_samples_split"], min_samples_leaf=treeParams["min_samples_leaf"], min_density=treeParams["min_density"], max_features=treeParams["max_features"], compute_importances=treeParams["compute_importances"], random_state=treeParams["random_state"])
-        treeHandle.fit(trainFeatures, trainClassLabels)
-        evalClassLabels = treeHandle.predict(evalFeatures)
-
-        return evalClassLabels
     
     def exportClassifierModelHandle(self, trainFeatures, trainClassLabels, classifier, params):
         
-        
-        classDefaultParams = self.defaultClassifierSettings(classifier)
-        if isinstance(params,dict):
-            for key in params.keys():
-                classDefaultParams[key]=params[key]
-        
+        if not isinstance(params,dict):
+            params = {}
         if classifier=="kNN":
-            classHandle = KNeighborsClassifier(**classDefaultParams)
+            classHandle = KNeighborsClassifier(**params)
         elif classifier=="tree":
-            classHandle = tree.DecisionTreeClassifier(**classDefaultParams)
+            classHandle = tree.DecisionTreeClassifier(**params)
         elif classifier=="svm":
-            classHandle = SVC(**classDefaultParams)
+            classHandle = SVC(**params)
         elif classifier=="logReg":
-            classHandle = LogisticRegression(**classDefaultParams)
+            classHandle = LogisticRegression(**params)
         elif classifier=="nbMulti":
-            classHandle = MultinomialNB(**classDefaultParams)
+            classHandle = MultinomialNB(**params)
         else:
             print "Please provide a valid classifier"
             return -1
@@ -197,30 +117,49 @@ class classifiers():
         return classHandle
     
  
-    def defaultClassifierSettings(self, classifier):
+    #def defaultClassifierSettings(self, classifier):
 
-        if classifier == "svm":
-            return {"C":1.0, "cache_size":200, "class_weight": None, "coef0":0.0, "degree":3, "gamma":0.0, "kernel":'rbf', "max_iter":-1, "probability": False, "shrinking": True, "tol":0.001, "verbose":False}
+        #if classifier == "svm":
+            #return {"C":1.0, "cache_size":200, "class_weight": None, "coef0":0.0, "degree":3, "gamma":0.0, "kernel":'rbf', "max_iter":-1, "probability": False, "shrinking": True, "tol":0.001, "verbose":False}
 
-        elif classifier == "tree":
-            return {"criterion":'gini', "max_depth": None, "min_samples_split": 2, "min_samples_leaf": 1, "min_density": 0.1, "max_features": None, "compute_importances":False, "random_state": None}
+        #elif classifier == "tree":
+            #return {"criterion":'gini', "max_depth": None, "min_samples_split": 2, "min_samples_leaf": 1, "min_density": 0.1, "max_features": None, "compute_importances":False, "random_state": None}
 
-        elif classifier == "kNN":
-            return {"n_neighbors":5, "weights":'uniform', "algorithm":'auto', "leaf_size":30, "p":2, "metric":'minkowski'}
+        #elif classifier == "kNN":
+            #return {"n_neighbors":5, "weights":'uniform', "algorithm":'auto', "leaf_size":30, "p":2, "metric":'minkowski'}
 
-        elif classifier == "nbMulti":
-            return {"alpha":1.0, "fit_prior":True, "class_prior":None}
+        #elif classifier == "nbMulti":
+            #return {"alpha":1.0, "fit_prior":True, "class_prior":None}
 
-        elif classifier == "logReg":
-            return {"penalty":'l2', "dual":False, "tol":0.0001, "C":1.0, "fit_intercept":True, "intercept_scaling":1, "class_weight":None, "random_state":None}
+        #elif classifier == "logReg":
+            #return {"penalty":'l2', "dual":False, "tol":0.0001, "C":1.0, "fit_intercept":True, "intercept_scaling":1, "class_weight":None, "random_state":None}
         
-        else:
-            print "Please provide a valid classifier"
-            return -1
+        #else:
+            #print "Please provide a valid classifier"
+            #return -1
 
 
     def setClassifierName(self, classifierName):
         self.classifierName = classifierName
+    
+    def setClassifierHandle(self, classifierName):
+        print "Setting classifier handle"
+        if classifierName=="kNN":
+            self.classifierHandle = KNeighborsClassifier
+        elif classifierName=="tree":
+            self.classifierHandle = tree.DecisionTreeClassifier
+        elif classifierName=="svm":
+            self.classifierHandle = SVC
+        elif classifierName=="logReg":
+            self.classifierHandle = LogisticRegression
+        elif classifierName=="nbMulti":
+            self.classifierHandle = MultinomialNB
+        elif classifierName=="randForest":
+            self.classifierHandle = RandomForestClassifier
+        else:
+            print "Please provide a valid classifier"
+            return -1
+        
 
     def setClassifierParams(self,classfierParams):
         self.classifierParams = classfierParams
@@ -314,6 +253,7 @@ class experimenter(classifiers):
         self.nInstPerClass = nInstPerClass  #this means balance the dataset taking least number of instances present in a class
 
         self.setClassifierName(classifier[0])
+        self.setClassifierHandle(classifier[0])
         self.setClassifierParams(classifier[1])
         
         self.balanceClasses = balanceClasses
