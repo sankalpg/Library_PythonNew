@@ -1,4 +1,6 @@
 import sys
+import pickle
+import inspect
 import os
 import numpy as np
 import snap
@@ -17,6 +19,8 @@ from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.decomposition import TruncatedSVD
 import uuid
 from sklearn.metrics import confusion_matrix
+sys.path.append(os.path.join(os.path.dirname(__file__), '../machineLearning'))
+import mlWrapper as ml
 
 from sklearn.naive_bayes import MultinomialNB as NB
 from sklearn.linear_model import SGDClassifier as SGD
@@ -420,7 +424,7 @@ def get_per_recording_data(comm_data):
         
         
         
-def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, force_build_network=0, feature_type = 0, classifier = 'svm', pre_processing = -1, norm_feature = None, network_wght_type = -1):
+def raga_recognition_V2(out_dir, fileListFile, thresholdBin, pattDistExt, network_wght_type = -1, force_build_network=0, feature_type = 'tf-idf', pre_processing = -1, norm_tfidf = None, norm_features_dim = 0,  smooth_idf = False, classifier = ('nbMulti', "default"), n_fold = 16, n_expts = 10):
     """
     Raga recognition system using document classification and topic modelling techniques.
     In this approach we treat phrases of a recording as words (basically cluster/community id). 
@@ -454,6 +458,10 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
                          
     
     """
+    if not os.path.isdir(out_dir):
+        os.mkdirs(out_dir)
+    
+    
     # path to store all the temporary files
     scratch_dir = 'scratch_raga_recognition'
     
@@ -523,7 +531,7 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
         
         #initializers needed for analysis of words (community indexes), WE DO IT IN EVERY FOLD TO MAK SURE EVERYTHING FROM THE PREV FOLD IS REMOVED
         count_vect = CountVectorizer(stop_words = stop_words)
-        tfidf_transformer = TfidfTransformer(norm=norm_feature, smooth_idf=False)
+        tfidf_transformer = TfidfTransformer(norm=norm_tfidf, smooth_idf=smooth_idf)
         
         docs_train = []                 #storing documents (phrases per recording)
         #preparing tf-idf matrix for the training data
@@ -551,10 +559,16 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
             return False
 
         #training the model with the obtained tf-idf features
-        if classifier == 'NB':
-            clf = NB()
-        elif classifier == 'SVM':
-            clf = svm.SVC()
+        if classifier[0] == 'nbMulti':
+            if classifier[1] == 'default':
+                clf = NB()
+            else:
+                clf = NB(**classifier[1])
+        elif classifier[0] == 'svm':
+            if classifier[1] == 'default':
+                clf = svm.SVC()
+            else:
+                clf = svm.SVC(**classifier[1])
         elif classifier == 'SGD':
             clf = SGD(loss='hinge', penalty='l2', alpha=1e-3, n_iter=5, random_state=42)
         elif classifier == 'tree':
@@ -612,7 +626,7 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
             cnt+=1
     print "You got %d number of ragas right for a total of %d number of recordings (Variant1)"%(cnt, len(predicted_raga))
     
-    print confusion_matrix(label_list, label_list_pred)
+    cMTC_var1 =  confusion_matrix(label_list, label_list_pred)
     
     ########################## End of variant 1 of cross fold testing ##################################
     
@@ -622,9 +636,9 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
     # This way is actually better because testing files will also contribute to the importance that is given to a work in the idf term.
     # Since computation of tf-idf is unsupervised (no raga label used) even this variant should be a valid experimental setup.
     count_vect = CountVectorizer(stop_words = stop_words)
-    tfidf_transformer = TfidfTransformer(norm=norm_feature, smooth_idf=False)
+    tfidf_transformer = TfidfTransformer(norm=norm_tfidf, smooth_idf=False)
     mlObj  = ml.experimenter()
-    mlObj.setExperimentParams(nExp = 1, typeEval = ("kFoldCrossVal",n_fold), nInstPerClass = -1, classifier = ('nbMulti',"default"), balanceClasses=1, normalizeFeatures=0)
+    mlObj.setExperimentParams(nExp = n_expts, typeEval = ("kFoldCrossVal",n_fold), nInstPerClass = -1, classifier = classifier, balanceClasses=1, normalizeFeatures=norm_features_dim)
     #NOTE: we choose normalizeFeatures = 0 in the experiment setup because that option is tried out (experimented) during the computation of the features itself
     #NOTE: balanceClasses will make sure each fold has equal number of samples from each class.
     
@@ -638,19 +652,28 @@ def raga_recognition_V2(fileListFile, thresholdBin, pattDistExt, n_fold = 16, fo
             
     count_all = count_vect.fit_transform(docs_train)
     features = tfidf_transformer.fit_transform(count_all) 
-    mlObj.setFeaturesAndClassLabels(features, np.array(raga_list))
+    mlObj.setFeaturesAndClassLabels(features.toarray(), np.array(raga_list))
     mlObj.runExperiment()
     
-    print "You got %d number of ragas right for a total of %d number of recordings (Variant2)"%(np.round(mlObj.overallAccuracy*len(predicted_raga)), len(predicted_raga))
+    print "You got %d number of ragas right for a total of %d number of recordings (Variant2)"%(np.round(mlObj.overallAccuracy*len(label_list)), len(label_list))
     
     ########################## End of variant 2 of cross fold testing ##################################
     
-    #saving experimental results
+    ##saving experimental results
+    fid = open(os.path.join(out_dir,'experiment_results.pkl'),'w')
+    results = {'var1': {'cm': cMTC_var1, 'gt_label': label_list, 'pred_label': label_list_pred, 'mapping': map_raga, 'accuracy': float(cnt)/len(predicted_raga)},
+               'var2': {'cm': mlObj.cMTXExp, 'gt_label': mlObj.classLabelsInt, 'pred_label':mlObj.decArray, 'mapping':mlObj.cNames, 'accuracy': mlObj.overallAccuracy}}
     
+    pickle.dump(results, fid)
+    #also dumping the input params to this function
+    params_input = {}
+    for k in inspect.getargspec(raga_recognition_V2).args:
+        params_input[k] = locals()[k]
     
-    
+    fid = open(os.path.join(out_dir,'experiment_params.json'),'w')
+    json.dump(params_input, fid)
+
     return mlObj.overallAccuracy
-    
     
         
 def raga_recognition_V3():
