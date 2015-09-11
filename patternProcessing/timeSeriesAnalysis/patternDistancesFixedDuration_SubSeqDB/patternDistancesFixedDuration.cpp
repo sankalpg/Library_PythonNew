@@ -3,8 +3,8 @@
 #include "../TSApool.h"
 #include "../TSAlogs.h"
 
-//#define OPTIMIZED_CODE_FOR_SMALL_DATA
-#define OPTIMIZED_CODE_FOR_BIG_DATA
+#define OPTIMIZED_CODE_FOR_SMALL_DATA
+//#define OPTIMIZED_CODE_FOR_BIG_DATA
 
 using namespace std;
 
@@ -173,9 +173,10 @@ int main( int argc , char *argv[])
                         if (paramHand.procParams.combMTX[pp][mm]==0)
                             continue;
                         
-                        TSData1->copyAndNormalizeSubSeqsPASA(out1, out2, TSData1->subSeqPtr[ind1+pp].pData, TSData2->subSeqPtr[ind2+mm].pData, TSData1->subSeqPtr[ind1+pp].mean, TSData2->subSeqPtr[ind2+mm].mean, lenMotifReal);
+                        //TSData1->copyAndNormalizeSubSeqsPASA(out1, out2, TSData1->subSeqPtr[ind1+pp].pData, TSData2->subSeqPtr[ind2+mm].pData, TSData1->subSeqPtr[ind1+pp].mean, TSData2->subSeqPtr[ind2+mm].mean, lenMotifReal);
                         
-                        realDist = dtw1dBandConst_localConst(out1, out2, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, INF, dtwUCR.accLB_Keogh_EQ);
+                        //realDist = dtw1dBandConst_localConst(out1, out2, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, INF, dtwUCR.accLB_Keogh_EQ);
+						realDist = dtw1dBandConst_localConst(TSData1->subSeqPtr[ind1+pp].pData, TSData2->subSeqPtr[ind2+mm].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, INF, dtwUCR.accLB_Keogh_EQ);
                         logs.procLogs.nDTW_EA++;
                         if(realDist < bsf_local)
                         {
