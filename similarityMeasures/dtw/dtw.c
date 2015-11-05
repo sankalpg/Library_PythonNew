@@ -308,6 +308,167 @@ double dtwNd_std(double *x, double*y, MatrixSize*size_x, MatrixSize*size_y, int 
         }
         return cost[(NRows*NCols)-1];
 }
+
+// Compute the warp path starting at cost[startx, starty]
+// If startx = -1 -> startx = n-1; if starty = -1 -> starty = m-1
+int pathLocal(double *cost, int n, int m, int startx, int starty, DTW_path *p, dtwParams_t params)
+{
+//params.delStep, params.moveStep and params.diagStep
+int i, j, k, z1, z2, a;
+int *px;
+int *py;
+double min_cost;
+
+if ((startx >= n) || (starty >= m))
+    return 0;
+
+if (startx < 0)
+    startx = n - 1;
+
+if (starty < 0)
+    starty = m - 1;
+    
+i = startx;
+j = starty;
+k = 1;
+
+// allocate path for the worst case
+px = (int *) malloc ((startx+1) * (starty+1) * sizeof(int));
+py = (int *) malloc ((startx+1) * (starty+1) * sizeof(int));
+
+px[0] = i;
+py[0] = j;
+
+while ((i > 0) || (j > 0))
+    {
+    if (i == 0)
+        j--;
+    else if (j == 0)
+        i--;
+    else if ((i==params.moveStep) && (j==params.moveStep)) // cannot do del
+        {
+        for (a=1;a<=params.diagStep;a++) // step diagonally
+        {
+            i--;
+            j--;
+        }
+        }
+    else if ((i==params.diagStep) && (j==params.diagStep))
+        {
+        for (a=1;a<=params.diagStep;a++)
+        {
+            i--;
+            j--;
+        }
+        }
+    else if (i==params.moveStep)
+        {
+        min_cost = min(cost[(i-params.diagStep)*m+(j-params.diagStep)], 
+                       cost[(i-params.moveStep)*m+(j-params.delStep)]);
+        
+        if (cost[(i-params.diagStep)*m+(j-params.diagStep)] == min_cost)
+            {
+            for (a=1;a<=params.diagStep;a++)
+            {
+                i--;
+                j--;
+            }
+            }
+        else
+            {
+            for (a=1;a<=params.moveStep;a++)
+            {
+                i--;
+            }
+            for (a=1;a<=params.delStep;a++)
+            {
+                j--;
+            }
+        }
+        }
+    else if (j==params.moveStep)
+        {
+        min_cost = min(cost[(i-params.diagStep)*m+(j-params.diagStep)], 
+                        cost[(i-params.delStep)*m+(j-params.moveStep)]);
+        
+        if (cost[(i-params.diagStep)*m+(j-params.diagStep)] == min_cost)
+            {
+            for (a=1;a<=params.diagStep;a++)
+            {
+                i--;
+                j--;
+            }
+            }
+        else
+            {
+            for (a=1;a<=params.delStep;a++)
+            {
+                i--;
+            }
+            for (a=1;a<=params.moveStep;a++)
+            {
+                j--;
+            }
+        }
+        }
+    else
+        {
+        min_cost = min3(cost[(i-params.delStep)*m+(j-params.moveStep)],
+                        cost[(i-params.diagStep)*m+(j-params.diagStep)], 
+                        cost[(i-params.moveStep)*m+(j-params.delStep)]);
+        
+        if (cost[(i-params.diagStep)*m+(j-params.diagStep)] == min_cost)
+            {
+            for (a=1;a<=params.diagStep;a++)
+            {
+                i--;
+                j--;
+            }
+            }
+        else if (cost[(i-params.moveStep)*m+(j-params.delStep)] == min_cost)
+            {
+            for (a=1;a<=params.moveStep;a++)
+            {
+                i--;
+            }
+            for (a=1;a<=params.delStep;a++)
+            {
+                j--;
+            }
+            }
+        else
+            {
+            for (a=1;a<=params.delStep;a++)
+            {
+                i--;
+            }
+            for (a=1;a<=params.moveStep;a++)
+            {
+                j--;
+            }
+            }
+        }
+    
+    px[k] = i;
+    py[k] = j;
+    k++;      
+    }
+
+p->px = (int *) malloc (k * sizeof(int));
+p->py = (int *) malloc (k * sizeof(int));
+for (z1=0, z2=k-1; z1<k; z1++, z2--)
+    {
+    p->px[z1] = px[z2];
+    p->py[z1] = py[z2];
+    }
+p->plen = k;
+
+free(px);
+free(py);
+
+return 1;
+}
+
 // Compute the warp path starting at cost[startx, starty]
 // If startx = -1 -> startx = n-1; if starty = -1 -> starty = m-1
 int path(double *cost, int n, int m, int startx, int starty, DTW_path *p)
