@@ -355,7 +355,7 @@ def dtw1d_GLS(x, y):
         x_cord = np.argmin(cost_arr[:,y_arr.shape[0]-1])
         y_cord = y_arr.shape[0]-1
     
-    path(<double*>cost_arr.data, cost_arr.shape[0], cost_arr.shape[1], x_cord, y_cord, &path_t)
+    pathLocal(<double*>cost_arr.data, cost_arr.shape[0], cost_arr.shape[1], x_cord, y_cord, &path_t, myDtwParama)
     px_cord = np.empty(path_t.plen, dtype=np.int)
     py_cord = np.empty(path_t.plen, dtype=np.int)
     for i in range(path_t.plen):
