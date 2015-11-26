@@ -3,8 +3,8 @@
 #include "../TSApool.h"
 #include "../TSAlogs.h"
 
-#define OPTIMIZED_CODE_FOR_SMALL_DATA
-//#define OPTIMIZED_CODE_FOR_BIG_DATA
+//#define OPTIMIZED_CODE_FOR_SMALL_DATA
+#define OPTIMIZED_CODE_FOR_BIG_DATA
 
 using namespace std;
 

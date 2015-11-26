@@ -39,8 +39,8 @@ INF = np.finfo(np.float).max
 #Randomization and multiple iterations of the entire experiment
 
 
-myUser = 'sankalp'
-myDatabase = 'ISMIR2015_10RAGA_TONICNORM'
+#myUser = 'sankalp'
+#myDatabase = 'ISMIR2015_10RAGA_TONICNORM'
 
 
 def get_mbids_raagaIds_for_collection(database = '', user= ''):
@@ -420,7 +420,7 @@ def get_per_recording_data(comm_data):
         
         
         
-def raga_recognition_V2(out_dir, fileListFile, thresholdBin, pattDistExt, network_wght_type = -1, force_build_network=0, feature_type = 'tf-idf', pre_processing = -1, norm_tfidf = None, smooth_idf = False, classifier = ('nbMulti', "default"), n_fold = 16, n_expts = 10, var1 = True, var2 = True):
+def raga_recognition_V2(out_dir, fileListFile, thresholdBin, pattDistExt, network_wght_type = -1, force_build_network=0, feature_type = 'tf-idf', pre_processing = -1, norm_tfidf = None, smooth_idf = False, classifier = ('nbMulti', "default"), n_fold = 16, n_expts = 10, var1 = True, var2 = True, myDatabase = '', myUser = ''):
     """
     Raga recognition system using document classification and topic modelling techniques.
     In this approach we treat phrases of a recording as words (basically cluster/community id). 
@@ -455,13 +455,13 @@ def raga_recognition_V2(out_dir, fileListFile, thresholdBin, pattDistExt, networ
     
     """
     if not os.path.isdir(out_dir):
-        os.mkdirs(out_dir)
+        os.makedirs(out_dir)
     
     
     # path to store all the temporary files
-    scratch_dir = 'scratch_raga_recognition'
+    scratch_dir = '/home/sankalp/Work/Work_PhD/library_pythonnew/networkAnalysis/scratch_raga_recognition'
     
-    root_filename = os.path.join(scratch_dir, 'network'+'_'+str(thresholdBin)+'_'+pattDistExt.replace('.',''))
+    root_filename = os.path.join(scratch_dir, 'network'+'_'+ myDatabase+'_'+str(thresholdBin)+'_'+pattDistExt.replace('.',''))
     
     #constructing the network
     t1 = time.time()
@@ -642,7 +642,8 @@ def raga_recognition_V2(out_dir, fileListFile, thresholdBin, pattDistExt, networ
         features = tfidf_transformer.fit_transform(count_all) 
         if False:
             dump = {'features': features.toarray(), 'labels': np.array(label_list)}
-            pickle.dump(dump, open('features_dump_160.pkl','w'))
+            pickle.dump(dump, open('features_dump_480.pkl','w'))
+            return True
         mlObj.setFeaturesAndClassLabels(features.toarray(), np.array(raga_list))
         mlObj.runExperiment()
         
@@ -654,9 +655,9 @@ def raga_recognition_V2(out_dir, fileListFile, thresholdBin, pattDistExt, networ
     fid = open(os.path.join(out_dir,'experiment_results.pkl'),'w')
     results = {}
     if var1:
-        results.update({'var1': {'cm': cMTC_var1, 'gt_label': label_list, 'pred_label': label_list_pred, 'mapping': map_raga, 'accuracy': float(cnt)/len(predicted_raga)}})
+        results.update({'var1': {'cm': cMTC_var1, 'gt_label': label_list, 'pred_label': label_list_pred, 'mbids': mbid_list, 'mapping': map_raga, 'accuracy': float(cnt)/len(predicted_raga)}})
     if var2:
-        results.update({'var2': {'cm': mlObj.cMTXExp, 'gt_label': mlObj.classLabelsInt, 'pred_label':mlObj.decArray, 'mapping':mlObj.cNames, 'accuracy': mlObj.overallAccuracy}})
+        results.update({'var2': {'cm': mlObj.cMTXExp, 'gt_label': mlObj.classLabelsInt, 'pred_label':mlObj.decArray, 'mbids': mbid_list, 'mapping':mlObj.cNames, 'accuracy': mlObj.overallAccuracy, 'pf_accuracy':mlObj.accuracy}})
     
     pickle.dump(results, fid)
     #also dumping the input params to this function

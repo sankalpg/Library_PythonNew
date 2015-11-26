@@ -53,8 +53,10 @@ def batchProcessTonicFineTune(root_dir, tonicExt = '.tonic', tonicExtOut = '.ton
 
     for audiofilename in audiofilenames:
       fname,ext = os.path.splitext(audiofilename)
-      fineTuneTonicValue(fname+tonicExt, fname+tonicExtOut, fname+pitchExt)
-
+      try:     
+ 	fineTuneTonicValue(fname+tonicExt, fname+tonicExtOut, fname+pitchExt)
+      except:
+	print fname
 
 def fetchMBID(mp3File):
     try:

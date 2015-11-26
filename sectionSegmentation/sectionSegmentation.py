@@ -265,7 +265,7 @@ def extractSoloPercussion(audiofile, segFile, modelFile, normFile, frameDur, hop
     
     return 1
 
-def extractSoloPercussionBATCHPROC(root_dir, segExt, modelFile, normFile, frameDur, hopDur, aggDur, medianDur=20):
+def extractSoloPercussionBATCHPROC(root_dir, segExt, modelFile, normFile, frameDur, hopDur, aggDur, medianDur=20, overwrite_files = 0):
     
     
     audiofiles = BP.GetFileNamesInDir(root_dir,'mp3')
@@ -275,6 +275,9 @@ def extractSoloPercussionBATCHPROC(root_dir, segExt, modelFile, normFile, frameD
         print "File being processed %s\n"%audiofile
         fname, ext = os.path.splitext(audiofile)
         segFile = fname + segExt
+        if os.path.isfile(segFile) and not overwrite_files:
+            	print "################# THIS FILE IS ALREADY PROCESSED#####################"
+		continue
         extractSoloPercussion(audiofile, segFile, modelFile, normFile, frameDur, hopDur, aggDur, medianDur)
 
 

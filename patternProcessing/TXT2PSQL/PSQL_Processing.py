@@ -19,8 +19,8 @@ import batchProcessing as BP
 myUser = 'sankalp'
 #myDatabase = 'motifHindustani_CONF1'
 
-serverPrefix = "/homedtic/sgulati/motifDiscovery/dataset/PatternProcessing_DB/unsupervisedDBs/carnaticDB/Carnatic10RagasISMIR2015DB/audio/"
-localPrefix = "/media/Data/Datasets/PatternProcessing_DB/unsupervisedDBs/carnaticDB/Carnatic10RagasISMIR2015DB/audio/"
+serverPrefix = "/homedtic/sgulati/motifDiscovery/dataset/PatternProcessing_DB/unsupervisedDBs/carnaticDB/Carnatic40RagaICASSP2016/audio/"
+localPrefix = "/media/Data/Datasets/PatternProcessing_DB/unsupervisedDBs/carnaticDB/Carnatic40RagaICASSP2016/audio/"
 
 
 def resetAllTables():
@@ -118,49 +118,114 @@ def get_db_raga_dunya_raga(outputfile, myDatabase, collection = 'carnatic'):
 	if con:
 		con.close()
 	
-	
-	
+def update_tonic_in_db(root_dir, tonicExt = '.tonicFine', myDatabase= '', myUser=''):	
+    
+    audioFiles = BP.GetFileNamesInDir(root_dir, '.mp3')
+    cmd = u"update file set tonic = %f where mbid='%s'"
+    try:
+        con = psy.connect(database=myDatabase, user=myUser) 
+        cur = con.cursor()        
+        for audiofile in audioFiles:
+            print audiofile
+            mbid = fetchMBID(audiofile)
+            fname, ext = os.path.splitext(audiofile)
+            tonic = np.loadtxt(fname+tonicExt)
+            
+            cur.execute(cmd%(tonic, mbid))
+    
+        con.commit()
+    except:
+        pass
+    
+        
 
 def fillFileTableWithRagaIds(myDatabase, collection = 'carnatic'):
-	
-	dn.set_token("60312f59428916bb854adaa208f55eb35c3f2f07")
-	if collection == 'hindustani':
-		tradition = hn
-	elif collection == 'carnatic':
-		tradition = ca
-		
-	getMBIDs = "select mbid from file"
-	cmd1 = "update file set raagaId ='%s' where mbid='%s'"
-		
-	try:
-		con = psy.connect(database=myDatabase, user=myUser) 
-		cur = con.cursor()
-		cur.execute(getMBIDs)
-		mbids = cur.fetchall()
-		
-		for ii,mbid in enumerate(mbids):
-			mbid = mbid[0]
-			print ii
-			recData = tradition.get_recording(mbid)
-			ragaId = recData['raaga']['uuid']
-			cur.execute(cmd1%(ragaId, mbid))
-		con.commit()
-		print "Successfully updated file table in %s database"%(myDatabase)
+    
+    dn.set_token("60312f59428916bb854adaa208f55eb35c3f2f07")
+    if collection == 'hindustani':
+        tradition = hn
+    elif collection == 'carnatic':
+        tradition = ca
+        
+    getMBIDs = "select mbid from file"
+    cmd1 = "update file set raagaId ='%s' where mbid='%s'"
+        
+    try:
+        con = psy.connect(database=myDatabase, user=myUser) 
+        cur = con.cursor()
+        cur.execute(getMBIDs)
+        mbids = cur.fetchall()
+        
+        for ii,mbid in enumerate(mbids):
+            mbid = mbid[0]
+            print ii
+            try:
+                recData = tradition.get_recording(mbid)
+            except:
+                print "Api didn't respond to this mbid = %s"%mbid
+            
+            if len(recData['raaga'])==1:
+                ragaId = recData['raaga'][0]['uuid']
+                cur.execute(cmd1%(ragaId, mbid))
+            else:
+                print "Can't fetch correct raga for mbid = %s"%mbid
+        con.commit()
+        print "Successfully updated file table in %s database"%(myDatabase)
 
-	except psy.DatabaseError, e:
-		print 'Error %s' % e	
-		if con:
-			con.rollback()
-			con.close()
-			sys.exit(1)
+    except psy.DatabaseError, e:
+        print 'Error %s' % e    
+        if con:
+            con.rollback()
+            con.close()
+            sys.exit(1)
 
-	if con:
-		con.close()
-	
-	
-		
-	
+    if con:
+        con.close()
+        
+        
+def fillFileTableWithRagaIds_withoutAPI(myDatabase, mbid_ragaid_file, collection = 'carnatic'):
+    
+    mbid_raga = {}
+    lines  = open(mbid_ragaid_file,'r').readlines()
+    for line in lines:
+        sline = line.split('\t')
+        mbid = sline[0].strip()
+        ragaid = sline[1].strip()
+        mbid_raga[mbid] = ragaid
+    dn.set_token("60312f59428916bb854adaa208f55eb35c3f2f07")
+    if collection == 'hindustani':
+        tradition = hn
+    elif collection == 'carnatic':
+        tradition = ca
+        
+    getMBIDs = "select mbid from file"
+    cmd1 = "update file set raagaId ='%s' where mbid='%s'"
+        
+    try:
+        con = psy.connect(database=myDatabase, user=myUser) 
+        cur = con.cursor()
+        cur.execute(getMBIDs)
+        mbids = cur.fetchall()
+        
+        for ii,mbid in enumerate(mbids):
+            mbid = mbid[0]
+            if mbid_raga.has_key(mbid):
+                cur.execute(cmd1%(mbid_raga[mbid], mbid))
+            else:
+                print "problem with mbid = %s"%(mbid)
+            
+        con.commit()
+        print "Successfully updated file table in %s database"%(myDatabase)
 
+    except psy.DatabaseError, e:
+        print 'Error %s' % e    
+        if con:
+            con.rollback()
+            con.close()
+            sys.exit(1)
+
+    if con:
+        con.close()
 
 def createFileTable(root_dir, myDatabase, filterExt = '.mp3'):
     
@@ -261,11 +326,11 @@ def createPatternMatchTable(root_dir, logFile, myDatabase=''):
     
     t1 = time.time()
     #important stuff
-    motifDiscExt = '.disPatts1'
+    motifDiscExt = '.disPatt_2s'
     #motifSearchExt = ['.srhPatts1SqEuclidean', '.srhPatts1CityBlock', '.srhPatts1ShiftCityBlock', '.srhPatts1ShiftLinExp']
-    motifSearchExt = ['.srhPatts1SqEuclidean']
+    motifSearchExt = ['.srhPatt_2sSqEuclidean']
     mainDistanceIndex = 0           # this is basically index of extions stored in motifSearchExt which is the main distance files
-    motifSearchMappExt = '.srhMap1'
+    motifSearchMappExt = '.srhMap_2s'
     
     #lets get all the files in the root_dir
     fileNames = BP.GetFileNamesInDir(root_dir, motifDiscExt)
@@ -390,7 +455,7 @@ def createPatternMatchTable(root_dir, logFile, myDatabase=''):
             
             #now inserting searched data
             SearchExt = motifSearchExt[mainDistanceIndex]
-            version=3
+            version=1
             motifSearchFile = fname + SearchExt
             #reading searched motifs file
             try:
@@ -540,7 +605,10 @@ def MBIDError(a):
 CREATE TABLE file (
     id bigserial NOT NULL primary key,
     filename character varying(1000),
-    mbid uuid not null
+    mbid uuid not null,
+    hasseed int,
+    raagaid uuid,
+    tonic double precision
 );
 
 CREATE TABLE pattern (
