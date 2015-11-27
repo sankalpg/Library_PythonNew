@@ -27,7 +27,9 @@ class Data:
         #self.raga_index = int(vals[3])
         self.start = int(0)
         self.end = int(300)
-        #self.ignore = ''.join([c for n,c in zip(NOTES,CODES) if n in vals[6]])
+        vals = 'RgmPdn'
+        print vals
+        self.ignore = ''.join([c for n,c in zip(NOTES,CODES) if n in vals])
         self.pdata = pdata
         t, s = self.get_timeSeries()
         self.times = t
@@ -36,6 +38,10 @@ class Data:
         self.string = sym
         self.st = st
         self.en = en
+        note = self.get_notes(self.string)
+        self.transcribed = note
+        qts = self.get_quantized_ts()
+        self.levels = qts
         #label, gst, gen = self.get_gt()
         #self.label = label
         #self.gst = gst
@@ -125,7 +131,7 @@ class Data:
     def get_quantized_ts(self):
         qts = np.array([None]*(max(self.en)+1))
         for i in xrange(len(self.st)):
-            qts[self.st[i]:self.en[i]+1]     = LEVELS[CODES.index(self.string[i])]
+            qts[self.st[i]:self.en[i]+1] = LEVELS[CODES.index(self.string[i])]
         return qts
             
     def get_gt(self):
