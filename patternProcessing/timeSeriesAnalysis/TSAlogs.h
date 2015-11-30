@@ -17,3 +17,4 @@ public:
 };
 
 #endif //TSALOG_H
+

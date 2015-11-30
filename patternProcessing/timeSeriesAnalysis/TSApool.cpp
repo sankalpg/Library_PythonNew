@@ -379,3 +379,4 @@ int TSApool::sortQSearch(TSAIND queryInd)
     qsort(priorityQSear[queryInd], K, sizeof(TSAmotifInfoExt_t), compareSearchMotifInfo);
     
 }
+

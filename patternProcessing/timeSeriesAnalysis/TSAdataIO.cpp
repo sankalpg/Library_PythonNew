@@ -1903,3 +1903,4 @@ int fileNameHandler::loadSearchFileList()
     fclose(fp1);
     return 1;
 }
+
