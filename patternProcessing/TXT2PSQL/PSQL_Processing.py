@@ -20,7 +20,7 @@ myUser = 'sankalp'
 #myDatabase = 'motifHindustani_CONF1'
 
 serverPrefix = "/homedtic/sgulati/motifDiscovery/dataset/PatternProcessing_DB/unsupervisedDBs/carnaticDB/Carnatic40RagaICASSP2016/audio/"
-localPrefix = "/media/Data/Datasets/PatternProcessing_DB/unsupervisedDBs/carnaticDB/Carnatic40RagaICASSP2016/audio/"
+localPrefix = "/media/Data/Datasets/PatternProcessing_DB/unsupervisedDBs/hindustaniDB/Hindustani26Ragas/audio/"
 
 
 def resetAllTables():
