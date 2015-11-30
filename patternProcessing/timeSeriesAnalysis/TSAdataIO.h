@@ -127,7 +127,7 @@ public:
     int         normalizeSubSeqs(int normType);
     int         dumpPatternKNNInfo(char *motifFile, TSAmotifInfoExt_t **priorityQSear, TSAIND nQueries, int KNN, int verbos);
     int         dumpPatternDISTInfo(char *outputFile, TSAmotifInfoExt_t **priorityQSear, TSAIND nPatterns, TSAIND *pattPerQ, int verbos);
-    int         computeMeanSubSeqs(int len);
+    int         computeMeanSTDSubSeqs(int len);
     int         copyAndNormalizeSubSeqsPASA(TSADATA *out1, TSADATA *out2, TSADATA *inp1, TSADATA *inp2, float mean1, float mean2, int len);
     
     TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fileExts, procParams_t *pParams);
