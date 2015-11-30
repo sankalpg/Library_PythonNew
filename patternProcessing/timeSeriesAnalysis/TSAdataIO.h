@@ -3,7 +3,6 @@
 
 #define TSA_DATAIO_H
 
-#include "TSAhashDefs.h"
 #include "TSAdataStructs.h"
 
 
@@ -129,6 +128,7 @@ public:
     int         dumpPatternDISTInfo(char *outputFile, TSAmotifInfoExt_t **priorityQSear, TSAIND nPatterns, TSAIND *pattPerQ, int verbos);
     int         computeMeanSTDSubSeqs(int len);
     int         copyAndNormalizeSubSeqsPASA(TSADATA *out1, TSADATA *out2, TSADATA *inp1, TSADATA *inp2, float mean1, float mean2, int len);
+    float       estimateOffset(float mean1, float mean2);
     
     TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fileExts, procParams_t *pParams);
     ~TSAdataHandler();

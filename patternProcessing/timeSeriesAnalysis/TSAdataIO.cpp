@@ -597,6 +597,33 @@ int TSAdataHandler::genTemplate1SubSeqs()
 
 }
 /*
+This function computes an offset between a pair of subsequences based on the normalization type.
+For example: if we choose to perform octave normalization then if the two subseqs are detection to be octave transposed
+the offset would be N*1200. Similarly another normalization strategy can be PASA norm.
+*/
+float TSAdataHandler::estimateOffset(float mean1, float mean2)
+{
+    float diff, dev, rounded_diff;
+    if (procParams.repParams.normType == OCTAVE_NORM)
+    {
+        diff = mean1 - mean2;
+        rounded_diff = round(diff/procParams.repParams.binsPOct)*procParams.repParams.binsPOct;
+        dev = diff -rounded_diff;
+        if (fabs(dev) <= procParams.repParams.binsPOct/8.0)
+        {  //note that 1/8 bins per octave is 150 cents equivalent
+            return rounded_diff;
+        }
+        else
+        {
+            return 0.0;
+        }
+    }
+
+    return 0.0;
+}
+
+
+/*
 This function as of now is used by patternDistancesFixedDuration.cpp for a small amount of data (as it is applied in the context
 where there is no lower bounding). The idea is to replace this optional step which is controlled by #define to a parameter
 for octave and PASA normalization. That would be by integrating this procedurein the lower bounding also.

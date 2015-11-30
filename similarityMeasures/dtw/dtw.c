@@ -1371,22 +1371,25 @@ double computeLBkimFL(double a1, double a2, double b1, double b2, int dist_type)
  * data - subsequence to be used for the computation of lower bound
  * lenMotif - length of the subsequence
  * bsf - best so far distance,  which is kind of the threshold for every computation.
- * 
+ * dist_type - distance type to be used for the computation of lower bounds
+ * offset - offset to be applied to data values while computing lower bounds. This is to handle octave normalization.
  * Additionally this function also has a early abandoning step,  which is dependent on the preprocessor #define. Use 'ENABLE_EA' to enable it 
 */
-double computeKeoghsLB(double *U, double *L, double * accLB, double *data,int lenMotif, double bsf, int dist_type)
+double computeKeoghsLB(double *U, double *L, double * accLB, double *data,int lenMotif, double bsf, int dist_type, float offset)
 {
     int ii;
     double sum=0;
+    double data_with_offset = 0;
     for(ii=0;ii<lenMotif;ii++)
     {
-        if (data[ii]>U[ii])
+        data_with_offset = data[ii] + offset;
+        if (data_with_offset>U[ii])
         {
-            sum+=mySimMeasure[dist_type](data[ii],U[ii]);
+            sum+=mySimMeasure[dist_type](data_with_offset,U[ii]);
         }
-        else if (data[ii]<L[ii])
+        else if (data_with_offset<L[ii])
         {
-            sum+=mySimMeasure[dist_type](data[ii],L[ii]);
+            sum+=mySimMeasure[dist_type](data_with_offset,L[ii]);
         }
         accLB[ii] = sum;
 #ifdef ENABLE_EA             

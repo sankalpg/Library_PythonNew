@@ -16,6 +16,8 @@ int main( int argc , char *argv[])
     int Err=0;
     int verbos;
     int rVal=0;
+    float offset=0;
+    double *offseted_data;
     
     TSAparamHandle paramHand;
     TSAlogs logs;
@@ -77,6 +79,8 @@ int main( int argc , char *argv[])
     
     TSApool *pool = new TSApool(kNN);
     pool->initPriorityQDisc();
+
+    offseted_data = (double*)malloc(sizeof(double)*lenMotifReal);
     
     for(TSAIND ii=0;ii< TSData1->nSubSeqs;ii++)
     {
@@ -88,19 +92,29 @@ int main( int argc , char *argv[])
             {
                 continue;
             }
-            LB_kim_FL = computeLBkimFL(subSeqPtr[ii].pData[0], subSeqPtr[jj].pData[0], subSeqPtr[ii].pData[lenMotifReal-1], subSeqPtr[jj].pData[lenMotifReal-1], SqEuclidean);
+            offset = TSData1->estimateOffset(subSeqPtr[ii].mean, subSeqPtr[jj].mean);
+            //printf("Mean1, mean2 and offset are: %f\t%f\t%f\n", subSeqPtr[ii].mean, subSeqPtr[jj].mean, offset);
+            LB_kim_FL = computeLBkimFL(subSeqPtr[ii].pData[0], subSeqPtr[jj].pData[0] + offset, subSeqPtr[ii].pData[lenMotifReal-1], subSeqPtr[jj].pData[lenMotifReal-1]+ offset, SqEuclidean);
             logs.procLogs.nLB_KIM_FL++;
             if (LB_kim_FL< bsf) 
             {
-                LB_Keogh_EQ = computeKeoghsLB(U[ii],L[ii],accLB1, subSeqPtr[jj].pData,lenMotifReal, bsf, SqEuclidean);
+                LB_Keogh_EQ = computeKeoghsLB(U[ii],L[ii],accLB1, subSeqPtr[jj].pData,lenMotifReal, bsf, SqEuclidean, offset);
                 logs.procLogs.nLB_Keogh_EQ++;
                 if(LB_Keogh_EQ < bsf)
                 {
-                    LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB2, subSeqPtr[ii].pData,lenMotifReal, bsf, SqEuclidean);
+                    LB_Keogh_EC = computeKeoghsLB(U[jj],L[jj],accLB2, subSeqPtr[ii].pData,lenMotifReal, bsf, SqEuclidean, -1*offset);
                     logs.procLogs.nLB_Keogh_EC++;
                     if(LB_Keogh_EC < bsf)
                     {
-                        realDist = dtw1dBandConst(subSeqPtr[ii].pData, subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, bsf, accLB1);
+                        if ((offset !=0)&&(TSData1->procParams.repParams.normType == OCTAVE_NORM)){
+                            for (int zz=0;zz<lenMotifReal;zz++){offseted_data[zz] = subSeqPtr[jj].pData[zz]+offset;}    //saving the offsetted copy
+                            realDist = dtw1dBandConst(subSeqPtr[ii].pData, offseted_data, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, bsf, accLB1);
+                        }
+                        else{
+                            realDist = dtw1dBandConst(subSeqPtr[ii].pData, subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, bsf, accLB1);
+                        }
+
+
                         logs.procLogs.nDTW_EA++;
                         if (realDist <= bsf)
                         {
