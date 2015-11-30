@@ -12,7 +12,7 @@ CODES = string.ascii_letters[:len(NOTES)]
 
 
 class Data:
-    def __init__(self, pdata, thres=8, width=35, verbose=False):
+    def __init__(self, pdata, ignoreNotes, thres=8, width=35, verbose=False):
         #self.songname = songname
         vals = []
         #with open('metadata.txt') as f:
@@ -25,12 +25,13 @@ class Data:
         #self.index = int(vals[0])
         #self.tonic = float(vals[2])
         #self.raga_index = int(vals[3])
-        self.start = int(0)
-        self.end = int(300)
-        vals = 'RgmPdn'
-        print vals
-        self.ignore = ''.join([c for n,c in zip(NOTES,CODES) if n in vals])
         self.pdata = pdata
+        self.start = int(0)
+        self.end = int(len(self.pdata[1])*self.pdata[2])
+        #vals = 'RgmPdn'
+        #print vals
+        #self.ignore = ''.join([c for n,c in zip(NOTES,CODES) if n in vals])  
+        self.ignore = ignoreNotes
         t, s = self.get_timeSeries()
         self.times = t
         self.ts = s
@@ -112,7 +113,7 @@ class Data:
         prev = ''
         index = 0
         for i, s in enumerate(symbols):
-            if s != prev:
+            if s != prev or t_en[i] - t_en[index-1] < 120:
                 prev = s
                 symbols[index] = s
                 t_st[index] = t_st[i]
