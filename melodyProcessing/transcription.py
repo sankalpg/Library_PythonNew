@@ -11,26 +11,40 @@ NOTES = ['G','m','M','P','d','D','n','N','S','r','R','g']*3
 CODES = string.ascii_letters[:len(NOTES)]
 
 
-class Data:
-    def __init__(self, pdata, ignoreNotes, thres=8, width=35, verbose=False):
-        #self.songname = songname
+class  SvarTranscription:
+    
+    def __init__(self, pdata):
         vals = []
-        #with open('metadata.txt') as f:
-            #for line in f:
-                #vals = line.strip().split(',')
-                #if vals[1] == songname:
-                    #break
-        #if len(vals) == 0:
-            #raise Exception('Song not found in metadata.txt')
-        #self.index = int(vals[0])
-        #self.tonic = float(vals[2])
-        #self.raga_index = int(vals[3])
         self.pdata = pdata
         self.start = int(0)
         self.end = int(len(self.pdata[1])*self.pdata[2])
+        
+        
+        
+        #self.songname = songname
         #vals = 'RgmPdn'
         #print vals
         #self.ignore = ''.join([c for n,c in zip(NOTES,CODES) if n in vals])  
+        #t, s = self.get_timeSeries()
+        #self.times = t
+        #self.ts = s
+        #sym, st, en = self.get_symbols(thres=thres, width=width, verbose=verbose)
+        #self.string = sym
+        #self.st = st
+        #self.en = en
+        #note = self.get_notes(self.string)
+        #self.transcribed = note
+        #qts = self.get_quantized_ts()
+        #self.levels = qts
+        #output = []
+        #for ii, start_time in enumerate(self.st):
+            #output.append([self.st[ii]*self.pdata[2], self.en[ii]*self.pdata[2], self.levels[ii]])
+        ##label, gst, gen = self.get_gt()
+        #self.label = label
+        #self.gst = gst
+        #self.gen = gen
+        
+    def perform_transcription(self, ignoreNotes, thres=8, width=35, verbose=False):
         self.ignore = ignoreNotes
         t, s = self.get_timeSeries()
         self.times = t
@@ -41,12 +55,15 @@ class Data:
         self.en = en
         note = self.get_notes(self.string)
         self.transcribed = note
-        qts = self.get_quantized_ts()
-        self.levels = qts
-        #label, gst, gen = self.get_gt()
-        #self.label = label
-        #self.gst = gst
-        #self.gen = gen
+        level = self.convert_to_levels(self.string)
+        self.svara = level
+        #qts = self.get_quantized_ts()
+        #self.levels = qts
+        output = []
+        for ii, start_time in enumerate(self.st):
+            output.append([self.st[ii]*self.pdata[2], self.en[ii]*self.pdata[2], self.svara[ii]])
+        return output
+    
 
     def get_raw_ts(self):
         with open('data_pitch/'+self.songname+'.tpe') as f:
@@ -60,12 +77,10 @@ class Data:
         return t, s
     
     def get_timeSeries(self):
-        #print data, data.shape
         st, en = self.start, self.end
         print st, en
         nSamp = np.ceil(en/float(self.pdata[2]))
-        print nSamp
-        #t,s = 0,0
+        #print nSamp
         t, s = self.pdata[0][:nSamp], self.pdata[1][:nSamp]
         return t, s
         
@@ -113,12 +128,13 @@ class Data:
         prev = ''
         index = 0
         for i, s in enumerate(symbols):
-            if s != prev or t_en[i] - t_en[index-1] < 120:
+            print s, prev
+            if s != prev or t_en[i] - t_en[index-1] < 150:
                 prev = s
                 symbols[index] = s
                 t_st[index] = t_st[i]
                 t_en[index] = t_en[i]
-                index += 1
+                index += 1                   
             else:
                 t_en[index-1] = t_en[i]
         symbols[index:] = []
@@ -171,6 +187,13 @@ class Data:
     def get_notes(string):
         return ''.join(NOTES[CODES.index(c)] for c in string)
     
+    @staticmethod
+    def convert_to_levels(string):
+        level = []
+        for i in xrange(len(string)):
+            level.append(LEVELS[CODES.index(string[i])])
+        return level    
+    
     def get_ts_index(self, t):
         '''Gives the index in the time series for a corresponding time instant'''
         for i, ti in enumerate(self.times):
@@ -178,37 +201,6 @@ class Data:
         return len(self.times)-1
     
 
-
-    def get_precall(self, predicted, overlap = 0.25):
-        if len(predicted) == 0:
-            return 0.0, 0.0, 0.0
-        gst = map(self.get_ts_index, self.gst)
-        gen = map(self.get_ts_index, self.gen)
-        predicted = map(lambda (x,y):(self.st[x],self.en[y]), predicted)
-        pst, pen = zip(*predicted)
-    
-        overlap_mat = np.zeros([len(pst),len(gst)])
-        for i in xrange(len(pst)):
-            for j in xrange(len(gst)):
-                s1, e1, s2, e2 = pst[i], pen[i], gst[j], gen[j]
-                overlap_mat[i,j] = 1.0*max(0, min(e1,e2) - max(s1,s2) + 1)/(e2 - s2 + 1)
-        # print overlap_mat
-        precision = np.mean(np.any(overlap_mat>=overlap, axis=1))
-        recall = np.mean(np.any(overlap_mat>=overlap, axis=0))
-        f_score = (2*precision*recall)/(precision+recall)
-        return precision, recall, f_score
-    
-    def get_behavioral_seq(self, win=3):
-        behav_dict = {}
-        seq = [0]*(len(self.string) - win + 1)
-        next = 0
-        for i in xrange(len(self.string)-win+1):
-            if self.string[i:i+win] not in behav_dict:
-                behav_dict[self.string[i:i+win]] = next
-                next += 1
-            seq[i] = behav_dict[self.string[i:i+win]]
-        return seq, behav_dict
-                
 
 if __name__=='__main__':
     pass
