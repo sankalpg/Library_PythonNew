@@ -19,10 +19,9 @@ def batchProc(root_dir, audioExt = '.mp3', pitchExt = '.pitchSilIntrpPP', tonicE
     
     filenames = BP.GetFileNamesInDir(root_dir, '.mp3')
     segObj = seg.melodySegmentation()
-    #phObj = PH.PitchHistogram()
     
     
-    for filename in filenames[:1]:
+    for filename in filenames[:]:
         print "Processing file %s"%filename
         
         fname, ext = os.path.splitext(filename)
@@ -30,54 +29,43 @@ def batchProc(root_dir, audioExt = '.mp3', pitchExt = '.pitchSilIntrpPP', tonicE
         tonic = np.loadtxt(fname  + tonicExt)
         pcents = BO.PitchHz2Cents(pitch, tonic)
         pdata = (time,pcents,Hop)
-        #print len(pdata[1])*Hop
         
-        breathPhases = np.array(segObj.ExtractBreathPhrases(pcents, Hop, 0.5)).astype(np.float)
-        validTime = breathPhases
-        validTime[:,0] = validTime[:,0]*Hop
-        validTime[:,1] = validTime[:,1]*Hop
-
-        bphraseFilename = (''.join([fname,'.bphrases']))
-        np.savetxt(bphraseFilename,validTime, delimiter = "\t", fmt="%f\t%f\t%d")
-        #print "Hop size is %f"%Hop
         
-            
+        ## Extract Breath Phrases
+        #------------------------
+        breathPhrases = findBreathPhrases(segObj,fname,pcents,Hop)
+        
+        
+        ## Histogram processing to extract note locations
+        #------------------------------------------------
         svaraSemitone, ignoreNotes = findValidSvaras(pitch,tonic)
         #print svaraSemitone, ignoreNotes
+        print "Notes being ignored are: %s" % ignoreNotes
         
         
-        tsObj = ts.SvarTranscription(pdata)
-        transcription = tsObj.perform_transcription(ignoreNotes, thres=60, width=35, verbose=False) 
-        transcription = np.array(transcription)
-        print transcription
-        #song_durs = [e-s+1 for s,e in zip(tsObj.st, tsObj.en)]
-        #print song_durs, song_notes
+        ## Svara transcription
+        #---------------------
+        transcription = transcribePitch(fname,pdata,ignoreNotes)
+        #print transcription
         
         
-        ##fig = plt.figure(figsize=(18,10))
-        #for i in range(validTime.shape[0]):
-	    ##ax = plt.subplot(2,3,i+1)
-	    #print validTime[i,0], validTime[i,1]
-	    ##ax.set_title(tsObj.get_notes(tsObj.get_string_part(validTime[i,0], validTime[i,1])[0]))
-	    #beg = max(m for m, n in enumerate(tsObj.times) if n < validTime[i,0])
-	    #fin = max(m for m, n in enumerate(tsObj.times) if n < validTime[i,1])
-	    #print beg, fin
-	    ##plt.plot(tsObj.times[beg:fin], tsObj.ts[beg:fin],'g--', alpha=0.7)
-	    ##plt.plot(tsObj.times[beg:fin], tsObj.levels[beg:fin],'r-', linewidth=2)
-	    ##ax.set_ylim([-600,1800])
-	    #temp = tsObj.get_notes(tsObj.get_string_part(validTime[i,0], validTime[i,1])[0])
-	    #print '{0}\t {1:.2f}\t {2:.2f}\t {3}'.format(len(temp), (fin-beg)/100., (len(temp)*100./(fin-beg)), temp)
-	##plt.show()
+        print "-------\nDone !!\n-------"
         
-        #plt.plot(tsObj.levels)
-        #plt.show()
         
-        #plt.plot(tsObj.times[:len(tsObj.levels)], tsObj.ts[:len(tsObj.levels)],'g--', alpha=0.7)
-        #plt.plot(tsObj.times[:len(tsObj.levels)], tsObj.levels, 'r-', linewidth=2)
-        #plt.show()
+        
+def findBreathPhrases(segObj,fname,pcents,Hop):
+  
+    breathPhrases = np.array(segObj.ExtractBreathPhrases(pcents, Hop, 0.5)).astype(np.float)
+    print "Extracting breath phrases..."
+    validTime = breathPhrases
+    validTime[:,0] = validTime[:,0]*Hop
+    validTime[:,1] = validTime[:,1]*Hop
 
-        
-        #return breathPheases_s
+    bphraseFilename = (''.join([fname,'.bphrases']))
+    np.savetxt(bphraseFilename,validTime, delimiter = "\t", fmt="%f\t%f\t%d")
+    return breathPhrases
+    
+    
     
 def findValidSvaras(pitch,tonic):
       
@@ -86,6 +74,7 @@ def findValidSvaras(pitch,tonic):
     phObj.ValidSwarLocEstimation()
     phObj.SwarLoc2Cents()
     svara = phObj.swarCents
+    print "Computing svara from histogram..."
     #print svara
     #phObj.PlotHistogram()
     svaraSemitone = map(lambda svara:round(svara,-2),svara)
@@ -97,3 +86,37 @@ def findValidSvaras(pitch,tonic):
     for i in range(len(ignoreNoteLevels)):
         ignoreNotes.append(noteNames[octaveNotes.index(ignoreNoteLevels[i])])        
     return svaraSemitone, ignoreNotes
+  
+  
+  
+def transcribePitch(fname,pdata,ignoreNotes):  
+  
+    tsObj = ts.SvarTranscription(pdata)
+    transcription = np.array(tsObj.perform_transcription(ignoreNotes, thres=60, width=35, verbose=False)) 
+    #print transcription
+    transcriptionFilename = (''.join([fname,'.transcription']))
+    np.savetxt(transcriptionFilename,transcription, delimiter = "\t", fmt="%f\t%f\t%d")
+    return transcription
+    
+    
+    #song_durs = [e-s+1 for s,e in zip(tsObj.st, tsObj.en)]
+    #print song_durs, song_notes
+    
+    ##fig = plt.figure(figsize=(18,10))
+    #for i in range(validTime.shape[0]):
+    ##ax = plt.subplot(2,3,i+1)
+    #print validTime[i,0], validTime[i,1]
+    ##ax.set_title(tsObj.get_notes(tsObj.get_string_part(validTime[i,0], validTime[i,1])[0]))
+    #beg = max(m for m, n in enumerate(tsObj.times) if n < validTime[i,0])
+    #fin = max(m for m, n in enumerate(tsObj.times) if n < validTime[i,1])
+    #print beg, fin
+    ##plt.plot(tsObj.times[beg:fin], tsObj.ts[beg:fin],'g--', alpha=0.7)
+    ##plt.plot(tsObj.times[beg:fin], tsObj.levels[beg:fin],'r-', linewidth=2)
+    ##ax.set_ylim([-600,1800])
+    #temp = tsObj.get_notes(tsObj.get_string_part(validTime[i,0], validTime[i,1])[0])
+    #print '{0}\t {1:.2f}\t {2:.2f}\t {3}'.format(len(temp), (fin-beg)/100., (len(temp)*100./(fin-beg)), temp)
+    ##plt.show()
+    
+    #plt.plot(tsObj.times[:len(tsObj.levels)], tsObj.ts[:len(tsObj.levels)],'g--', alpha=0.7)
+    #plt.plot(tsObj.times[:len(tsObj.levels)], tsObj.levels, 'r-', linewidth=2)
+    #plt.show()

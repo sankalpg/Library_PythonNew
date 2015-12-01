@@ -11,7 +11,7 @@ NOTES = ['G','m','M','P','d','D','n','N','S','r','R','g']*3
 CODES = string.ascii_letters[:len(NOTES)]
 
 
-class  SvarTranscription:
+class SvarTranscription:
     
     def __init__(self, pdata):
         vals = []
@@ -19,30 +19,6 @@ class  SvarTranscription:
         self.start = int(0)
         self.end = int(len(self.pdata[1])*self.pdata[2])
         
-        
-        
-        #self.songname = songname
-        #vals = 'RgmPdn'
-        #print vals
-        #self.ignore = ''.join([c for n,c in zip(NOTES,CODES) if n in vals])  
-        #t, s = self.get_timeSeries()
-        #self.times = t
-        #self.ts = s
-        #sym, st, en = self.get_symbols(thres=thres, width=width, verbose=verbose)
-        #self.string = sym
-        #self.st = st
-        #self.en = en
-        #note = self.get_notes(self.string)
-        #self.transcribed = note
-        #qts = self.get_quantized_ts()
-        #self.levels = qts
-        #output = []
-        #for ii, start_time in enumerate(self.st):
-            #output.append([self.st[ii]*self.pdata[2], self.en[ii]*self.pdata[2], self.levels[ii]])
-        ##label, gst, gen = self.get_gt()
-        #self.label = label
-        #self.gst = gst
-        #self.gen = gen
         
     def perform_transcription(self, ignoreNotes, thres=8, width=35, verbose=False):
         self.ignore = ignoreNotes
@@ -63,26 +39,16 @@ class  SvarTranscription:
         for ii, start_time in enumerate(self.st):
             output.append([self.st[ii]*self.pdata[2], self.en[ii]*self.pdata[2], self.svara[ii]])
         return output
-    
-
-    def get_raw_ts(self):
-        with open('data_pitch/'+self.songname+'.tpe') as f:
-            for line in f:
-                yield map(float, line.strip().split())[:2]
-            
-    def get_ts(self):
-        data = loadmat('data_pitch/'+self.songname+'.mat')['output']
-        st, en = self.start, self.end
-        t, s = data[st*100:en*100], data[st*100:en*100]
-        return t, s
+      
     
     def get_timeSeries(self):
         st, en = self.start, self.end
-        print st, en
+        print "Getting time series..."
         nSamp = np.ceil(en/float(self.pdata[2]))
         #print nSamp
         t, s = self.pdata[0][:nSamp], self.pdata[1][:nSamp]
         return t, s
+        
         
     @staticmethod
     def _quantize(val, ignore='', width=35, verbose=False):
@@ -105,7 +71,7 @@ class  SvarTranscription:
         time series corresponding to beginning of clipped song  
         instead of absolute time in seconds
         '''
-        # print 'Notes %s being ignored for song %s' % (set(self.get_notes(self.ignore)), self.songname)
+        print "Transcribing melody..."
         symbs = map(lambda x:self._quantize(x,self.ignore, width, verbose), self.ts)
         t_st, t_en = [0], []
         prev, count = symbs[0], 0
@@ -128,13 +94,19 @@ class  SvarTranscription:
         prev = ''
         index = 0
         for i, s in enumerate(symbols):
-            print s, prev
-            if s != prev or t_en[i] - t_en[index-1] < 150:
+            #print s, prev, t_st[i], t_en[i], t_en[i] - t_st[i], t_st[i] - t_en[index-1], t_en[i] - t_en[index-1], t_en[index-1]
+            if s != prev:
                 prev = s
                 symbols[index] = s
                 t_st[index] = t_st[i]
                 t_en[index] = t_en[i]
                 index += 1                   
+            elif t_st[i] - t_en[index-1] > 120:
+	        prev = s
+                symbols[index] = s
+                t_st[index] = t_st[i]
+                t_en[index] = t_en[i]
+                index += 1
             else:
                 t_en[index-1] = t_en[i]
         symbols[index:] = []
@@ -151,6 +123,7 @@ class  SvarTranscription:
             qts[self.st[i]:self.en[i]+1] = LEVELS[CODES.index(self.string[i])]
         return qts
             
+            
     def get_gt(self):
         '''
         Returns the start and end time of ground truth phrases in seconds
@@ -164,6 +137,7 @@ class  SvarTranscription:
                 s, e = map(float, f.readline().strip().split())
                 st[i], en[i] = s, e
             return label, st, en
+            
             
     def get_string_part(self, beg, fin):
         ''' beg and fin are the starting and ending time instants
@@ -183,9 +157,11 @@ class  SvarTranscription:
             e = len(self.en) - 1 
         return self.string[s:e+1], s, e 
     
+    
     @staticmethod
     def get_notes(string):
         return ''.join(NOTES[CODES.index(c)] for c in string)
+    
     
     @staticmethod
     def convert_to_levels(string):
@@ -193,6 +169,7 @@ class  SvarTranscription:
         for i in xrange(len(string)):
             level.append(LEVELS[CODES.index(string[i])])
         return level    
+    
     
     def get_ts_index(self, t):
         '''Gives the index in the time series for a corresponding time instant'''
