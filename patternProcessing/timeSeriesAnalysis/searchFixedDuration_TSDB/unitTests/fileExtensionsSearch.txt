@@ -5,5 +5,5 @@ logFileExt: .searchLogs
 paramsDumpExt: .searchParams
 outFileExt: .motifSearch
 mappFileExt: .searchMap
-searchListExt: .flist
+searchListExt: .flistLocal
 queryFileExt: .motif
