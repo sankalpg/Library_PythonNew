@@ -127,11 +127,11 @@ int main( int argc , char *argv[])
                         logs.procLogs.nLB_KIM_FL++;
                         if (LB_kim_FL< bsf_local) 
                         {
-                            LB_Keogh_EQ = computeKeoghsLB(dtwUCR.envUQueryPtr[ind1+pp],dtwUCR.envLQueryPtr[ind1+pp],dtwUCR.accLB_Keogh_EQ, TSData2->subSeqPtr[ind2+mm].pData,lenMotifReal, dtwUCR.bsfArray[queryInd], SqEuclidean);
+                            LB_Keogh_EQ = computeKeoghsLB(dtwUCR.envUQueryPtr[ind1+pp],dtwUCR.envLQueryPtr[ind1+pp],dtwUCR.accLB_Keogh_EQ, TSData2->subSeqPtr[ind2+mm].pData,lenMotifReal, dtwUCR.bsfArray[queryInd], SqEuclidean, 0.0);
                             logs.procLogs.nLB_Keogh_EQ++;
                             if(LB_Keogh_EQ < bsf_local)
                             {
-                                LB_Keogh_EC = computeKeoghsLB(dtwUCR.envUCandPtr[ind2+mm],dtwUCR.envLCandPtr[ind2+mm],dtwUCR.accLB_Keogh_EC, TSData1->subSeqPtr[ind1+pp].pData,lenMotifReal, dtwUCR.bsfArray[queryInd], SqEuclidean);
+                                LB_Keogh_EC = computeKeoghsLB(dtwUCR.envUCandPtr[ind2+mm],dtwUCR.envLCandPtr[ind2+mm],dtwUCR.accLB_Keogh_EC, TSData1->subSeqPtr[ind1+pp].pData,lenMotifReal, dtwUCR.bsfArray[queryInd], SqEuclidean, 0.0);
                                 logs.procLogs.nLB_Keogh_EC++;
                                 if(LB_Keogh_EC < bsf_local)
                                 {

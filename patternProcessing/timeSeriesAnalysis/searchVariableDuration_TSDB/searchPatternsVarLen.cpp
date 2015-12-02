@@ -140,10 +140,10 @@ int main( int argc , char *argv[])
                     LB_kim_FL = computeLBkimFL(TSData1->subSeqPtr[ii].pData[0], TSData2->subSeqPtr[jj].pData[0], TSData1->subSeqPtr[ii].pData[lenMotifReal-1], TSData2->subSeqPtr[jj].pData[lenMotifReal-1], SqEuclidean);
                     if (LB_kim_FL< dtwUCR->bsfArray[queryInd]) 
                     {
-                        LB_Keogh_EQ = computeKeoghsLB(dtwUCR->envUQueryPtr[ii],dtwUCR->envLQueryPtr[ii],dtwUCR->accLB_Keogh_EQ, TSData2->subSeqPtr[jj].pData,lenMotifReal, dtwUCR->bsfArray[queryInd], SqEuclidean);
+                        LB_Keogh_EQ = computeKeoghsLB(dtwUCR->envUQueryPtr[ii],dtwUCR->envLQueryPtr[ii],dtwUCR->accLB_Keogh_EQ, TSData2->subSeqPtr[jj].pData,lenMotifReal, dtwUCR->bsfArray[queryInd], SqEuclidean, 0.0);
                         if(LB_Keogh_EQ < dtwUCR->bsfArray[queryInd])
                         {
-                            LB_Keogh_EC = computeKeoghsLB(dtwUCR->envUCandPtr[jj],dtwUCR->envLCandPtr[jj],dtwUCR->accLB_Keogh_EC, TSData1->subSeqPtr[ii].pData,lenMotifReal, dtwUCR->bsfArray[queryInd], SqEuclidean);
+                            LB_Keogh_EC = computeKeoghsLB(dtwUCR->envUCandPtr[jj],dtwUCR->envLCandPtr[jj],dtwUCR->accLB_Keogh_EC, TSData1->subSeqPtr[ii].pData,lenMotifReal, dtwUCR->bsfArray[queryInd], SqEuclidean, 0.0);
                             if(LB_Keogh_EC < dtwUCR->bsfArray[queryInd])
                             {
                                 realDist = dtw1dBandConst(TSData1->subSeqPtr[ii].pData, TSData2->subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR->costMTX, SqEuclidean, dtwUCR->bandDTW, dtwUCR->bsfArray[queryInd], dtwUCR->accLB_Keogh_EQ);
