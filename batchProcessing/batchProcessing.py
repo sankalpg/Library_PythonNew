@@ -27,6 +27,16 @@ except:
 sys.path.append(os.path.join(os.path.dirname(__file__), '../melodyProcessing/'))
 import pitchHistogram as PH
 
+def packTimePitch(time, pitch):
+    
+    if time.size != pitch.size:
+        print "Please provide time and pitch arrays of the same length"
+        return -1
+    return np.vstack((time,pitch)).transpose()
+
+
+
+
 def fineTuneTonicValue(tonicInFile, tonicOutFile, pitchFile):
   #reading pitch
   timePitch = np.loadtxt(pitchFile)
