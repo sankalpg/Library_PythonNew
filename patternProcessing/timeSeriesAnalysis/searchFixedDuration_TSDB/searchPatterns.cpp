@@ -16,6 +16,10 @@ int main( int argc , char *argv[])
     fileExts_t *myFileExtsPtr;
     int Err=0;
     int verbos;
+    float offset=0;
+    double *offseted_data;
+    float mean2;
+
     
     TSAparamHandle paramHand;
     TSAlogs logs;
@@ -76,6 +80,8 @@ int main( int argc , char *argv[])
     
     fHandle.loadSearchFileList();
     TSAIND queryInd=0;
+
+    offseted_data = (double*)malloc(sizeof(double)*lenMotifReal);
     
     for(TSAIND ss=0; ss < fHandle.nSearchFiles; ss++)
     {
@@ -102,19 +108,26 @@ int main( int argc , char *argv[])
                 {
                     continue;
                 }
-                LB_kim_FL = computeLBkimFL(TSData1->subSeqPtr[ii].pData[0], TSData2->subSeqPtr[jj].pData[0], TSData1->subSeqPtr[ii].pData[lenMotifReal-1], TSData2->subSeqPtr[jj].pData[lenMotifReal-1], SqEuclidean);
+                offset = TSData1->estimateOffset(TSData1->subSeqPtr[ii].mean, TSData2->subSeqPtr[jj].mean);
+                LB_kim_FL = computeLBkimFL(TSData1->subSeqPtr[ii].pData[0], TSData2->subSeqPtr[jj].pData[0] + offset, TSData1->subSeqPtr[ii].pData[lenMotifReal-1], TSData2->subSeqPtr[jj].pData[lenMotifReal-1] + offset, SqEuclidean);
                 logs.procLogs.nLB_KIM_FL++;
                 if (LB_kim_FL< dtwUCR.bsfArray[queryInd]) 
                 {
-                    LB_Keogh_EQ = computeKeoghsLB(dtwUCR.envUQueryPtr[ii],dtwUCR.envLQueryPtr[ii],dtwUCR.accLB_Keogh_EQ, TSData2->subSeqPtr[jj].pData,lenMotifReal, dtwUCR.bsfArray[queryInd], SqEuclidean, 0.0);
+                    LB_Keogh_EQ = computeKeoghsLB(dtwUCR.envUQueryPtr[ii],dtwUCR.envLQueryPtr[ii],dtwUCR.accLB_Keogh_EQ, TSData2->subSeqPtr[jj].pData,lenMotifReal, dtwUCR.bsfArray[queryInd], SqEuclidean, offset);
                     logs.procLogs.nLB_Keogh_EQ++;
                     if(LB_Keogh_EQ < dtwUCR.bsfArray[queryInd])
                     {
-                        LB_Keogh_EC = computeKeoghsLB(dtwUCR.envUCandPtr[jj],dtwUCR.envLCandPtr[jj],dtwUCR.accLB_Keogh_EC, TSData1->subSeqPtr[ii].pData,lenMotifReal, dtwUCR.bsfArray[queryInd], SqEuclidean, 0.0);
+                        LB_Keogh_EC = computeKeoghsLB(dtwUCR.envUCandPtr[jj],dtwUCR.envLCandPtr[jj],dtwUCR.accLB_Keogh_EC, TSData1->subSeqPtr[ii].pData,lenMotifReal, dtwUCR.bsfArray[queryInd], SqEuclidean, -1*offset);
                         logs.procLogs.nLB_Keogh_EC++;
                         if(LB_Keogh_EC < dtwUCR.bsfArray[queryInd])
                         {
-                            realDist = dtw1dBandConst(TSData1->subSeqPtr[ii].pData, TSData2->subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, dtwUCR.bsfArray[queryInd], dtwUCR.accLB_Keogh_EQ);
+                            if ((offset !=0)&&(TSData1->procParams.repParams.normType == OCTAVE_NORM)){
+                                for (int zz=0;zz<lenMotifReal;zz++){offseted_data[zz] = TSData2->subSeqPtr[jj].pData[zz]+offset;}    //saving the offsetted copy
+                                realDist = dtw1dBandConst(TSData1->subSeqPtr[ii].pData, offseted_data, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, dtwUCR.bsfArray[queryInd], dtwUCR.accLB_Keogh_EQ);
+                            }
+                            else{
+                                realDist = dtw1dBandConst(TSData1->subSeqPtr[ii].pData, TSData2->subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, dtwUCR.bsfArray[queryInd], dtwUCR.accLB_Keogh_EQ);
+                            }
                             logs.procLogs.nDTW_EA++;
                             if (realDist <= dtwUCR.bsfArray[queryInd])
                             {
@@ -149,7 +162,15 @@ int main( int argc , char *argv[])
                 {
                     if (pool.priorityQSear[ii][jj].dist < INF)   //do refinement only for a valid top entry, leave the infinites!!
                     {
-                        pool.priorityQSear[ii][jj].dist = dtw1dBandConst_localConst(TSData1->subSeqPtr[pool.priorityQSear[ii][jj].ind1].pData, pool.priorityQSear[ii][jj].storagePtr->data, lenMotifReal, lenMotifReal, dtwUCR.costMTX, paramHand.procParams.simMeasureRankRefinement[mm], dtwUCR.bandDTW, INF, dtwUCR.accLB_Keogh_EQ);
+                        mean2 = computeMean(pool.priorityQSear[ii][jj].storagePtr->data, lenMotifReal);
+                        offset = TSData1->estimateOffset(TSData1->subSeqPtr[pool.priorityQSear[ii][jj].ind1].mean, mean2);
+                        if ((offset !=0)&&(TSData1->procParams.repParams.normType == OCTAVE_NORM)){
+                                for (int zz=0;zz<lenMotifReal;zz++){offseted_data[zz] = pool.priorityQSear[ii][jj].storagePtr->data[zz]+offset;}    //saving the offsetted copy
+                                pool.priorityQSear[ii][jj].dist = dtw1dBandConst_localConst(TSData1->subSeqPtr[pool.priorityQSear[ii][jj].ind1].pData, offseted_data, lenMotifReal, lenMotifReal, dtwUCR.costMTX, paramHand.procParams.simMeasureRankRefinement[mm], dtwUCR.bandDTW, INF, dtwUCR.accLB_Keogh_EQ);
+                        }
+                        else{
+                            pool.priorityQSear[ii][jj].dist = dtw1dBandConst_localConst(TSData1->subSeqPtr[pool.priorityQSear[ii][jj].ind1].pData, pool.priorityQSear[ii][jj].storagePtr->data, lenMotifReal, lenMotifReal, dtwUCR.costMTX, paramHand.procParams.simMeasureRankRefinement[mm], dtwUCR.bandDTW, INF, dtwUCR.accLB_Keogh_EQ);
+                        }
                     }
                     else
                     {
