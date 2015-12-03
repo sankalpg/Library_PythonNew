@@ -12,6 +12,8 @@ int main( int argc , char *argv[])
     int Err=0;
     int verbos;
     TSADIST realDist, LB_kim_FL, LB_Keogh_EQ, LB_Keogh_EC;
+    float offset=0;
+    double *offseted_data;
     
     
     
@@ -76,7 +78,6 @@ int main( int argc , char *argv[])
     FILE *fp = fopen(TSData1->fHandle.getOutFileName(), "w");
     fclose(fp);
     
-    
     for (int qq=0; qq < TSData1->nQueries; qq++ )
     {
         //printf("%lld\t%d\n", TSData1->nQueries, qq);
@@ -86,6 +87,8 @@ int main( int argc , char *argv[])
         //printf("%f\t%f\n", TSData1->pHop, TSData1->procParams.pattParams.durMotif);
         TSData1->calculateDiffMotifLengths();
         int lenMotifReal = TSData1->procParams.motifLengths[TSData1->procParams.indexMotifLenReal];
+        TSData1->computeMeanSTDSubSeqs(lenMotifReal);
+        offseted_data = (double*)malloc(sizeof(double)*lenMotifReal);
         int nInterFact = TSData1->procParams.pattParams.nInterpFac;
         
         TSAdtwSimilarity *dtwUCR = new TSAdtwSimilarity(&logs.procLogs);
@@ -115,6 +118,7 @@ int main( int argc , char *argv[])
             TSData2->calculateDiffMotifLengths();
             TSData2->genSlidingWindowSubSeqs();
             TSData2->genUniScaledSubSeqs();
+            TSData2->computeMeanSTDSubSeqs(lenMotifReal);
             
             dtwUCR->setCandPtr(TSData2->subSeqPtr, TSData2->nSubSeqs);
             dtwUCR->computeCandEnvelops();
@@ -136,17 +140,25 @@ int main( int argc , char *argv[])
                         continue;
                     }
 
-                    
-                    LB_kim_FL = computeLBkimFL(TSData1->subSeqPtr[ii].pData[0], TSData2->subSeqPtr[jj].pData[0], TSData1->subSeqPtr[ii].pData[lenMotifReal-1], TSData2->subSeqPtr[jj].pData[lenMotifReal-1], SqEuclidean);
+                    offset = TSData1->estimateOffset(TSData1->subSeqPtr[ii].mean, TSData2->subSeqPtr[jj].mean);
+                    printf("Offset detected %f, %f, %f\n", TSData1->subSeqPtr[ii].mean, TSData2->subSeqPtr[jj].mean, offset);
+                    LB_kim_FL = computeLBkimFL(TSData1->subSeqPtr[ii].pData[0], TSData2->subSeqPtr[jj].pData[0] + offset, TSData1->subSeqPtr[ii].pData[lenMotifReal-1], TSData2->subSeqPtr[jj].pData[lenMotifReal-1] + offset, SqEuclidean);
                     if (LB_kim_FL< dtwUCR->bsfArray[queryInd]) 
                     {
-                        LB_Keogh_EQ = computeKeoghsLB(dtwUCR->envUQueryPtr[ii],dtwUCR->envLQueryPtr[ii],dtwUCR->accLB_Keogh_EQ, TSData2->subSeqPtr[jj].pData,lenMotifReal, dtwUCR->bsfArray[queryInd], SqEuclidean, 0.0);
+                        LB_Keogh_EQ = computeKeoghsLB(dtwUCR->envUQueryPtr[ii],dtwUCR->envLQueryPtr[ii],dtwUCR->accLB_Keogh_EQ, TSData2->subSeqPtr[jj].pData,lenMotifReal, dtwUCR->bsfArray[queryInd], SqEuclidean, offset);
                         if(LB_Keogh_EQ < dtwUCR->bsfArray[queryInd])
                         {
-                            LB_Keogh_EC = computeKeoghsLB(dtwUCR->envUCandPtr[jj],dtwUCR->envLCandPtr[jj],dtwUCR->accLB_Keogh_EC, TSData1->subSeqPtr[ii].pData,lenMotifReal, dtwUCR->bsfArray[queryInd], SqEuclidean, 0.0);
+                            LB_Keogh_EC = computeKeoghsLB(dtwUCR->envUCandPtr[jj],dtwUCR->envLCandPtr[jj],dtwUCR->accLB_Keogh_EC, TSData1->subSeqPtr[ii].pData,lenMotifReal, dtwUCR->bsfArray[queryInd], SqEuclidean, -1*offset);
                             if(LB_Keogh_EC < dtwUCR->bsfArray[queryInd])
                             {
-                                realDist = dtw1dBandConst(TSData1->subSeqPtr[ii].pData, TSData2->subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR->costMTX, SqEuclidean, dtwUCR->bandDTW, dtwUCR->bsfArray[queryInd], dtwUCR->accLB_Keogh_EQ);
+                                if ((offset !=0)&&(TSData1->procParams.repParams.normType == OCTAVE_NORM)){
+                                    for (int zz=0;zz<lenMotifReal;zz++){offseted_data[zz] = TSData2->subSeqPtr[jj].pData[zz]+offset;}    //saving the offsetted copy
+                                    realDist = dtw1dBandConst(TSData1->subSeqPtr[ii].pData, offseted_data, lenMotifReal, lenMotifReal, dtwUCR->costMTX, SqEuclidean, dtwUCR->bandDTW, dtwUCR->bsfArray[queryInd], dtwUCR->accLB_Keogh_EQ);
+                                }
+                                else{
+                                    realDist = dtw1dBandConst(TSData1->subSeqPtr[ii].pData, TSData2->subSeqPtr[jj].pData, lenMotifReal, lenMotifReal, dtwUCR->costMTX, SqEuclidean, dtwUCR->bandDTW, dtwUCR->bsfArray[queryInd], dtwUCR->accLB_Keogh_EQ);
+                                }
+
                                 if (realDist <= dtwUCR->bsfArray[queryInd])
                                 {
                                     dtwUCR->bsfArray[queryInd] = pool.managePriorityQSear(qq, TSData2->subSeqPtr, ii, jj, realDist, searchFileID, TSData1->procParams.pattParams.durMotif);
@@ -184,6 +196,7 @@ int main( int argc , char *argv[])
         
         
         delete dtwUCR;
+        delete offseted_data;
         if (qq <TSData1->nQueries-1)
         {TSData1->freeSubSeqsMem();}
         
