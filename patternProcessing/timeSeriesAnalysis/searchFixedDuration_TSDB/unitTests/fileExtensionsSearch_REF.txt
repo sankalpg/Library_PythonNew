@@ -3,7 +3,7 @@ tonicExt: .tonic
 blackTimeExt: .taniSegKNN
 logFileExt: .searchLogs
 paramsDumpExt: .searchParams
-outFileExt: .motifSearch_REF
+outFileExt: .motifSearchOCTNRM_REF
 mappFileExt: .searchMap
 searchListExt: .flistLocal
 queryFileExt: .motif
