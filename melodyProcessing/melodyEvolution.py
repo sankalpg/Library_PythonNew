@@ -225,6 +225,8 @@ def getBreathPhraseStatistics(filename, bphraseExt = '.bphrases', transExt = '.t
     bphrases = np.loadtxt(bpFile)
     svaras = np.loadtxt(transFile)
     svarsBP = []
+    bpSvaraDurDist = []
+    bpSvaraDurDist_sorted = []
     
     bp_duration = []
     bp_num_notes = []
@@ -240,23 +242,34 @@ def getBreathPhraseStatistics(filename, bphraseExt = '.bphrases', transExt = '.t
         bp_num_notes.append(len(ind_svars))
         bp_num_notes_norm.append(len(ind_svars)/(bp[1] - bp[0]))
         bp_onset.append(bp[0])
-
+			
+    
+        bpSvaras = []
+        bpSvaraDur = []
+        for ii in ind_svars:
+            bpSvaras.append({'start': svaras[ii][0], 'end': svaras[ii][1], 'duration': svaras[ii][1]-svaras[ii][0], 'svar': svaras[ii][2]})
+            bpSvaraDur.append(svaras[ii][1]-svaras[ii][0])
+        svarsBP.append(bpSvaras)
+        bpSvaraDurDist.append(bpSvaraDur)
+        bpSvaraDurDist_sorted.append(np.fliplr(np.atleast_2d(np.sort(np.array(bpSvaraDur))))[0])
         
+        
+    temp1 = np.array(bpSvaraDurDist_sorted)  
+    bpSvaraDurDist_sorted = np.array(temp1.tolist())
+    #print bpSvaraDurDist_sorted
+    bp_num_notes_max = np.max(bp_num_notes)
+    plotBarStacked(bpSvaraDurDist_sorted, bp_num_notes_max)
+    
+    
     #hist, bins = plotHist(bp_duration)
     #hist, bins = plotIOIHist(bp_onset)
     
-        bpSvaras = []
-        for ii in ind_svars:
-            bpSvaras.append({'start': svaras[ii][0], 'end': svaras[ii][1], 'duration': svaras[ii][1]-svaras[ii][0], 'svar': svaras[ii][2]})
-        svarsBP.append(bpSvaras)
-        
-
+    
     bp_max_note_dur = []
     note_onset_all = []
     for ii, bp in enumerate(svarsBP):
         max_val = -1
         for svr in bp:
-            print svr
             note_onset_all.append(svr['start'])
             if svr['duration'] > max_val:
                 max_val = svr['duration']
@@ -296,3 +309,44 @@ def plotIOIHist(parameter):
     hist, bins = plotHist(ioi, bins = 100, normed=1)
     return hist, bins
     
+    
+def plotBarStacked(bpSvaraDurDist_sorted, bp_num_notes_max):
+    '''
+    This function is to plot stacked duration of notes in each breath phrase
+    '''
+    N = len(bpSvaraDurDist_sorted)
+    dur_mtx = np.zeros(shape=(N, bp_num_notes_max))
+	
+    for rowind, row in enumerate(bpSvaraDurDist_sorted):
+        try:
+	    dur_mtx[rowind, :len(row)] = np.array(row)
+	except:
+	    pass	
+	    
+    #print dur_mtx	 
+    dur_mtx_tr = np.zeros(shape=(dur_mtx.shape[1],dur_mtx.shape[0]))
+    
+    for i in range(3):
+        dur_mtx_tr[i,:] = dur_mtx[:,i]
+        #dur_mtx_tr[i,:] = np.fliplr(np.atleast_2d(np.sort(dur_mtx[:,i])))[0]
+	
+    print dur_mtx_tr
+    #menMeans = np.random.rand(N)
+    #womenMeans = np.random.rand(N)
+
+    ind = np.arange(N)    # the x locations for the groups
+    width = 0.35       # the width of the bars: can also be len(x) sequence
+    
+    for ii in range(bp_num_notes_max):
+        plt.bar(ind, dur_mtx_tr[ii,:], width)
+    
+    #p1 = plt.bar(ind, menMeans, width, color='r')
+    #p2 = plt.bar(ind, womenMeans, width, color='y', bottom=menMeans)
+    
+    #plt.ylabel('Scores')
+    #plt.title('Scores by group and gender')
+    #plt.xticks(ind + width/2., ('G1', 'G2', 'G3', 'G4', 'G5'))
+    #plt.yticks(np.arange(0, 81, 10))
+    #plt.legend((p1[0], p2[0]), ('Men', 'Women'))
+    
+    plt.show()
