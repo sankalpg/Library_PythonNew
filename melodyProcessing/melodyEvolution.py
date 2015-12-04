@@ -52,7 +52,9 @@ def batchProc(root_dir, audioExt = '.mp3', pitchExt = '.pitchSilIntrpPP', tonicE
         print "-------\nDone !!\n-------"
         '''
         
-        plotSvaraDistInBPs(filename)
+        #plotSvaraDistInBPs(filename)
+        #plotSvaraDistInBPsCum(filename, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1, windowSize = 5, hopSize = 1)
+        getBreathPhraseStatistics(filename, bphraseExt = '.bphrases', transExt = '.transcription')
         
         
         
@@ -126,7 +128,7 @@ def getSvaraDistInBPs(filename, bphraseExt = '.bphrases', transExt = '.transcrip
 
 
 
-def getSvaraDistInBPsTemp(filename, bphraseExt = '.bphrases', transExt = '.transcription', windowSize = 5, hopSize = 1):
+def getSvaraDistInBPsCum(filename, bphraseExt = '.bphrases', transExt = '.transcription', windowSize = 5, hopSize = 1):
     """
     This function computes svara distribution for all the breath phrases
     """
@@ -140,7 +142,7 @@ def getSvaraDistInBPsTemp(filename, bphraseExt = '.bphrases', transExt = '.trans
     nFrames = int(math.floor((nBps- windowSize)/hopSize) + 1)
     dist_mtx_cum = np.zeros((len(svar2binMap.keys()), nFrames))
     
-    print nFrames, nFrames*hopSize
+    #print nFrames, nFrames*hopSize
     
     for ii in range(0, nFrames):
         for jj in range(windowSize):
@@ -153,20 +155,20 @@ def getSvaraDistInBPsTemp(filename, bphraseExt = '.bphrases', transExt = '.trans
     return dist_mtx_cum
 
 
-def plotSvaraDistInBPsTemp(filename, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1, windowSize = 5, hopSize = 1):
+def plotSvaraDistInBPsCum(filename, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1, windowSize = 5, hopSize = 1):
     """
     This function plots blah blah
     """
     
     fig = plt.figure(figsize=(15,60), dpi=80)
-    mtx = getSvaraDistInBPsTemp(filename, bphraseExt = bphraseExt, transExt = transExt, windowSize = windowSize, hopSize = hopSize)
+    mtx = getSvaraDistInBPsCum(filename, bphraseExt = bphraseExt, transExt = transExt, windowSize = windowSize, hopSize = hopSize)
     plt.imshow(mtx, interpolation = 'nearest', origin = 'lower', cmap = plt.get_cmap('OrRd'))
 
     
-    #fname, ext = os.path.splitext(filename)
-    #svaraDistFilename = (''.join([fname,'_svaraDist','.pdf']))
-    #plt.savefig(svaraDistFilename, bbox_inches='tight')
-    plt.show()
+    fname, ext = os.path.splitext(filename)
+    svaraDistCumFilename = (''.join([fname,'_svaraDistCum_', str(windowSize), '_', str(hopSize), '.pdf']))
+    plt.savefig(svaraDistCumFilename, bbox_inches='tight')
+    #plt.show()
     
             
     
@@ -261,8 +263,21 @@ def getBreathPhraseStatistics(filename, bphraseExt = '.bphrases', transExt = '.t
     plotBarStacked(bpSvaraDurDist_sorted, bp_num_notes_max)
     
     
+    #fig = plt.figure(figsize=(15,60), dpi=80)
     #hist, bins = plotHist(bp_duration)
+    #bpDurHistFilename = (''.join([fname,'_bpDurHist','.pdf']))
+    #plt.savefig(bpDurHistFilename, bbox_inches='tight')
+    
+    
+    #fig = plt.figure(figsize=(15,60), dpi=80)
     #hist, bins = plotIOIHist(bp_onset)
+    #bpOnsetIOIHFilename = (''.join([fname,'_bpOnsetIOIH','.pdf']))
+    #plt.savefig(bpOnsetIOIHFilename, bbox_inches='tight')
+    
+    
+    #fig = plt.figure(figsize=(15,60), dpi=80)
+    #noteDurStackFilename = (''.join([fname,'_noteDurStack','.pdf']))
+    #plt.savefig(noteDurStackFilename, bbox_inches='tight')
     
     
     bp_max_note_dur = []
@@ -276,17 +291,38 @@ def getBreathPhraseStatistics(filename, bphraseExt = '.bphrases', transExt = '.t
         bp_max_note_dur.append(max_val)
         
     
+    #fig = plt.figure(figsize=(15,60), dpi=80)
     #hist, bins = plotIOIHist(note_onset_all)
+    #noteOnsetIOIHFilename = (''.join([fname,'_noteOnsetIOIH','.pdf']))
+    #plt.savefig(noteOnsetIOIHFilename, bbox_inches='tight')
     
     
     #print len(bp_duration), len(bp_num_notes), len(bp_num_notes_norm), len(bp_max_note_dur)
     
+    fig = plt.figure(figsize=(15,60), dpi=80)
     plt.plot(np.array(bp_duration)+50, 'o--', label="BP duration")
     plt.plot(np.array(bp_num_notes)+30, 's--', label="BP # notes")
     plt.plot(bp_num_notes_norm, 'd--', label="BP # notes norm")
     plt.plot(np.array(bp_max_note_dur)+10, '^--', label="BP max note duration")
     plt.legend(loc='upper left')
-    plt.show()
+    #plt.show()
+    
+    fig = plt.figure(figsize=(15,60), dpi=80)
+    saveFigure(fname, str('_bpFeature'))
+    #bpFeaturesFilename_pdf = (''.join([fname,'_bpFeatures','.pdf']))
+    #bpFeaturesFilename_png = (''.join([fname,'_bpFeatures','.png']))
+    #plt.savefig(bpFeaturesFilename_pdf, bbox_inches='tight')
+    #plt.savefig(bpFeaturesFilename_png, bbox_inches='tight')
+    
+    
+    
+def saveFigure(fname, featureName):
+    '''
+    '''
+    Filename_pdf = (''.join([fname, featureName,'.pdf']))
+    Filename_png = (''.join([fname, featureName,'.png']))
+    plt.savefig(Filename_pdf, bbox_inches='tight')
+    plt.savefig(Filename_png, bbox_inches='tight')    
     
 
 def plotHist(parameter, bins = 100, normed=1):
@@ -295,7 +331,7 @@ def plotHist(parameter, bins = 100, normed=1):
     width = 0.7 * (bins[1] - bins[0])
     center = (bins[:-1] + bins[1:]) / 2
     plt.bar(center, hist, align='center', width=width)
-    plt.show()
+    #plt.show()
     return hist, bins
 
 
@@ -323,30 +359,23 @@ def plotBarStacked(bpSvaraDurDist_sorted, bp_num_notes_max):
 	except:
 	    pass	
 	    
-    #print dur_mtx	 
     dur_mtx_tr = np.zeros(shape=(dur_mtx.shape[1],dur_mtx.shape[0]))
-    
-    for i in range(3):
+    for i in range(bp_num_notes_max):
         dur_mtx_tr[i,:] = dur_mtx[:,i]
-        #dur_mtx_tr[i,:] = np.fliplr(np.atleast_2d(np.sort(dur_mtx[:,i])))[0]
-	
-    print dur_mtx_tr
-    #menMeans = np.random.rand(N)
-    #womenMeans = np.random.rand(N)
+    
+    dur_mtx_tr[:,:] = dur_mtx_tr[::-1,:]    
+    stackBarChart(dur_mtx_tr)
 
-    ind = np.arange(N)    # the x locations for the groups
-    width = 0.35       # the width of the bars: can also be len(x) sequence
     
-    for ii in range(bp_num_notes_max):
-        plt.bar(ind, dur_mtx_tr[ii,:], width)
+def stackBarChart(dur_mtx_tr):
+    '''
+    Stack bar with offset of the cumulative sum till last row
+    '''
+    data = dur_mtx_tr
+    width = 0.35
+    color = iter(plt.cm.Paired(np.linspace(0,1,data.shape[0])))
+    c = [color.next() for ii in range(data.shape[0])]
+    for ii in range(data.shape[0]-1,-1,-1):
+        pl = plt.bar(range(data.shape[1]), data[ii, :], width, color=c[ii], bottom=np.sum(data[ii+1:,:],axis=0))
+    #plt.show()
     
-    #p1 = plt.bar(ind, menMeans, width, color='r')
-    #p2 = plt.bar(ind, womenMeans, width, color='y', bottom=menMeans)
-    
-    #plt.ylabel('Scores')
-    #plt.title('Scores by group and gender')
-    #plt.xticks(ind + width/2., ('G1', 'G2', 'G3', 'G4', 'G5'))
-    #plt.yticks(np.arange(0, 81, 10))
-    #plt.legend((p1[0], p2[0]), ('Men', 'Women'))
-    
-    plt.show()
