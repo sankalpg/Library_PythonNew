@@ -21,8 +21,8 @@ def batchProc(root_dir, audioExt = '.mp3', pitchExt = '.pitchSilIntrpPP', tonicE
     filenames = BP.GetFileNamesInDir(root_dir, '.mp3')
     segObj = seg.melodySegmentation()
     
-    for filename in filenames[:1]:
-        print "Processing file %s"%filename
+    for filename in filenames[:]:
+        print "Processing file %s" %filename
         
         #======================
         ## This is done for all
@@ -52,9 +52,16 @@ def batchProc(root_dir, audioExt = '.mp3', pitchExt = '.pitchSilIntrpPP', tonicE
         print "-------\nDone !!\n-------"
         '''
         
-        #plotSvaraDistInBPs(filename)
-        #plotSvaraDistInBPsCum(filename, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1, windowSize = 5, hopSize = 1)
+        plotSvaraDistInBPs(filename, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1)
+        for windowSize, hopSize in [[5,1],[10,1],[10,2],[15,1],[15,2],[15,3]]:
+	    try:
+                plotSvaraDistInBPsCum(filename, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1, windowSize = windowSize, hopSize = hopSize)
+            except:
+	        print "Problem occured in file: %s" %filename
+	        pass
         getBreathPhraseStatistics(filename, bphraseExt = '.bphrases', transExt = '.transcription')
+        
+        print "-------\nDone !!\n-------"
         
         
         
@@ -160,15 +167,17 @@ def plotSvaraDistInBPsCum(filename, bphraseExt = '.bphrases', transExt = '.trans
     This function plots blah blah
     """
     
-    fig = plt.figure(figsize=(15,60), dpi=80)
+    fig = plt.figure(figsize=(15,10), dpi=80)
     mtx = getSvaraDistInBPsCum(filename, bphraseExt = bphraseExt, transExt = transExt, windowSize = windowSize, hopSize = hopSize)
     plt.imshow(mtx, interpolation = 'nearest', origin = 'lower', cmap = plt.get_cmap('OrRd'))
 
     
     fname, ext = os.path.splitext(filename)
-    svaraDistCumFilename = (''.join([fname,'_svaraDistCum_', str(windowSize), '_', str(hopSize), '.pdf']))
-    plt.savefig(svaraDistCumFilename, bbox_inches='tight')
+    #svaraDistCumFilename = (''.join([fname,'_svaraDistCum_', str(windowSize), '_', str(hopSize), '.pdf']))
+    #plt.savefig(svaraDistCumFilename, bbox_inches='tight')
+    print "Plotting svara distribution (salience) for %d bp's and %d step(s)..."%(windowSize, hopSize)
     #plt.show()
+    saveFigure(fig, fname, featureName = (''.join(['_svaraDistCum_', str(windowSize), '_', str(hopSize)])))
     
             
     
@@ -177,14 +186,14 @@ def plotSvaraDistInBPs(filename, bphraseExt = '.bphrases', transExt = '.transcri
     This function plots blah blah
     """
     
-    fig = plt.figure(figsize=(15,60), dpi=80)
+    fig = plt.figure(figsize=(15,10), dpi=80)
     mtx = getSvaraDistInBPs(filename, bphraseExt = bphraseExt, transExt = transExt)
     plt.imshow(mtx, interpolation = 'nearest', origin = 'lower', cmap = plt.get_cmap('OrRd'))
 
     fname, ext = os.path.splitext(filename)
-    svaraDistFilename = (''.join([fname,'_svaraDist','.pdf']))
-    plt.savefig(svaraDistFilename, bbox_inches='tight')
+    print "Plotting svara distribution (salience) for each bp..."
     #plt.show()
+    saveFigure(fig, fname, featureName = '_svaraDist')
     
     
 def getSvarasInBreathPhrases(filename, bphraseExt = '.bphrases', transExt = '.transcription'):
@@ -260,24 +269,21 @@ def getBreathPhraseStatistics(filename, bphraseExt = '.bphrases', transExt = '.t
     bpSvaraDurDist_sorted = np.array(temp1.tolist())
     #print bpSvaraDurDist_sorted
     bp_num_notes_max = np.max(bp_num_notes)
-    plotBarStacked(bpSvaraDurDist_sorted, bp_num_notes_max)
+    plotBarStacked(fname, bpSvaraDurDist_sorted, bp_num_notes_max)
     
     
-    #fig = plt.figure(figsize=(15,60), dpi=80)
-    #hist, bins = plotHist(bp_duration)
-    #bpDurHistFilename = (''.join([fname,'_bpDurHist','.pdf']))
-    #plt.savefig(bpDurHistFilename, bbox_inches='tight')
+    fig = plt.figure(figsize=(15,10), dpi=80)
+    hist, bins = plotHist(bp_duration)
+    print "Plotting bp duration histogram..."
+    #plt.show()
+    saveFigure(fig, fname, featureName = '_bpDurHist')
     
     
-    #fig = plt.figure(figsize=(15,60), dpi=80)
-    #hist, bins = plotIOIHist(bp_onset)
-    #bpOnsetIOIHFilename = (''.join([fname,'_bpOnsetIOIH','.pdf']))
-    #plt.savefig(bpOnsetIOIHFilename, bbox_inches='tight')
-    
-    
-    #fig = plt.figure(figsize=(15,60), dpi=80)
-    #noteDurStackFilename = (''.join([fname,'_noteDurStack','.pdf']))
-    #plt.savefig(noteDurStackFilename, bbox_inches='tight')
+    fig = plt.figure(figsize=(15,10), dpi=80)
+    hist, bins = plotIOIHist(bp_onset)
+    print "Plotting bp onset IOIH..."
+    #plt.show()
+    saveFigure(fig, fname, featureName = '_bpOnsetIOIH')
     
     
     bp_max_note_dur = []
@@ -291,36 +297,34 @@ def getBreathPhraseStatistics(filename, bphraseExt = '.bphrases', transExt = '.t
         bp_max_note_dur.append(max_val)
         
     
-    #fig = plt.figure(figsize=(15,60), dpi=80)
-    #hist, bins = plotIOIHist(note_onset_all)
-    #noteOnsetIOIHFilename = (''.join([fname,'_noteOnsetIOIH','.pdf']))
-    #plt.savefig(noteOnsetIOIHFilename, bbox_inches='tight')
+    fig = plt.figure(figsize=(15,10), dpi=80)
+    hist, bins = plotIOIHist(note_onset_all)
+    print "Plotting note onset (overall) IOIH..."
+    #plt.show()
+    saveFigure(fig, fname, featureName = '_noteOnsetIOIH')
     
     
     #print len(bp_duration), len(bp_num_notes), len(bp_num_notes_norm), len(bp_max_note_dur)
     
-    fig = plt.figure(figsize=(15,60), dpi=80)
+    fig = plt.figure(figsize=(15,10), dpi=80)
     plt.plot(np.array(bp_duration)+50, 'o--', label="BP duration")
     plt.plot(np.array(bp_num_notes)+30, 's--', label="BP # notes")
     plt.plot(bp_num_notes_norm, 'd--', label="BP # notes norm")
     plt.plot(np.array(bp_max_note_dur)+10, '^--', label="BP max note duration")
     plt.legend(loc='upper left')
+    print "Plotting bp features..."
     #plt.show()
-    
-    fig = plt.figure(figsize=(15,60), dpi=80)
-    saveFigure(fname, str('_bpFeature'))
-    #bpFeaturesFilename_pdf = (''.join([fname,'_bpFeatures','.pdf']))
-    #bpFeaturesFilename_png = (''.join([fname,'_bpFeatures','.png']))
-    #plt.savefig(bpFeaturesFilename_pdf, bbox_inches='tight')
-    #plt.savefig(bpFeaturesFilename_png, bbox_inches='tight')
+    saveFigure(fig, fname, featureName = '_bpFeature')
+
     
     
     
-def saveFigure(fname, featureName):
+def saveFigure(fig, fname, featureName):
     '''
     '''
     Filename_pdf = (''.join([fname, featureName,'.pdf']))
     Filename_png = (''.join([fname, featureName,'.png']))
+    plt.title(featureName)
     plt.savefig(Filename_pdf, bbox_inches='tight')
     plt.savefig(Filename_png, bbox_inches='tight')    
     
@@ -346,7 +350,7 @@ def plotIOIHist(parameter):
     return hist, bins
     
     
-def plotBarStacked(bpSvaraDurDist_sorted, bp_num_notes_max):
+def plotBarStacked(fname, bpSvaraDurDist_sorted, bp_num_notes_max):
     '''
     This function is to plot stacked duration of notes in each breath phrase
     '''
@@ -364,7 +368,11 @@ def plotBarStacked(bpSvaraDurDist_sorted, bp_num_notes_max):
         dur_mtx_tr[i,:] = dur_mtx[:,i]
     
     dur_mtx_tr[:,:] = dur_mtx_tr[::-1,:]    
+    
+    fig = plt.figure(figsize=(15,10), dpi=80)
     stackBarChart(dur_mtx_tr)
+    print "Plotting bp note distribution stacked bar graph..."
+    saveFigure(fig, fname, featureName = '_noteDistBarStacked')
 
     
 def stackBarChart(dur_mtx_tr):
@@ -372,7 +380,7 @@ def stackBarChart(dur_mtx_tr):
     Stack bar with offset of the cumulative sum till last row
     '''
     data = dur_mtx_tr
-    width = 0.35
+    width = 0.45
     color = iter(plt.cm.Paired(np.linspace(0,1,data.shape[0])))
     c = [color.next() for ii in range(data.shape[0])]
     for ii in range(data.shape[0]-1,-1,-1):
