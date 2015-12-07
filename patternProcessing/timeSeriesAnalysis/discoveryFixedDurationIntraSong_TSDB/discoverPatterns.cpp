@@ -88,7 +88,9 @@ int main( int argc , char *argv[])
         {
             if (paramHand.procParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
                 continue;
-            if (fabs(subSeqPtr[ii].sTime-subSeqPtr[jj].sTime)< TSData1->procParams.pattParams.blackDur)
+            //NOTE: this condition is to avoid overlapping candidates.
+            //OLD condition when flat note compression wasn't there: if (fabs(subSeqPtr[ii].sTime-subSeqPtr[jj].sTime)< TSData1->procParams.pattParams.blackDur)
+            if((subSeqPtr[ii].eTime-subSeqPtr[jj].sTime)*(subSeqPtr[jj].eTime-subSeqPtr[ii].sTime) > 0)
             {
                 continue;
             }
@@ -154,6 +156,7 @@ int main( int argc , char *argv[])
     
     delete TSData1;
     delete pool;
+    delete offseted_data;
     if (verbos){printf("Processing done!\n");}
     
     

@@ -83,6 +83,8 @@ public:
     int *blacklist;
     int isBlackListAlloc;
     
+    int *nSamSil;  //this variable stores the time elapse (hop) between adjacent samples of time series (needed for differentiating time elapse due to flat note compression Vs due to silence compression)
+    
     float pHop;
     
     int         readTSData(char *fileName);
@@ -129,6 +131,7 @@ public:
     int         computeMeanSTDSubSeqs(int len);
     int         copyAndNormalizeSubSeqsPASA(TSADATA *out1, TSADATA *out2, TSADATA *inp1, TSADATA *inp2, float mean1, float mean2, int len);
     float       estimateOffset(float mean1, float mean2);
+    int         storeTimeElapseInAdjSamples();
     
     TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fileExts, procParams_t *pParams);
     ~TSAdataHandler();

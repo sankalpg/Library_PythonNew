@@ -560,6 +560,13 @@ int TSAdataHandler::genTemplate1SubSeqs()
 
     //downsample
     downSampleTS();
+    
+    //determing time jump in adjacent samples (Since after flat note compression there is a time 
+    //elapse and so is the case with removing silence regions, before we remove silence regions we 
+    //need to store the time elapses due to flat note compression. So that when we are filtering
+    //subseqs which contain a lot of silence we know if the time elapse between the start and the 
+    //end of the subseq is due to silence of flat note.)
+    //storeTimeElapseInAdjSamples();
 
     //remove silence pitch regions
     filterSamplesTS();
@@ -950,12 +957,21 @@ int TSAdataHandler::updateBLStdThsld()
 {
     //computing standard deviation
     float *stdVec;
+#ifdef DEBUG    
+    float *stdVec_temp;
+#endif    
     int varSam = (int)round(procParams.repParams.varDur/pHop);
     computeStdTSLocal(&stdVec, varSam);
-
+#ifdef DEBUG        
+    stdVec_temp = (float*)malloc(sizeof(float)*lenTS);
+#endif    
+    
     // Assigning weather a point belongs to a flat region or non flar region based on a threhsold
     for(int ii=varSam;ii<lenTS-varSam;ii++)
     {
+#ifdef DEBUG            
+        stdVec_temp[ii] = stdVec[ii];
+#endif        
         if (stdVec[ii]>procParams.repParams.threshold)
         {
             stdVec[ii] = 1;
@@ -972,13 +988,19 @@ int TSAdataHandler::updateBLStdThsld()
     float ex=0;
     int lenRawMotifData = procParams.motifLengths[procParams.indexMotifLenLongest];
     int lenRawMotifDataM1 = lenRawMotifData-1;
+#ifdef DEBUG    
+    FILE *fp1;
+    fp1 =fopen("dumpDebug.txt","w");
+#endif    
 
     //############################## generating subsequences ##########################################
     while(ind<lenTS)
     {
         ex+=stdVec[ind];
+        
         if (ind >= lenRawMotifDataM1)
         {
+            
             if (blacklist[ind-lenRawMotifDataM1]==0)
             {
                 if(ex < procParams.repParams.flatThreshold*(float)lenRawMotifData)
@@ -988,32 +1010,36 @@ int TSAdataHandler::updateBLStdThsld()
                 }
 
             }
+#ifdef DEBUG                
+            printf("indexMotifLenReal %d\n",lenRawMotifData);
+            fprintf(fp1, "%f\t%f\t%f\t%f\t%d\n", samPtr[ind-lenRawMotifDataM1].tStamp, stdVec_temp[ind - lenRawMotifDataM1], stdVec[ind - lenRawMotifDataM1], ex, blacklist[ind-lenRawMotifDataM1]);
+#endif            
             ex -= stdVec[ind-lenRawMotifDataM1];
         }
        ind++;
     }
-
+#ifdef DEBUG        
+    fclose(fp1);
+#endif    
     free(stdVec);
     return 1;
 }
 
 int TSAdataHandler::updateBLDurThsld()
 {
-    float start, end, maxMotifDur;
-
-    maxMotifDur = (procParams.pattParams.durMotif*procParams.interpFac[procParams.indexMotifLenLongest]) + procParams.repParams.maxPauseDur ;
-
+    int nSilSamples=0;
     for(int ind=0; ind<nSubSeqs; ind++)
     {
-        start = samPtr[ind].tStamp;
-        end = samPtr[ind+procParams.motifLengths[procParams.indexMotifLenLongest]-1].tStamp;
-
-        if (fabs(start-end) > maxMotifDur)       //allow 200 ms pauses in total not more than that
-        {
+        nSilSamples=0;
+        for (int jj=ind+1; jj<ind+procParams.motifLengths[procParams.indexMotifLenLongest]; jj++){
+            //NOTE: ind+1 because the first sample shouldn't carry from previous samples the number of silence frames. Imagine this to be the first sample after silence
+            nSilSamples+=nSamSil[jj];
+        }
+        if (nSilSamples*pHop > procParams.repParams.maxPauseDur){
+            //printf("Encuontered silence region starttime: %f, endtime: %f, duration of silence: %f\n", start, end, nSilSamples*pHop );
             blacklist[ind]=1;
         }
     }
-
     return 1;
 }
 
@@ -1165,16 +1191,25 @@ int TSAdataHandler::filterSamplesTS()
     t1 = clock();
 
     // There can be many filtering criterion. Currently what is implemented is to filter out silence regions of pitch sequence.
-
+    nSamSil = (int *)malloc(sizeof(int)*lenTS);
+    memset(nSamSil, 0, sizeof(int)*lenTS);
+    
     TSAIND nValidSamples = 0;
+    TSAIND nSilSamples = 0;
     TSAIND *validSampleInd = (TSAIND *)malloc(sizeof(TSAIND)*lenTS);
     //store all locations which have valid samples
     for(TSAIND ii=0;ii<lenTS; ii++)
     {
         if(samPtr[ii].value > procParams.repParams.minPossiblePitch)
         {
+            nSamSil[nValidSamples] = nSilSamples;
             validSampleInd[nValidSamples]=ii;
             nValidSamples++;
+            nSilSamples=0;
+        }
+        else
+        {
+         nSilSamples++;   
         }
     }
     // just copy valid samples to another location
@@ -1426,6 +1461,20 @@ int TSAdataHandler::downSampleSubSeqs()
     return 1;
 
 }
+
+// int TSAdataHandler::storeTimeElapseInAdjSamples(){
+//     
+//     timeElapse = (float *)malloc(sizeof(float)*lenTS);
+//     memset(timeElapse, 0, lenTS*sizeof(float));
+//     
+//     for (int ii=1; ii<lenTS;ii++){
+//         //NOTE: we start from 1 becasue time elapse is stored in the upcoming sample. hence starting from 1
+//         timeElapse[ii] = samPtr[ii].tStamp-samPtr[ii-1].tStamp;
+//         //printf("Time elapse: %f\n", timeElapse[ii]);
+//     }
+//     return 1;
+// }
+
 
 int TSAdataHandler::downSampleTS()
 {
