@@ -19,6 +19,7 @@ TSAparamHandle::TSAparamHandle()
     memset(fileExts.subSeqTNFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
     memset(fileExts.subSeqInfoFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
     memset(fileExts.patternKNNExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
+    memset(fileExts.FNFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
 
     //I need to initialize other structure members as well, #TODO
     procParams.distParams.distNormType = PATH_LEN;
@@ -190,6 +191,7 @@ int TSAparamHandle::readFileExtsInfoFile(char *fileExtsFile)
         if (strcmp(field, "subSeqTNFileExt:")==0){strcat(fileExts.subSeqTNFileExt, value);}
         if (strcmp(field, "subSeqInfoFileExt:")==0){strcat(fileExts.subSeqInfoFileExt, value);}
         if (strcmp(field, "patternKNNExt:")==0){strcat(fileExts.patternKNNExt, value);}
+        if (strcmp(field, "FNFileExt:")==0){strcat(fileExts.FNFileExt, value);}
 
         memset(tempFilename, '\0', sizeof(char)*400);
         memset(field, '\0', sizeof(char)*100);
@@ -561,13 +563,6 @@ int TSAdataHandler::genTemplate1SubSeqs()
     //downsample
     downSampleTS();
     
-    //determing time jump in adjacent samples (Since after flat note compression there is a time 
-    //elapse and so is the case with removing silence regions, before we remove silence regions we 
-    //need to store the time elapses due to flat note compression. So that when we are filtering
-    //subseqs which contain a lot of silence we know if the time elapse between the start and the 
-    //end of the subseq is due to silence of flat note.)
-    //storeTimeElapseInAdjSamples();
-
     //remove silence pitch regions
     filterSamplesTS();
 
@@ -585,8 +580,10 @@ int TSAdataHandler::genTemplate1SubSeqs()
     initializeBlackList(nSubSeqs);
 
     updateBLDurThsld();
+    
+    updateBlackListFlatSeqs(fHandle.getFlatNoteFileName());
 
-    updateBLStdThsld();
+    //updateBLStdThsld();
 
     updateBLInvalidSegment(fHandle.getBlackListSegFileName());
 
@@ -950,6 +947,73 @@ int TSAdataHandler::computeMeanSTDSubSeqs(int len)
         subSeqPtr[ii].std  = computeSTD(subSeqPtr[ii].pData, len, subSeqPtr[ii].mean);
     }
 
+}
+/*
+ * This function updates blacklist array based on flat note information. If subseqs has too much of flat region the blacklist flag is set.
+ */
+int TSAdataHandler::updateBlackListFlatSeqs(char *FNFile){
+    
+    //reading the flatnotesegment file
+    FILE *fp;
+    float temp[4] = {0};
+    TSAPattern_t *flatSegs;
+    int nLines = getNumLines(FNFile);
+    flatSegs = (TSAPattern_t *)malloc(sizeof(TSAPattern_t)*nLines);
+    fp =fopen(FNFile,"r");
+    if (fp==NULL)
+    {
+        printf("Error opening file %s\n", FNFile);
+        return 0;
+    }
+    //reading segments of the tani sections
+    int ii=0;
+    while (fscanf(fp, "%f %f\n",&temp[0],&temp[1])!=EOF)
+    {
+        flatSegs[ii].sTime = temp[0];
+        flatSegs[ii].eTime = temp[1];
+        ii++;
+    }
+    fclose(fp);
+    
+    int *flatSamples;
+    flatSamples = (int *)malloc(sizeof(int)*lenTS);
+    memset(flatSamples, 0, sizeof(int)*lenTS);
+    TSAIND flat_note_index = 0;
+    int cnt=0;
+    for(int ii=1; ii< lenTS; ii++){
+        if((samPtr[ii].tStamp >= flatSegs[flat_note_index].sTime)&&(samPtr[ii].tStamp <= flatSegs[flat_note_index].eTime)){
+            flatSamples[ii] = 1;
+        }
+        else if(flatSamples[ii-1]==1){
+            flat_note_index+=1;
+            if((samPtr[ii].tStamp >= flatSegs[flat_note_index].sTime)&&(samPtr[ii].tStamp <= flatSegs[flat_note_index].eTime)){
+                flatSamples[ii] = 1;
+            }
+        }
+    }
+    TSAIND ind=0;
+    float ex=0;
+    int lenRawMotifData = procParams.motifLengths[procParams.indexMotifLenLongest];
+    int lenRawMotifDataM1 = lenRawMotifData-1;
+    while(ind<lenTS)
+    {
+        ex+=flatSamples[ind];
+        if (ind >= lenRawMotifDataM1)
+        {
+            if (blacklist[ind-lenRawMotifDataM1]==0)
+            {
+                if(ex < procParams.repParams.flatThreshold*(float)lenRawMotifData)
+                {
+                    blacklist[ind-lenRawMotifDataM1]=1;
+                    cnt+=1;
+                }
+            }
+            ex -= flatSamples[ind-lenRawMotifDataM1];
+        }
+       ind++;
+    }
+    free(flatSamples);
+    return 1;
 }
 
 
@@ -1808,6 +1872,17 @@ char* fileNameHandler::getTSFileName()
     return fileName;
 
 }
+
+char* fileNameHandler::getFlatNoteFileName()
+{
+    memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);
+    strcat(fileName, baseName);
+    strcat(fileName, fileExtPtr->FNFileExt);
+
+    return fileName;
+
+}
+
 char* fileNameHandler::getTonicFileName()
 {
     memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);

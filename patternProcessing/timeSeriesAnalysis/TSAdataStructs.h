@@ -162,6 +162,7 @@ typedef struct fileExts
     char subSeqTNFileExt[MAX_FEXT_CHARS]; //this is subSeqs which are already tonic normalized
     char subSeqInfoFileExt[MAX_FEXT_CHARS];
     char patternKNNExt[MAX_FEXT_CHARS];
+    char FNFileExt[MAX_FEXT_CHARS];
     
 }fileExts_t;
 

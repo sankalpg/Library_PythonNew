@@ -52,6 +52,7 @@ public:
     char *getSubSeqTNFileName();
     char *getSubSeqInfoFileName();
     char *getPatternKNNFileName();
+    char *getFlatNoteFileName();
 };
 
 
@@ -132,6 +133,7 @@ public:
     int         copyAndNormalizeSubSeqsPASA(TSADATA *out1, TSADATA *out2, TSADATA *inp1, TSADATA *inp2, float mean1, float mean2, int len);
     float       estimateOffset(float mean1, float mean2);
     int         storeTimeElapseInAdjSamples();
+    int         updateBlackListFlatSeqs(char *FNFile);
     
     TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fileExts, procParams_t *pParams);
     ~TSAdataHandler();
