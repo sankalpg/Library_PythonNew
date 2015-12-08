@@ -581,9 +581,9 @@ int TSAdataHandler::genTemplate1SubSeqs()
 
     updateBLDurThsld();
     
-    updateBlackListFlatSeqs(fHandle.getFlatNoteFileName());
-
     //updateBLStdThsld();
+    // Now we have a new function to find blacklisted subs which have a lot of flat segment in it.
+    updateBlackListFlatSeqs(fHandle.getFlatNoteFileName());
 
     updateBLInvalidSegment(fHandle.getBlackListSegFileName());
 
