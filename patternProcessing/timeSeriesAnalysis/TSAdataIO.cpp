@@ -47,6 +47,7 @@ int TSAparamHandle::readParamsFromFile(char *paramFile)
 
     //Initilizations
     procParams.repParams.normType=0;
+    procParams.repParams.useFlatNoteFile=0;
 
 
 
@@ -73,9 +74,10 @@ int TSAparamHandle::readParamsFromFile(char *paramFile)
         if (strcmp(field, "threshold:")==0){procParams.repParams.threshold=atof(value);}
         if (strcmp(field, "flatThreshold:")==0){procParams.repParams.flatThreshold=atof(value);}
         if (strcmp(field, "maxPauseDur:")==0){procParams.repParams.maxPauseDur=atof(value);}
+        if (strcmp(field, "useFlatNoteFile:")==0){procParams.repParams.useFlatNoteFile=atoi(value);}
         /*pattern processing parameters*/
         if (strcmp(field, "durMotif:")==0){procParams.pattParams.durMotif=atof(value);}
-        if (strcmp(field, "blackDurFact:")==0){procParams.pattParams.blackDurFact=atof(value);}
+        //if (strcmp(field, "blackDurFact:")==0){procParams.pattParams.blackDurFact=atof(value);}
         if (strcmp(field, "maxNMotifsPairs:")==0){procParams.pattParams.maxNMotifsPairs=atoi(value);}
         if (strcmp(field, "nInterpFac:")==0){procParams.pattParams.nInterpFac=atoi(value);}
         if (strcmp(field, "pitchHop:")==0){procParams.repParams.pitchHop=atof(value);}
@@ -86,10 +88,10 @@ int TSAparamHandle::readParamsFromFile(char *paramFile)
         if (strcmp(field, "dumpLogs:")==0){procParams.dumpLogs=atoi(value);}
 
 
-        if (procParams.pattParams.durMotif>0)
-        {
-            procParams.pattParams.blackDur=procParams.pattParams.blackDurFact*procParams.pattParams.durMotif;
-        }
+//         if (procParams.pattParams.durMotif>0)
+//         {
+//             procParams.pattParams.blackDur=procParams.pattParams.blackDurFact*procParams.pattParams.durMotif;
+//         }
 
     }
     fclose(fp);
@@ -581,9 +583,13 @@ int TSAdataHandler::genTemplate1SubSeqs()
 
     updateBLDurThsld();
     
-    //updateBLStdThsld();
-    // Now we have a new function to find blacklisted subs which have a lot of flat segment in it.
-    updateBlackListFlatSeqs(fHandle.getFlatNoteFileName());
+    if (procParams.repParams.useFlatNoteFile ==0){
+        updateBLStdThsld();  
+    }
+    else{
+        // Now we have a new function to find blacklisted subs which have a lot of flat segment in it.
+        updateBlackListFlatSeqs(fHandle.getFlatNoteFileName());    
+    }
 
     updateBLInvalidSegment(fHandle.getBlackListSegFileName());
 
@@ -1801,7 +1807,7 @@ int TSAdataHandler::dumpPatternKNNInfo(char *motifFile, TSAmotifInfoExt_t **prio
             }
             else
             {
-                fprintf(fp, "%lld\t%lld\t%f\n", -1,-1,INF);
+                fprintf(fp, "%d\t%d\t%f\n", -1,-1,INF);
             }
 
         }
@@ -1827,7 +1833,7 @@ int TSAdataHandler::dumpPatternDISTInfo(char *outputFile, TSAmotifInfoExt_t **pr
             }
             else
             {
-                fprintf(fp, "%lld\t%lld\t%f\n", -1,-1,INF);
+                fprintf(fp, "%d\t%d\t%f\n", -1,-1,INF);
             }
 
         }

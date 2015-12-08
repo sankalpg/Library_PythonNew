@@ -110,14 +110,13 @@ typedef struct TSARepParams
     float maxPauseDur;
     int dsFactor;
     float pitchHop;
+    int useFlatNoteFile;//flat to indicate how the qubseq flatness filtering is performed
 
 }TSARepParams_t;
 
 typedef struct TSAPattParams
 {
     float durMotif;
-    float blackDurFact;
-    float blackDur;
     int maxNMotifsPairs;
     int nInterpFac;
     int subSeqLen;

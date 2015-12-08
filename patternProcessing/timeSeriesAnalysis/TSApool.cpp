@@ -234,7 +234,7 @@ int TSApool::updatePattStorageData(TSAIND queryInd, TSAsubSeq_t *subSeqPtr, int 
 
 
 
-TSADIST TSApool::managePriorityQDisc(TSAsubSeq_t *subSeqPtr, TSAIND ind1, TSAIND ind2, TSADIST dist, float blackDur)
+TSADIST TSApool::managePriorityQDisc(TSAsubSeq_t *subSeqPtr, TSAIND ind1, TSAIND ind2, TSADIST dist)
 {
     int sortInd=-1, matchInd=-1;
     
@@ -244,8 +244,12 @@ TSADIST TSApool::managePriorityQDisc(TSAsubSeq_t *subSeqPtr, TSAIND ind1, TSAIND
         {
             sortInd=ii;
         }
-        // searching if we already have a motif in out top K list which is near to the currently good match
-        if ((fabs(subSeqPtr[priorityQDisc[ii].ind1].sTime - subSeqPtr[ind1].sTime) < blackDur) || (fabs(subSeqPtr[priorityQDisc[ii].ind2].sTime -subSeqPtr[ind1].sTime) < blackDur) || (fabs(subSeqPtr[priorityQDisc[ii].ind1].sTime-subSeqPtr[ind2].sTime) < blackDur) || (fabs(subSeqPtr[priorityQDisc[ii].ind2].sTime-subSeqPtr[ind2].sTime) < blackDur))
+        // searching if we already have a motif in out top K list which is overlapping with the newly found motif
+        //OLD logic (when no flat note compressino was there): if ((fabs(subSeqPtr[priorityQDisc[ii].ind1].sTime - subSeqPtr[ind1].sTime) < blackDur) || (fabs(subSeqPtr[priorityQDisc[ii].ind2].sTime -subSeqPtr[ind1].sTime) < blackDur) || (fabs(subSeqPtr[priorityQDisc[ii].ind1].sTime-subSeqPtr[ind2].sTime) < blackDur) || (fabs(subSeqPtr[priorityQDisc[ii].ind2].sTime-subSeqPtr[ind2].sTime) < blackDur))
+        if(   ((subSeqPtr[priorityQDisc[ii].ind1].eTime - subSeqPtr[ind1].sTime)*(subSeqPtr[ind1].eTime - subSeqPtr[priorityQDisc[ii].ind1].sTime) > 0)
+            ||((subSeqPtr[priorityQDisc[ii].ind2].eTime - subSeqPtr[ind1].sTime)*(subSeqPtr[ind1].eTime - subSeqPtr[priorityQDisc[ii].ind2].sTime) > 0)
+            ||((subSeqPtr[priorityQDisc[ii].ind1].eTime - subSeqPtr[ind2].sTime)*(subSeqPtr[ind2].eTime - subSeqPtr[priorityQDisc[ii].ind1].sTime) > 0)
+            ||((subSeqPtr[priorityQDisc[ii].ind2].eTime - subSeqPtr[ind2].sTime)*(subSeqPtr[ind2].eTime - subSeqPtr[priorityQDisc[ii].ind2].sTime) > 0))
         {
             matchInd=ii;
             break;

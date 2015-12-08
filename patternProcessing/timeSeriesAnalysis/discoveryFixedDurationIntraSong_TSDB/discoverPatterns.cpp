@@ -118,7 +118,7 @@ int main( int argc , char *argv[])
                         logs.procLogs.nDTW_EA++;
                         if (realDist <= bsf)
                         {
-                            bsf = pool->managePriorityQDisc(subSeqPtr, ii, jj, realDist, TSData1->procParams.pattParams.blackDur);
+                            bsf = pool->managePriorityQDisc(subSeqPtr, ii, jj, realDist);
                             logs.procLogs.nPriorityUpdates++;
                         }
                     }
