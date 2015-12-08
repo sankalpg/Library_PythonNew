@@ -1,4 +1,3 @@
-
 #include "../TSAdataIO.h"
 #include "../TSAsimilarity.h"
 #include "../TSApool.h"
@@ -7,7 +6,6 @@
 
 using namespace std;
 float t1,t2, ti,tf;
-
 
 int main( int argc , char *argv[])
 {
