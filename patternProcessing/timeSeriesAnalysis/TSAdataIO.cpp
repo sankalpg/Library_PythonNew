@@ -1,6 +1,6 @@
 
 #include "TSAdataIO.h"
-
+#define DEBUG
 using namespace std;
 
 TSAparamHandle::TSAparamHandle()
@@ -547,7 +547,6 @@ int TSAdataHandler::readQueryTimeStamps(char *queryFileName, int format)
         queryTStamps = qTStamps;
     }
 
-
     return 1;
 
 }
@@ -986,21 +985,37 @@ int TSAdataHandler::updateBlackListFlatSeqs(char *FNFile){
     memset(flatSamples, 0, sizeof(int)*lenTS);
     TSAIND flat_note_index = 0;
     int cnt=0;
-    for(int ii=1; ii< lenTS; ii++){
-        if((samPtr[ii].tStamp >= flatSegs[flat_note_index].sTime)&&(samPtr[ii].tStamp <= flatSegs[flat_note_index].eTime)){
-            flatSamples[ii] = 1;
-        }
-        else if(flatSamples[ii-1]==1){
-            flat_note_index+=1;
-            if((samPtr[ii].tStamp >= flatSegs[flat_note_index].sTime)&&(samPtr[ii].tStamp <= flatSegs[flat_note_index].eTime)){
+    int flatIndex=0;
+    TSAIND startInd=0;
+    for (int jj=0;jj<nLines; jj++){
+        for(int ii=startInd;ii<lenTS;ii++){
+            if((samPtr[ii].tStamp >= flatSegs[jj].sTime)&&(samPtr[ii].tStamp <= flatSegs[jj].eTime)){
                 flatSamples[ii] = 1;
+                startInd = ii;
             }
         }
     }
+    
+#ifdef DEBUG    
+    FILE *fp2;
+    fp2 =fopen("flatSegsDetected1.txt","w");
+    for(int ii=0;ii<lenTS;ii++)
+    {
+        fprintf(fp2, "%f\t%f\n",samPtr[ii].tStamp, flatSamples[ii]);
+    }    
+    fclose(fp2);
+    
+#endif  
+    
+#ifdef DEBUG    
+    FILE *fp1;
+    fp1 =fopen("dumpDebug_112.txt","w");
+#endif     
     TSAIND ind=0;
     float ex=0;
     int lenRawMotifData = procParams.motifLengths[procParams.indexMotifLenLongest];
     int lenRawMotifDataM1 = lenRawMotifData-1;
+    float threhsold = (1-procParams.repParams.flatThreshold)*(float)lenRawMotifData; //(1-xx) because we are measuring flat samples no moving
     while(ind<lenTS)
     {
         ex+=flatSamples[ind];
@@ -1008,16 +1023,31 @@ int TSAdataHandler::updateBlackListFlatSeqs(char *FNFile){
         {
             if (blacklist[ind-lenRawMotifDataM1]==0)
             {
-                if(ex < procParams.repParams.flatThreshold*(float)lenRawMotifData)
+                if(ex >= threhsold)
                 {
                     blacklist[ind-lenRawMotifDataM1]=1;
                     cnt+=1;
                 }
             }
+#ifdef DEBUG                
+            fprintf(fp1, "%f\t%d\t%f\t%d\t%lld\n", samPtr[ind-lenRawMotifDataM1].tStamp, flatSamples[ind - lenRawMotifDataM1], ex, blacklist[ind-lenRawMotifDataM1], ind);
+#endif              
             ex -= flatSamples[ind-lenRawMotifDataM1];
         }
        ind++;
     }
+#ifdef DEBUG        
+    fclose(fp1);
+#endif       
+#ifdef DEBUG    
+    fp2 =fopen("flatSegsDetected2.txt","w");
+    for(int ii=0;ii<lenTS;ii++)
+    {
+        fprintf(fp2, "%f\t%f\n",samPtr[ii].tStamp, flatSamples[ii]);
+    }    
+    fclose(fp2);
+    
+#endif      
     free(flatSamples);
     return 1;
 }
