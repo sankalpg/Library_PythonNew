@@ -123,14 +123,30 @@ def getSvaraDistInBPs(filename, bphraseExt = '.bphrases', transExt = '.transcrip
         svar2binMap[int(val*100)] = ii
     
     dist_mtx = np.zeros((len(svar2binMap.keys()), len(svarsBP)))
+    
+    tx_mtx = np.zeros((len(svar2binMap.keys()),len(svar2binMap.keys())))
+    #print tx_mtx
+    notes = []
 
     for ii, bp in enumerate(svarsBP):
         for svr in bp:
             #print svar2binMap[svr['svar']], svr['svar'], ii
             dist_mtx[svar2binMap[svr['svar']], ii] =  svr['duration']
+            
+            notes.append(svar2binMap[svr['svar']])            
+            
         if np.max(dist_mtx[:,ii]) != 0:
             dist_mtx[:,ii] = dist_mtx[:,ii]/np.max(dist_mtx[:,ii])
-            
+    
+    print notes
+    for i in range(len(notes)-1):
+        tx_mtx[notes[i], notes[i+1]] += 1 
+    
+    plt.imshow(tx_mtx, interpolation = 'nearest', origin = 'lower', cmap = plt.get_cmap('OrRd'))
+    plt.show()
+    
+    print tx_mtx
+    
     return dist_mtx
 
 
@@ -192,8 +208,8 @@ def plotSvaraDistInBPs(filename, bphraseExt = '.bphrases', transExt = '.transcri
 
     fname, ext = os.path.splitext(filename)
     print "Plotting svara distribution (salience) for each bp..."
-    #plt.show()
-    saveFigure(fig, fname, featureName = '_svaraDist')
+    plt.show()
+    #saveFigure(fig, fname, featureName = '_svaraDist')
     
     
 def getSvarasInBreathPhrases(filename, bphraseExt = '.bphrases', transExt = '.transcription'):
