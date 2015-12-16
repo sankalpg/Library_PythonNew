@@ -91,7 +91,6 @@ class nyasSegmentation():
         flat_notes[ind_flat]=1
         #iterating over all the swar locations
         for i, swar in enumerate(self.swarCents):
-
             if ((i<=0)|(i>=len(self.swarCents)-1)):
                 broad_tshld_hi= 150.0
                 broad_tshld_lo= 150.0
@@ -99,7 +98,7 @@ class nyasSegmentation():
                 broad_tshld_hi = (self.swarCents[i+1]-self.swarCents[i])+50
                 broad_tshld_lo = (self.swarCents[i]-self.swarCents[i-1])+50
                 print swar, broad_tshld_hi, broad_tshld_lo
-            # just to make process fast lets find in one shot all the points which are atleast closer than narrow threshold
+            # just to make process 249784fast lets find in one shot all the points which are atleast closer than narrow threshold
             ind_narrow = np.where((self.pCents<swar+narrow_tshld)&(self.pCents>swar-narrow_tshld))[0]
             self.nyasInfo[swar]=[]
             pointer1=0     # index of ind_narrow, which becomes the onset location
@@ -667,7 +666,7 @@ class melodySegmentation():
             onsets.append(segs[0])
             onsets.append(segs[1])
 
-        onsets = np.array(onsets)
+        onsets = np.sort(np.array(onsets))
         return onsets
 
 
@@ -741,11 +740,9 @@ class melodySegmentation():
         segmentationOutput = np.array(segmentationOutput)
         #Note that these segments are the flat regions only. We need to generate all segments. But to do that we have to make sure there is no overlapping segments
         flatSegments = self.removeOverlapSegsGreedy(segmentationOutput)
-
         segPoints = self.estimateProbableSegmentationPoints(pitch, tonic, phop, vicinityThsld = vicinityThsld, varWinLen=varWinLen, varThsld=varThsld)
-
         finalFlatSegs = []
-        for flatSegs in flatSegments:
+        for ii, flatSegs in enumerate(flatSegments):
             #print len(segPoints[:,0]), len(segPoints[:,1]), flatSegs[0], flatSegs[1]
             indStart = np.where(segPoints>=flatSegs[0])[0]
             indEnd = np.where(segPoints<=flatSegs[1])[0]
