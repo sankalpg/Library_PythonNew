@@ -1,6 +1,6 @@
 
 #include "TSAdataIO.h"
-#define DEBUG
+//#define DEBUG
 using namespace std;
 
 TSAparamHandle::TSAparamHandle()
@@ -1001,7 +1001,7 @@ int TSAdataHandler::updateBlackListFlatSeqs(char *FNFile){
     fp2 =fopen("flatSegsDetected1.txt","w");
     for(int ii=0;ii<lenTS;ii++)
     {
-        fprintf(fp2, "%f\t%f\n",samPtr[ii].tStamp, flatSamples[ii]);
+        fprintf(fp2, "%f\t%d\n",samPtr[ii].tStamp, flatSamples[ii]);
     }    
     fclose(fp2);
     
@@ -1043,7 +1043,7 @@ int TSAdataHandler::updateBlackListFlatSeqs(char *FNFile){
     fp2 =fopen("flatSegsDetected2.txt","w");
     for(int ii=0;ii<lenTS;ii++)
     {
-        fprintf(fp2, "%f\t%f\n",samPtr[ii].tStamp, flatSamples[ii]);
+        fprintf(fp2, "%f\t%d\n",samPtr[ii].tStamp, flatSamples[ii]);
     }    
     fclose(fp2);
     
