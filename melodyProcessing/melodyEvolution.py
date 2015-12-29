@@ -53,13 +53,13 @@ def batchProc(root_dir, audioExt = '.mp3', pitchExt = '.pitchSilIntrpPP', tonicE
         '''
         
         plotSvaraDistInBPs(filename, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1)
-        for windowSize, hopSize in [[5,1],[10,1],[10,2],[15,1],[15,2],[15,3]]:
-	    try:
-                plotSvaraDistInBPsCum(filename, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1, windowSize = windowSize, hopSize = hopSize)
-            except:
-	        print "Problem occured in file: %s" %filename
-	        pass
-        getBreathPhraseStatistics(filename, bphraseExt = '.bphrases', transExt = '.transcription')
+        #for windowSize, hopSize in [[5,1],[10,1],[10,2],[15,1],[15,2],[15,3]]:
+	    #try:
+                #plotSvaraDistInBPsCum(filename, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1, windowSize = windowSize, hopSize = hopSize)
+            #except:
+	        #print "Problem occured in file: %s" %filename
+	        #pass
+        #getBreathPhraseStatistics(filename, bphraseExt = '.bphrases', transExt = '.transcription')
         
         print "-------\nDone !!\n-------"
         
@@ -125,7 +125,6 @@ def getSvaraDistInBPs(filename, bphraseExt = '.bphrases', transExt = '.transcrip
     dist_mtx = np.zeros((len(svar2binMap.keys()), len(svarsBP)))
     
     tx_mtx = np.zeros((len(svar2binMap.keys()),len(svar2binMap.keys())))
-    #print tx_mtx
     notes = []
 
     for ii, bp in enumerate(svarsBP):
@@ -138,14 +137,18 @@ def getSvaraDistInBPs(filename, bphraseExt = '.bphrases', transExt = '.transcrip
         if np.max(dist_mtx[:,ii]) != 0:
             dist_mtx[:,ii] = dist_mtx[:,ii]/np.max(dist_mtx[:,ii])
     
-    print notes
     for i in range(len(notes)-1):
         tx_mtx[notes[i], notes[i+1]] += 1 
     
-    plt.imshow(tx_mtx, interpolation = 'nearest', origin = 'lower', cmap = plt.get_cmap('OrRd'))
-    plt.show()
+    steadiness_feat = np.sum(tx_mtx)/np.trace(tx_mtx)
+    steadiness_feat_norm = steadiness_feat/len(svarsBP)
+    print "Steadiness ratio across bp is: %f" %steadiness_feat
+    print "Nornalised steadiness ratio across bp is: %f" %steadiness_feat_norm
     
-    print tx_mtx
+    plt.imshow(tx_mtx, interpolation = 'nearest', origin = 'lower', cmap = plt.get_cmap('OrRd'))
+    #plt.show()
+    
+    #print tx_mtx
     
     return dist_mtx
 
@@ -208,7 +211,7 @@ def plotSvaraDistInBPs(filename, bphraseExt = '.bphrases', transExt = '.transcri
 
     fname, ext = os.path.splitext(filename)
     print "Plotting svara distribution (salience) for each bp..."
-    plt.show()
+    #plt.show()
     #saveFigure(fig, fname, featureName = '_svaraDist')
     
     
