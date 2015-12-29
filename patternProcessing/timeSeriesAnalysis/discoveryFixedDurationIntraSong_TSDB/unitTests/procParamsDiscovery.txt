@@ -11,3 +11,4 @@ DTWBand: 0.1
 nInterpFac: 5
 removeTaniSegs: 1
 dumpLogs: 1
+maxNMotifsPairs: 5

@@ -20,7 +20,7 @@ int main( int argc , char *argv[])
     
 
     //checking if the number of input arguments are correct 
-    if(argc < 5 || argc > 6)
+    if(argc < 4 || argc > 5)
     {
         printf("\nInvalid number of arguments!!!\n");
         exit(1);
@@ -32,8 +32,7 @@ int main( int argc , char *argv[])
     char *baseName = argv[1];
     char *paramFile = argv[2];
     char *fileExtFile = argv[3];
-    int nPairs = atoi(argv[4]);
-    if( argc == 6 ){verbos = atoi(argv[5]);}
+    if( argc == 5 ){verbos = atoi(argv[4]);}
     
     //read params from the paramFile
     paramHand.readParamsFromFile(paramFile);
@@ -57,7 +56,7 @@ int main( int argc , char *argv[])
     //initializing object for handling lower bounding processing
     TSAdtwSimilarity dtwUCR(&logs.procLogs);
     //initializing object for handling storage of top nPairs closest motif pairs
-    //int nPairs = myProcParamsPtr->maxNMotifsPairs;
+    int nPairs = TSData1->procParams.pattParams.maxNMotifsPairs;
     TSApool *pool = new TSApool(nPairs);
     
     int lenMotifReal = TSData1->procParams.motifLengths[TSData1->procParams.indexMotifLenReal];
