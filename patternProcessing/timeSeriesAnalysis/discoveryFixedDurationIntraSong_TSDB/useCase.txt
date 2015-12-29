@@ -6,3 +6,7 @@ Task type: discovery
 patterns input: None
 patterns input type: NA
 output type: couplets of pattenrs with distances
+
+
+Explanation of processing parameters
+

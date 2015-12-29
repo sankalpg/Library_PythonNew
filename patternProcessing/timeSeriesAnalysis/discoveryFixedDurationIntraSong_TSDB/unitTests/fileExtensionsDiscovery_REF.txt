@@ -1,6 +1,6 @@
 tsFileExt: .pitch
 tonicExt: .tonic
 blackTimeExt: .taniSegKNN
-logFileExt: .motifLogs
-paramsDumpExt: .motifParams
+logFileExt: .motifLogs_REF
+paramsDumpExt: .motifParams_REF
 outFileExt: .motif_REF
