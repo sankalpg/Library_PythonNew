@@ -151,18 +151,22 @@ typedef struct fileExts
     char tsFileExt[MAX_FEXT_CHARS];
     char tonicExt[MAX_FEXT_CHARS];
     char blackTimeExt[MAX_FEXT_CHARS];
-    char logFileExt[MAX_FEXT_CHARS];
-    char paramsDumpExt[MAX_FEXT_CHARS];
-    char outFileExt[MAX_FEXT_CHARS];
-    char mappFileExt[MAX_FEXT_CHARS];
-    char searchListExt[MAX_FEXT_CHARS];
-    char queryFileExt[MAX_FEXT_CHARS];
     char subSeqFileExt[MAX_FEXT_CHARS];
     char subSeqTNFileExt[MAX_FEXT_CHARS]; //this is subSeqs which are already tonic normalized
     char subSeqInfoFileExt[MAX_FEXT_CHARS];
-    char patternKNNExt[MAX_FEXT_CHARS];
-    char FNFileExt[MAX_FEXT_CHARS];
-    
+    char srchListExt[MAX_FEXT_CHARS];
+    char flatNoteFileExt[MAX_FEXT_CHARS];
+    char srchMappFileExt[MAX_FEXT_CHARS];
+    char srchQueryFileExt[MAX_FEXT_CHARS];
+    char disOutFileExt[MAX_FEXT_CHARS];
+    char srchOutFileExt[MAX_FEXT_CHARS];
+    char knnOutFileExt[MAX_FEXT_CHARS];
+    char distOutFileExt[MAX_FEXT_CHARS];
+    char disLogFileExt[MAX_FEXT_CHARS];
+    char srchLogFileExt[MAX_FEXT_CHARS];
+    char dumpLogFileExt[MAX_FEXT_CHARS];
+    char outFileExt[MAX_FEXT_CHARS];
+
 }fileExts_t;
 
 typedef struct procLogs

@@ -9,17 +9,20 @@ TSAparamHandle::TSAparamHandle()
     memset(fileExts.tsFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
     memset(fileExts.tonicExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
     memset(fileExts.blackTimeExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
-    memset(fileExts.logFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
-    memset(fileExts.paramsDumpExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
-    memset(fileExts.outFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
-    memset(fileExts.mappFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
-    memset(fileExts.searchListExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
-    memset(fileExts.queryFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
     memset(fileExts.subSeqFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
     memset(fileExts.subSeqTNFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
     memset(fileExts.subSeqInfoFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
-    memset(fileExts.patternKNNExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
-    memset(fileExts.FNFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
+    memset(fileExts.srchListExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
+    memset(fileExts.flatNoteFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
+    memset(fileExts.srchMappFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
+    memset(fileExts.disOutFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
+    memset(fileExts.srchOutFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
+    memset(fileExts.knnOutFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
+    memset(fileExts.distOutFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
+    memset(fileExts.disLogFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
+    memset(fileExts.srchLogFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
+    memset(fileExts.dumpLogFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
+    memset(fileExts.outFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
 
     //I need to initialize other structure members as well, #TODO
     procParams.distParams.distNormType = PATH_LEN;
@@ -183,17 +186,21 @@ int TSAparamHandle::readFileExtsInfoFile(char *fileExtsFile)
         if (strcmp(field, "tsFileExt:")==0){strcat(fileExts.tsFileExt, value);}
         if (strcmp(field, "tonicExt:")==0){strcat(fileExts.tonicExt, value);}
         if (strcmp(field, "blackTimeExt:")==0){strcat(fileExts.blackTimeExt, value);}
-        if (strcmp(field, "logFileExt:")==0){strcat(fileExts.logFileExt, value);}
-        if (strcmp(field, "paramsDumpExt:")==0){strcat(fileExts.paramsDumpExt, value);}
-        if (strcmp(field, "outFileExt:")==0){strcat(fileExts.outFileExt, value);}
-        if (strcmp(field, "mappFileExt:")==0){strcat(fileExts.mappFileExt, value);}
-        if (strcmp(field, "searchListExt:")==0){strcat(fileExts.searchListExt, value);}
-        if (strcmp(field, "queryFileExt:")==0){strcat(fileExts.queryFileExt, value);}
         if (strcmp(field, "subSeqFileExt:")==0){strcat(fileExts.subSeqFileExt, value);}
         if (strcmp(field, "subSeqTNFileExt:")==0){strcat(fileExts.subSeqTNFileExt, value);}
         if (strcmp(field, "subSeqInfoFileExt:")==0){strcat(fileExts.subSeqInfoFileExt, value);}
-        if (strcmp(field, "patternKNNExt:")==0){strcat(fileExts.patternKNNExt, value);}
-        if (strcmp(field, "FNFileExt:")==0){strcat(fileExts.FNFileExt, value);}
+        if (strcmp(field, "srchListExt:")==0){strcat(fileExts.srchListExt, value);}
+        if (strcmp(field, "flatNoteFileExt:")==0){strcat(fileExts.flatNoteFileExt, value);}
+        if (strcmp(field, "srchMappFileExt:")==0){strcat(fileExts.srchMappFileExt, value);}
+        if (strcmp(field, "disOutFileExt:")==0){strcat(fileExts.disOutFileExt, value);}
+        if (strcmp(field, "srchOutFileExt:")==0){strcat(fileExts.srchOutFileExt, value);}
+        if (strcmp(field, "knnOutFileExt:")==0){strcat(fileExts.knnOutFileExt, value);}
+        if (strcmp(field, "distOutFileExt:")==0){strcat(fileExts.distOutFileExt, value);}
+        if (strcmp(field, "disLogFileExt:")==0){strcat(fileExts.disLogFileExt, value);}
+        if (strcmp(field, "srchLogFileExt:")==0){strcat(fileExts.srchLogFileExt, value);}
+        if (strcmp(field, "dumpLogFileExt:")==0){strcat(fileExts.dumpLogFileExt, value);}
+        if (strcmp(field, "outFileExt:")==0){strcat(fileExts.outFileExt, value);}
+
 
         memset(tempFilename, '\0', sizeof(char)*400);
         memset(field, '\0', sizeof(char)*100);
@@ -555,11 +562,11 @@ int TSAdataHandler::genTemplate1SubSeqs()
 {
     int rVal = 0;
     //read the time series data
-    rVal = readTSData(fHandle.getTSFileName());
+    rVal = readTSData(fHandle.getFileName(fHandle.fileExtPtr->tsFileExt));
     if (rVal==0)
     {return 1;}
 
-    readHopSizeTS(fHandle.getTSFileName());
+    readHopSizeTS(fHandle.getFileName(fHandle.fileExtPtr->tsFileExt));
 
     //downsample
     downSampleTS();
@@ -569,7 +576,7 @@ int TSAdataHandler::genTemplate1SubSeqs()
 
     procLogPtr->lenProcTS+=lenTS;
 
-    convertHz2Cents(fHandle.getTonicFileName());
+    convertHz2Cents(fHandle.getFileName(fHandle.fileExtPtr->tonicExt));
 
     //calculate different motif lengths before doing sliding window candidate generation
     calculateDiffMotifLengths();
@@ -587,10 +594,10 @@ int TSAdataHandler::genTemplate1SubSeqs()
     }
     else{
         // Now we have a new function to find blacklisted subs which have a lot of flat segment in it.
-        updateBlackListFlatSeqs(fHandle.getFlatNoteFileName());    
+        updateBlackListFlatSeqs(fHandle.getFileName(fHandle.fileExtPtr->flatNoteFileExt));
     }
 
-    updateBLInvalidSegment(fHandle.getBlackListSegFileName());
+    updateBLInvalidSegment(fHandle.getFileName(fHandle.fileExtPtr->blackTimeExt));
 
     filterBlackListedSubSeqs();
 
@@ -1899,6 +1906,15 @@ int fileNameHandler::initialize(char *bName, fileExts_t *fExtPtr)
     return 1;
 }
 
+char* fileNameHandler::getFileName(char *extension)
+{
+    memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);
+    strcat(fileName, baseName);
+    strcat(fileName, extension);
+    return fileName;
+
+}
+
 char* fileNameHandler::getTSFileName()
 {
     memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);
@@ -1913,7 +1929,7 @@ char* fileNameHandler::getFlatNoteFileName()
 {
     memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);
     strcat(fileName, baseName);
-    strcat(fileName, fileExtPtr->FNFileExt);
+    strcat(fileName, fileExtPtr->flatNoteFileExt);
 
     return fileName;
 
@@ -1937,24 +1953,7 @@ char* fileNameHandler::getBlackListSegFileName()
     return fileName;
 
 }
-char* fileNameHandler::getLogFileName()
-{
-    memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);
-    strcat(fileName, baseName);
-    strcat(fileName, fileExtPtr->logFileExt);
 
-    return fileName;
-
-}
-char* fileNameHandler::getParamDumpFileName()
-{
-    memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);
-    strcat(fileName, baseName);
-    strcat(fileName, fileExtPtr->paramsDumpExt);
-
-    return fileName;
-
-}
 char* fileNameHandler::getOutFileName()
 {
     memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);
@@ -1968,7 +1967,7 @@ char* fileNameHandler::getOutFileNamePostRR(int similarityMeasure)
 {
     memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);
     strcat(fileName, baseName);
-    strcat(fileName, fileExtPtr->outFileExt);
+    strcat(fileName, fileExtPtr->srchOutFileExt);
     strcat(fileName, SimMeasureNames[similarityMeasure]);
 
     return fileName;
@@ -1979,7 +1978,7 @@ char* fileNameHandler::getMappFileName()
 {
     memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);
     strcat(fileName, baseName);
-    strcat(fileName, fileExtPtr->mappFileExt);
+    strcat(fileName, fileExtPtr->srchMappFileExt);
 
     return fileName;
 
@@ -1989,7 +1988,7 @@ char* fileNameHandler::getSearchListFileName()
 {
     memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);
     strcat(fileName, baseName);
-    strcat(fileName, fileExtPtr->searchListExt);
+    strcat(fileName, fileExtPtr->srchListExt);
 
     return fileName;
 }
@@ -1997,7 +1996,7 @@ char* fileNameHandler::getQueryFileName()
 {
     memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);
     strcat(fileName, baseName);
-    strcat(fileName, fileExtPtr->queryFileExt);
+    strcat(fileName, fileExtPtr->srchQueryFileExt);
 
     return fileName;
 }
@@ -2006,6 +2005,8 @@ char* fileNameHandler::getSubSeqFileName()
 {
     memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);
     strcat(fileName, baseName);
+
+
     strcat(fileName, fileExtPtr->subSeqFileExt);
 
     return fileName;
@@ -2033,7 +2034,7 @@ char* fileNameHandler::getPatternKNNFileName()
 {
     memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);
     strcat(fileName, baseName);
-    strcat(fileName, fileExtPtr->patternKNNExt);
+    strcat(fileName, fileExtPtr->knnOutFileExt);
 
     return fileName;
 }

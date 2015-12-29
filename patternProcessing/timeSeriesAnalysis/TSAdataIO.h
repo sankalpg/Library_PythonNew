@@ -40,8 +40,6 @@ public:
     char *getTSFileName();
     char *getTonicFileName();
     char *getBlackListSegFileName();
-    char *getLogFileName();
-    char *getParamDumpFileName();
     char *getOutFileName();
     char *getMappFileName();
     char *getSearchListFileName();
@@ -53,6 +51,8 @@ public:
     char *getSubSeqInfoFileName();
     char *getPatternKNNFileName();
     char *getFlatNoteFileName();
+    char *getFileName(char *extension);
+
 };
 
 
@@ -134,6 +134,7 @@ public:
     float       estimateOffset(float mean1, float mean2);
     int         storeTimeElapseInAdjSamples();
     int         updateBlackListFlatSeqs(char *FNFile);
+
     
     TSAdataHandler(char *bName, procLogs_t *procLogs, fileExts_t *fileExts, procParams_t *pParams);
     ~TSAdataHandler();
