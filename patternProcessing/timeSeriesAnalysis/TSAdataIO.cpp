@@ -23,6 +23,7 @@ TSAparamHandle::TSAparamHandle()
     memset(fileExts.srchLogFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
     memset(fileExts.dumpLogFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
     memset(fileExts.outFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
+    memset(fileExts.srchQueryFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
 
     //I need to initialize other structure members as well, #TODO
     procParams.distParams.distNormType = PATH_LEN;
@@ -200,6 +201,8 @@ int TSAparamHandle::readFileExtsInfoFile(char *fileExtsFile)
         if (strcmp(field, "srchLogFileExt:")==0){strcat(fileExts.srchLogFileExt, value);}
         if (strcmp(field, "dumpLogFileExt:")==0){strcat(fileExts.dumpLogFileExt, value);}
         if (strcmp(field, "outFileExt:")==0){strcat(fileExts.outFileExt, value);}
+        if (strcmp(field, "srchQueryFileExt:")==0){strcat(fileExts.srchQueryFileExt, value);}
+        
 
 
         memset(tempFilename, '\0', sizeof(char)*400);

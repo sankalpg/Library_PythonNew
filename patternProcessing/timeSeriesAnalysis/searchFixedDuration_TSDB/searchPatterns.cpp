@@ -102,8 +102,8 @@ int main( int argc , char *argv[])
                 
                 if (paramHand.procParams.combMTX[ii%nInterFact][jj%nInterFact]==0)
                     continue;
-
-                if ((strcmp(baseName, fHandle.searchFileNames[ss])==0)&& (fabs(TSData1->subSeqPtr[ii].sTime-TSData2->subSeqPtr[jj].sTime)< TSData1->procParams.pattParams.blackDur))
+                //Criterion for determining overlapping phrases is changed after flat note compression integration
+                if ((strcmp(baseName, fHandle.searchFileNames[ss])==0)&& ((TSData1->subSeqPtr[ii].eTime- TSData2->subSeqPtr[jj].sTime)*(TSData2->subSeqPtr[jj].eTime-TSData1->subSeqPtr[ii].sTime) > 0))
                     //beware that basename and searchFile name should both have either full path or relative path.
                 {
                     continue;
@@ -131,7 +131,7 @@ int main( int argc , char *argv[])
                             logs.procLogs.nDTW_EA++;
                             if (realDist <= dtwUCR.bsfArray[queryInd])
                             {
-                                dtwUCR.bsfArray[queryInd] = pool.managePriorityQSear(queryInd, TSData2->subSeqPtr, ii, jj, realDist, searchFileID, TSData1->procParams.pattParams.blackDur);
+                                dtwUCR.bsfArray[queryInd] = pool.managePriorityQSear(queryInd, TSData2->subSeqPtr, ii, jj, realDist, searchFileID);
                                 logs.procLogs.nPriorityUpdates++;
                             }
                         }
@@ -198,7 +198,7 @@ int main( int argc , char *argv[])
     logs.procLogs.tTotal += (tf-ti)/CLOCKS_PER_SEC;
     
     
-    logs.dumpProcLogs(TSData1->fHandle.getLogFileName(), verbos);
+    logs.dumpProcLogs(TSData1->fHandle.getFileName(TSData1->fHandle.fileExtPtr->srchLogFileExt), verbos);
     
     delete TSData1;
     

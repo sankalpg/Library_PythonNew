@@ -288,7 +288,7 @@ TSADIST TSApool::managePriorityQDisc(TSAsubSeq_t *subSeqPtr, TSAIND ind1, TSAIND
 
 
 
-TSADIST TSApool::managePriorityQSear(TSAIND queryInd, TSAsubSeq_t *subSeqPtr, TSAIND ind1, TSAIND ind2, TSADIST dist, int searchFileID, float blackDur)
+TSADIST TSApool::managePriorityQSear(TSAIND queryInd, TSAsubSeq_t *subSeqPtr, TSAIND ind1, TSAIND ind2, TSADIST dist, int searchFileID)
 {
     int sortInd=-1, matchInd=-1;
     
@@ -309,7 +309,7 @@ TSADIST TSApool::managePriorityQSear(TSAIND queryInd, TSAsubSeq_t *subSeqPtr, TS
         }
 
         // searching if we already have a motif in out top K list which is near to the currently good match
-        if ((priorityQSear[queryInd][ii].searchFileID==searchFileID) && (fabs(priorityQSear[queryInd][ii].sTime -subSeqPtr[ind2].sTime) < blackDur))
+        if ((priorityQSear[queryInd][ii].searchFileID==searchFileID) && ((priorityQSear[queryInd][ii].eTime -subSeqPtr[ind2].sTime)*(subSeqPtr[ind2].eTime - priorityQSear[queryInd][ii].sTime) > 0))
         {
             matchInd=ii;
             break;

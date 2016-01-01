@@ -14,4 +14,3 @@ removeTaniSegs: 1
 dumpLogs: 1
 maxNMotifsPairs: 25
 normType: 8
-
