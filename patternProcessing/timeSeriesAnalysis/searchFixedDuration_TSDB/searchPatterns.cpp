@@ -12,19 +12,14 @@ float t1,t2, ti,tf;
 
 int main( int argc , char *argv[])
 {
-    procParams_t *myProcParamsPtr;
-    fileExts_t *myFileExtsPtr;
-    int Err=0;
-    int verbos;
-    float offset=0;
-    double *offseted_data;
-    float mean2;
-
-    
     TSAparamHandle paramHand;
     TSAlogs logs;
     fileNameHandler fHandle;
-    
+    procParams_t *myProcParamsPtr;
+    fileExts_t *myFileExtsPtr;
+    int Err=0, verbos;
+    float offset=0, mean2;
+    double *offseted_data;
     
     //checking if the number of input arguments are correct 
     if(argc < 6 || argc > 7)
@@ -50,7 +45,6 @@ int main( int argc , char *argv[])
     //read file extensions from the file
     paramHand.readFileExtsInfoFile(fileExtFile);
     myFileExtsPtr = paramHand.getExtPtr();
-    
     
     fHandle.initialize(baseName, myFileExtsPtr);
     
