@@ -11,13 +11,13 @@ int main( int argc , char *argv[])
     int verbos;
     TSADIST realDist, LB_kim_FL, LB_Keogh_EQ, LB_Keogh_EC, bsf_local;
     TSAIND searchFileID;
-
-    
     procParams_t *myProcParamsPtr;
     fileExts_t *myFileExtsPtr;
     TSAparamHandle paramHand;
     TSAlogs logs;
-    fileNameHandler fHandle;    
+    fileNameHandler fHandle;   
+    float offset=0;
+    double *offseted_data; 
     
     //checking if the number of input arguments are correct 
     if(argc < 6 || argc > 7)
@@ -62,6 +62,7 @@ int main( int argc , char *argv[])
     TSData1->setSubSeqLengthsFIX(lenMotifReal);
     TSData1->genUniScaledSubSeqsVarLen();
     TSData1->normalizeSubSeqs(TSData1->procParams.repParams.normType);
+    TSData1->computeMeanSTDSubSeqs(lenMotifReal);
     
     
     
@@ -79,6 +80,11 @@ int main( int argc , char *argv[])
     TSAIND ind1, ind2;
     //printf("Hello1");
     //iterating over all the files
+
+    //allocating memory for storing offseted data (this is used for implementing octave normalization)
+    offseted_data = (double*)malloc(sizeof(double)*lenMotifReal);
+
+
     for(TSAIND ss=0; ss < fHandle.nSearchFiles; ss++)
     {
         searchFileID = ss;
@@ -95,6 +101,7 @@ int main( int argc , char *argv[])
         TSData2->setSubSeqLengthsFIX(lenMotifReal);
         TSData2->genUniScaledSubSeqsVarLen();
         TSData2->normalizeSubSeqs(TSData1->procParams.repParams.normType);
+        TSData2->computeMeanSTDSubSeqs(lenMotifReal);
        
         dtwUCR.setCandPtr(TSData2->subSeqPtr, TSData2->nSubSeqs);
         dtwUCR.computeCandEnvelops();
@@ -108,13 +115,17 @@ int main( int argc , char *argv[])
                 queryInd = ii;
                 ind1 = ii*nInterFact;
                 ind2 = jj*nInterFact;
-                
+
                 //we have to avoid overlapping patterns being detected as neighbors
-                if ((strcmp(baseName, fHandle.searchFileNames[ss])==0)&& (fabs(TSData1->subSeqPtr[ind1].sTime-TSData2->subSeqPtr[ind2].sTime)< TSData1->procParams.pattParams.blackDur))
+                if ((strcmp(baseName, fHandle.searchFileNames[ss])==0)&& ((TSData1->subSeqPtr[ind1].eTime-TSData2->subSeqPtr[ind2].sTime)*(TSData2->subSeqPtr[ind2].eTime-TSData1->subSeqPtr[ind1].sTime) >0))
                     //beware that basename and searchFile name should both have either full path or relative path but should be in the same format always.
                 {
                     continue;
                 }
+                if ((ind1==0)&&(ind2==4505)){
+                    ind1=0;
+                }
+                //printf("%d\t%d\n", ind1, ind2);
                 bsf_local = dtwUCR.bsfArray[queryInd];
                 for (int pp = 0; pp < nInterFact; pp++)
                 {
@@ -122,20 +133,35 @@ int main( int argc , char *argv[])
                     {                
                         if (paramHand.procParams.combMTX[pp][mm]==0)
                             continue;
-                        
-                        LB_kim_FL = computeLBkimFL(TSData1->subSeqPtr[ind1+pp].pData[0], TSData2->subSeqPtr[ind2+mm].pData[0], TSData1->subSeqPtr[ind1+pp].pData[lenMotifReal-1], TSData2->subSeqPtr[ind2+mm].pData[lenMotifReal-1], SqEuclidean);
+                        //Computing offset between two subSeqs, to know if they are octave transposed or not
+                        //printf("%f\t%f\n",TSData1->subSeqPtr[ind1+pp].mean, TSData2->subSeqPtr[ind2+mm].mean );
+                        offset = TSData1->estimateOffset(TSData1->subSeqPtr[ind1+pp].mean, TSData2->subSeqPtr[ind2+mm].mean);
+                        //if (offset != 0 )
+                        //    printf("Here are the values %d\t%d\t%d\n", ii, jj, ss);
+
+                        LB_kim_FL = computeLBkimFL(TSData1->subSeqPtr[ind1+pp].pData[0], TSData2->subSeqPtr[ind2+mm].pData[0] + offset , TSData1->subSeqPtr[ind1+pp].pData[lenMotifReal-1], TSData2->subSeqPtr[ind2+mm].pData[lenMotifReal-1] + offset , SqEuclidean);
                         logs.procLogs.nLB_KIM_FL++;
                         if (LB_kim_FL< bsf_local) 
                         {
-                            LB_Keogh_EQ = computeKeoghsLB(dtwUCR.envUQueryPtr[ind1+pp],dtwUCR.envLQueryPtr[ind1+pp],dtwUCR.accLB_Keogh_EQ, TSData2->subSeqPtr[ind2+mm].pData,lenMotifReal, dtwUCR.bsfArray[queryInd], SqEuclidean, 0.0);
+                            LB_Keogh_EQ = computeKeoghsLB(dtwUCR.envUQueryPtr[ind1+pp],dtwUCR.envLQueryPtr[ind1+pp],dtwUCR.accLB_Keogh_EQ, TSData2->subSeqPtr[ind2+mm].pData,lenMotifReal, dtwUCR.bsfArray[queryInd], SqEuclidean, offset);
                             logs.procLogs.nLB_Keogh_EQ++;
                             if(LB_Keogh_EQ < bsf_local)
                             {
-                                LB_Keogh_EC = computeKeoghsLB(dtwUCR.envUCandPtr[ind2+mm],dtwUCR.envLCandPtr[ind2+mm],dtwUCR.accLB_Keogh_EC, TSData1->subSeqPtr[ind1+pp].pData,lenMotifReal, dtwUCR.bsfArray[queryInd], SqEuclidean, 0.0);
+                                LB_Keogh_EC = computeKeoghsLB(dtwUCR.envUCandPtr[ind2+mm],dtwUCR.envLCandPtr[ind2+mm],dtwUCR.accLB_Keogh_EC, TSData1->subSeqPtr[ind1+pp].pData,lenMotifReal, dtwUCR.bsfArray[queryInd], SqEuclidean, -1*offset);
                                 logs.procLogs.nLB_Keogh_EC++;
                                 if(LB_Keogh_EC < bsf_local)
                                 {
-                                    realDist = dtw1dBandConst(TSData1->subSeqPtr[ind1+pp].pData, TSData2->subSeqPtr[ind2+mm].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, dtwUCR.bsfArray[queryInd], dtwUCR.accLB_Keogh_EQ);
+                                    if ((offset !=0)&&(TSData1->procParams.repParams.normType == OCTAVE_NORM)){
+                                        //creating a copy of the data with offseted samples
+                                        for (int zz=0;zz<lenMotifReal;zz++){offseted_data[zz] = TSData2->subSeqPtr[ind2+mm].pData[zz]+offset;}    //saving the offsetted copy
+                                        //Computing the actual DTW distance now!!
+                                        realDist = dtw1dBandConst(TSData1->subSeqPtr[ind1+pp].pData, offseted_data, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, dtwUCR.bsfArray[queryInd], dtwUCR.accLB_Keogh_EQ);
+                                    }
+                                    else{
+                                        //Computing the actual DTW distance now!!
+                                        realDist = dtw1dBandConst(TSData1->subSeqPtr[ind1+pp].pData, TSData2->subSeqPtr[ind2+mm].pData, lenMotifReal, lenMotifReal, dtwUCR.costMTX, SqEuclidean, dtwUCR.bandDTW, dtwUCR.bsfArray[queryInd], dtwUCR.accLB_Keogh_EQ);
+                                    }
+                                    
                                     logs.procLogs.nDTW_EA++;
                                     if(realDist < bsf_local)
                                     {
@@ -148,11 +174,7 @@ int main( int argc , char *argv[])
                 }
                 if (bsf_local <= dtwUCR.bsfArray[queryInd])
                 {
-                    if (bsf_local==0)
-                    {
-                        continue;
-                    }
-                    dtwUCR.bsfArray[queryInd] = pool.managePriorityQSear(queryInd, TSData2->subSeqPtr,  ind1, ind2, bsf_local, searchFileID, TSData1->procParams.pattParams.blackDur);
+                    dtwUCR.bsfArray[queryInd] = pool.managePriorityQSear(queryInd, TSData2->subSeqPtr,  ind1, ind2, bsf_local, searchFileID);
                     logs.procLogs.nPriorityUpdates++;
                 }
             }
@@ -164,7 +186,7 @@ int main( int argc , char *argv[])
         
         
     }
-    TSData1->dumpPatternKNNInfo(TSData1->fHandle.getOutFileName(), pool.priorityQSear, NPatternsFile1, kNN, verbos);
+    TSData1->dumpPatternKNNInfo(TSData1->fHandle.getFileName(TSData1->fHandle.fileExtPtr->knnOutFileExt), pool.priorityQSear, NPatternsFile1, kNN, verbos);
     delete TSData1;
     
     
