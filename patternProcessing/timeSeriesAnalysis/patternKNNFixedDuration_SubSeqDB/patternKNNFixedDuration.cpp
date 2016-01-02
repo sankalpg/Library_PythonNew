@@ -122,10 +122,7 @@ int main( int argc , char *argv[])
                 {
                     continue;
                 }
-                if ((ind1==0)&&(ind2==4505)){
-                    ind1=0;
-                }
-                //printf("%d\t%d\n", ind1, ind2);
+
                 bsf_local = dtwUCR.bsfArray[queryInd];
                 for (int pp = 0; pp < nInterFact; pp++)
                 {
@@ -136,8 +133,6 @@ int main( int argc , char *argv[])
                         //Computing offset between two subSeqs, to know if they are octave transposed or not
                         //printf("%f\t%f\n",TSData1->subSeqPtr[ind1+pp].mean, TSData2->subSeqPtr[ind2+mm].mean );
                         offset = TSData1->estimateOffset(TSData1->subSeqPtr[ind1+pp].mean, TSData2->subSeqPtr[ind2+mm].mean);
-                        //if (offset != 0 )
-                        //    printf("Here are the values %d\t%d\t%d\n", ii, jj, ss);
 
                         LB_kim_FL = computeLBkimFL(TSData1->subSeqPtr[ind1+pp].pData[0], TSData2->subSeqPtr[ind2+mm].pData[0] + offset , TSData1->subSeqPtr[ind1+pp].pData[lenMotifReal-1], TSData2->subSeqPtr[ind2+mm].pData[lenMotifReal-1] + offset , SqEuclidean);
                         logs.procLogs.nLB_KIM_FL++;
