@@ -33,7 +33,7 @@ def batchProc(root_dir, audioExt = '.mp3', pitchExt = '.pitchSilIntrpPP', tonicE
         tonic = np.loadtxt(fname  + tonicExt)
         pcents = BO.PitchHz2Cents(pitch, tonic)
         pdata = (time,pcents,Hop)
-        
+        '''
         ## Extract Breath Phrases
         #------------------------
         breathPhrases = findBreathPhrases(segObj,fname,pcents,Hop)
@@ -54,10 +54,10 @@ def batchProc(root_dir, audioExt = '.mp3', pitchExt = '.pitchSilIntrpPP', tonicE
         #print transcription
         
         #print "-------\nDone !!\n-------"
-        
+        '''
         
         plotSvaraDistInBPs(filename, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1)
-        for windowSize, hopSize in [[5,1],[10,1],[10,2],[15,1],[15,2],[15,3]]:
+        for windowSize, hopSize in [[5,1],[10,1]]:
 	    try:
                 plotSvaraDistInBPsCum(filename, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1, windowSize = windowSize, hopSize = hopSize)
             except:
@@ -141,7 +141,7 @@ def getSvaraDistInBPs(filename, bphraseExt = '.bphrases', transExt = '.transcrip
     for ii, bp in enumerate(svarsBP):
         for svr in bp:
             #print svar2binMap[svr['svar']], svr['svar'], ii
-            dist_mtx[svar2binMap[svr['svar']], ii] =  svr['duration']
+            dist_mtx[svar2binMap[svr['svar']], ii] +=  svr['duration']
             
             notes.append(svar2binMap[svr['svar']])            
             
@@ -154,8 +154,10 @@ def getSvaraDistInBPs(filename, bphraseExt = '.bphrases', transExt = '.transcrip
     steadiness_feat = np.sum(tx_mtx)/np.trace(tx_mtx)
     print "Steadiness ratio across bp is: %f" %steadiness_feat
     
+    fig = plt.figure(figsize=(15,10), dpi=80)
     plt.imshow(tx_mtx, interpolation = 'nearest', origin = 'lower', cmap = plt.get_cmap('OrRd'))
     #plt.show()
+    saveFigure(fig, fname, featureName = '_nyasTxMtx')
     
     #print tx_mtx
     
@@ -182,7 +184,7 @@ def getSvaraDistInBPsCum(filename, bphraseExt = '.bphrases', transExt = '.transc
     for ii in range(0, nFrames):
         for jj in range(windowSize):
             for svr in svarsBP[ii*hopSize+jj]:
-                dist_mtx_cum[svar2binMap[svr['svar']], ii] =  svr['duration']
+                dist_mtx_cum[svar2binMap[svr['svar']], ii] +=  svr['duration']
         
         if np.max(dist_mtx_cum[:,ii]) != 0:
             dist_mtx_cum[:,ii] = dist_mtx_cum[:,ii]/np.max(dist_mtx_cum[:,ii])
@@ -401,10 +403,10 @@ def getBreathPhraseStatistics(filename, endTime, bphraseExt = '.bphrases', trans
 def saveFigure(fig, fname, featureName):
     '''
     '''
-    Filename_pdf = (''.join([fname, featureName,'.pdf']))
+    #Filename_pdf = (''.join([fname, featureName,'.pdf']))
     Filename_png = (''.join([fname, featureName,'.png']))
     plt.title(featureName)
-    plt.savefig(Filename_pdf, bbox_inches='tight')
+    #plt.savefig(Filename_pdf, bbox_inches='tight')
     plt.savefig(Filename_png, bbox_inches='tight')    
     
 
@@ -414,7 +416,7 @@ def plotHist(parameter, bins = 100, normed=0):
     width = 0.7 * (bins[1] - bins[0])
     center = (bins[:-1] + bins[1:]) / 2
     plt.bar(center, hist, align='center', width=width)
-    plt.show()
+    #plt.show()
     return hist, bins
 
 
