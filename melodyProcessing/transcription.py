@@ -4,8 +4,6 @@ import string
 
 NULL_TOKEN = None
 
-# LEVELS = range(-500, 2701, 100)
-# CODES = string.ascii_letters[:len(LEVELS)]
 LEVELS = range(-800, 2501, 100)
 NOTES = ['G','m','M','P','d','D','n','N','S','r','R','g']*3
 CODES = string.ascii_letters[:len(NOTES)]
@@ -13,11 +11,12 @@ CODES = string.ascii_letters[:len(NOTES)]
 
 class SvarTranscription:
     
-    def __init__(self, pdata):
+    def __init__(self, pdata, endTime):
         vals = []
         self.pdata = pdata
         self.start = int(0)
-        self.end = int(len(self.pdata[1])*self.pdata[2])
+        #self.end = int(len(self.pdata[1])*self.pdata[2])
+        self.end = endTime
         
         
     def perform_transcription(self, ignoreNotes, thres=8, width=35, verbose=False):

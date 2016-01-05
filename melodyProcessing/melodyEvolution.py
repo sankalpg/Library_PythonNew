@@ -27,7 +27,7 @@ def batchProc(root_dir, audioExt = '.mp3', pitchExt = '.pitchSilIntrpPP', tonicE
         #======================
         ## This is done for all
         #======================
-        '''
+        
         fname, ext = os.path.splitext(filename)
         pitch, time, Hop = BO.readPitchFile(fname + pitchExt)
         tonic = np.loadtxt(fname  + tonicExt)
@@ -44,22 +44,26 @@ def batchProc(root_dir, audioExt = '.mp3', pitchExt = '.pitchSilIntrpPP', tonicE
         #print svaraSemitone, ignoreNotes
         print "Notes being ignored are: %s" % ignoreNotes
         
+        ## Read valid region for evolution
+        #---------------------------------
+        endTime = readValidVistarRegion(fname)
+        
         ## Svara transcription
         #---------------------
-        transcription = transcribePitch(fname,pdata,ignoreNotes)
+        transcription = transcribePitch(fname,pdata,ignoreNotes, endTime)
         #print transcription
         
-        print "-------\nDone !!\n-------"
-        '''
+        #print "-------\nDone !!\n-------"
+        
         
         plotSvaraDistInBPs(filename, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1)
-        #for windowSize, hopSize in [[5,1],[10,1],[10,2],[15,1],[15,2],[15,3]]:
-	    #try:
-                #plotSvaraDistInBPsCum(filename, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1, windowSize = windowSize, hopSize = hopSize)
-            #except:
-	        #print "Problem occured in file: %s" %filename
-	        #pass
-        #getBreathPhraseStatistics(filename, bphraseExt = '.bphrases', transExt = '.transcription')
+        for windowSize, hopSize in [[5,1],[10,1],[10,2],[15,1],[15,2],[15,3]]:
+	    try:
+                plotSvaraDistInBPsCum(filename, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1, windowSize = windowSize, hopSize = hopSize)
+            except:
+	        print "Problem occured in file: %s" %filename
+	        pass
+        getBreathPhraseStatistics(filename, endTime, bphraseExt = '.bphrases', transExt = '.transcription')
         
         print "-------\nDone !!\n-------"
         
@@ -98,11 +102,18 @@ def findValidSvaras(pitch,tonic):
     for i in range(len(ignoreNoteLevels)):
         ignoreNotes.append(noteNames[octaveNotes.index(ignoreNoteLevels[i])])        
     return svaraSemitone, ignoreNotes
+
+
+def readValidVistarRegion(fname):
+    
+    validTimeFilename = (''.join([fname,'.endSec']))
+    endTime = np.loadtxt(validTimeFilename)
+    return endTime
   
   
-def transcribePitch(fname,pdata,ignoreNotes):  
+def transcribePitch(fname,pdata,ignoreNotes,endTime):  
   
-    tsObj = ts.SvarTranscription(pdata)
+    tsObj = ts.SvarTranscription(pdata, endTime)
     transcription = np.array(tsObj.perform_transcription(ignoreNotes, thres=60, width=35, verbose=False)) 
     #print transcription
     transcriptionFilename = (''.join([fname,'.transcription']))
@@ -141,9 +152,7 @@ def getSvaraDistInBPs(filename, bphraseExt = '.bphrases', transExt = '.transcrip
         tx_mtx[notes[i], notes[i+1]] += 1 
     
     steadiness_feat = np.sum(tx_mtx)/np.trace(tx_mtx)
-    steadiness_feat_norm = steadiness_feat/len(svarsBP)
     print "Steadiness ratio across bp is: %f" %steadiness_feat
-    print "Nornalised steadiness ratio across bp is: %f" %steadiness_feat_norm
     
     plt.imshow(tx_mtx, interpolation = 'nearest', origin = 'lower', cmap = plt.get_cmap('OrRd'))
     #plt.show()
@@ -212,7 +221,7 @@ def plotSvaraDistInBPs(filename, bphraseExt = '.bphrases', transExt = '.transcri
     fname, ext = os.path.splitext(filename)
     print "Plotting svara distribution (salience) for each bp..."
     #plt.show()
-    #saveFigure(fig, fname, featureName = '_svaraDist')
+    saveFigure(fig, fname, featureName = '_svaraDist')
     
     
 def getSvarasInBreathPhrases(filename, bphraseExt = '.bphrases', transExt = '.transcription'):
@@ -242,9 +251,58 @@ def getSvarasInBreathPhrases(filename, bphraseExt = '.bphrases', transExt = '.tr
         output.append(bpSvaras)
     
     return output
+
+
+
+def plotSvarRatioDistribution(filename, bphraseExt = '.bphrases', transExt = '.transcription', within_bp = 1, plotName = -1):
+    """
+    This function computes ratio of NC2 possibilities of N notes in each breath phrase. Ratio is taken as length_long/length_short. The ratio is appended for all the BPs in the file
+    """
+    
+    #obtaining svaras in bps 
+    bps = getSvarasInBreathPhrases(filename, bphraseExt = bphraseExt, transExt = transExt)
+    
+    durations = []
+    for bp in bps:
+        for note in bp:
+            durations.append(note['duration'])
+    print durations
+    plotIOIHist(durations)    
+    
+    ratio = []
+    note_cnt = 0
+    if within_bp ==1:
+        for bp in bps:
+            durations = []
+            for note in bp:
+                note_cnt+=1
+                durations.append(note['duration'])
+            for ii in range(len(durations)):
+                for jj in range(ii+1, len(durations)):
+                    ratio.append(np.max([durations[ii], durations[jj]])/np.min([durations[ii], durations[jj]]))
+    else:
+        durations = []
+        for bp in bps:
+            for note in bp:
+                note_cnt+=1
+                durations.append(note['duration'])
+        for ii in range(len(durations)):
+            for jj in range(ii+1, len(durations)):
+                ratio.append(np.max([durations[ii], durations[jj]])/np.min([durations[ii], durations[jj]]))
+                    
+    print len(ratio), len(bps), note_cnt
+    if within_bp == 0:
+        bins = np.linspace(1, 16, 16*64)
+    else:
+        bins = np.linspace(1, 16, 16*8)
+    hist = np.histogram(ratio, bins = bins)
+    #plt.bar(hist[0], hist[1][:-1])
+    plt.plot(hist[1][:-1], hist[0])
+    plt.show()
     
     
-def getBreathPhraseStatistics(filename, bphraseExt = '.bphrases', transExt = '.transcription'):  
+    
+def getBreathPhraseStatistics(filename, endTime, bphraseExt = '.bphrases', transExt = '.transcription'):  
     """
     This function computes feature statistics of all the svaras within breath phrases
     """
@@ -253,6 +311,8 @@ def getBreathPhraseStatistics(filename, bphraseExt = '.bphrases', transExt = '.t
     transFile = fname + transExt
     
     bphrases = np.loadtxt(bpFile)
+    bphrases = bphrases[:(np.where(bphrases[:,0] >= endTime)[0][0]),:]
+
     svaras = np.loadtxt(transFile)
     svarsBP = []
     bpSvaraDurDist = []
@@ -348,13 +408,13 @@ def saveFigure(fig, fname, featureName):
     plt.savefig(Filename_png, bbox_inches='tight')    
     
 
-def plotHist(parameter, bins = 100, normed=1):
+def plotHist(parameter, bins = 100, normed=0):
     
-    hist, bins = np.histogram(parameter, bins = 100, normed=1)
+    hist, bins = np.histogram(parameter, bins = 100, normed=normed)
     width = 0.7 * (bins[1] - bins[0])
     center = (bins[:-1] + bins[1:]) / 2
     plt.bar(center, hist, align='center', width=width)
-    #plt.show()
+    plt.show()
     return hist, bins
 
 
@@ -365,7 +425,7 @@ def plotIOIHist(parameter):
     ioi = np.ediff1d(parameter)
     #print ioi 
     
-    hist, bins = plotHist(ioi, bins = 100, normed=1)
+    hist, bins = plotHist(ioi, bins = 100, normed=0)
     return hist, bins
     
     
