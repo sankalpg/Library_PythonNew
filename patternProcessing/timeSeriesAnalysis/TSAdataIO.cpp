@@ -24,6 +24,8 @@ TSAparamHandle::TSAparamHandle()
     memset(fileExts.dumpLogFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
     memset(fileExts.outFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
     memset(fileExts.srchQueryFileExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
+    memset(fileExts.blackListSubSeqExt, '\0', sizeof(char)*MAX_FEXT_CHARS);
+    
 
     //I need to initialize other structure members as well, #TODO
     procParams.distParams.distNormType = PATH_LEN;
@@ -202,6 +204,8 @@ int TSAparamHandle::readFileExtsInfoFile(char *fileExtsFile)
         if (strcmp(field, "dumpLogFileExt:")==0){strcat(fileExts.dumpLogFileExt, value);}
         if (strcmp(field, "outFileExt:")==0){strcat(fileExts.outFileExt, value);}
         if (strcmp(field, "srchQueryFileExt:")==0){strcat(fileExts.srchQueryFileExt, value);}
+        if (strcmp(field, "blackListSubSeqExt:")==0){strcat(fileExts.blackListSubSeqExt, value);}
+        
         
 
 
@@ -1951,7 +1955,7 @@ char* fileNameHandler::getBlackListSegFileName()
 {
     memset(fileName, '\0', sizeof(char)*MAX_FNAME_CHARS);
     strcat(fileName, baseName);
-    strcat(fileName, fileExtPtr->blackTimeExt);
+    strcat(fileName, fileExtPtr->blackListSubSeqExt);
 
     return fileName;
 

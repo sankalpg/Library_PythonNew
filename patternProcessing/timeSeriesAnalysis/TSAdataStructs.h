@@ -151,6 +151,7 @@ typedef struct fileExts
     char tsFileExt[MAX_FEXT_CHARS];
     char tonicExt[MAX_FEXT_CHARS];
     char blackTimeExt[MAX_FEXT_CHARS];
+    char blackListSubSeqExt[MAX_FEXT_CHARS];
     char subSeqFileExt[MAX_FEXT_CHARS];
     char subSeqTNFileExt[MAX_FEXT_CHARS]; //this is subSeqs which are already tonic normalized
     char subSeqInfoFileExt[MAX_FEXT_CHARS];
