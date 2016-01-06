@@ -33,7 +33,7 @@ def batchProc(root_dir, audioExt = '.mp3', pitchExt = '.pitchSilIntrpPP', tonicE
         tonic = np.loadtxt(fname  + tonicExt)
         pcents = BO.PitchHz2Cents(pitch, tonic)
         pdata = (time,pcents,Hop)
-        '''
+        
         ## Extract Breath Phrases
         #------------------------
         breathPhrases = findBreathPhrases(segObj,fname,pcents,Hop)
@@ -54,7 +54,7 @@ def batchProc(root_dir, audioExt = '.mp3', pitchExt = '.pitchSilIntrpPP', tonicE
         #print transcription
         
         #print "-------\nDone !!\n-------"
-        '''
+        
         
         plotSvaraDistInBPs(filename, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1)
         for windowSize, hopSize in [[5,1],[10,1]]:
@@ -154,14 +154,9 @@ def getSvaraDistInBPs(filename, bphraseExt = '.bphrases', transExt = '.transcrip
     steadiness_feat = np.sum(tx_mtx)/np.trace(tx_mtx)
     print "Steadiness ratio across bp is: %f" %steadiness_feat
     
-    fig = plt.figure(figsize=(15,10), dpi=80)
-    plt.imshow(tx_mtx, interpolation = 'nearest', origin = 'lower', cmap = plt.get_cmap('OrRd'))
-    #plt.show()
-    saveFigure(fig, fname, featureName = '_nyasTxMtx')
-    
     #print tx_mtx
     
-    return dist_mtx
+    return dist_mtx, tx_mtx
 
 
 
@@ -217,13 +212,19 @@ def plotSvaraDistInBPs(filename, bphraseExt = '.bphrases', transExt = '.transcri
     """
     
     fig = plt.figure(figsize=(15,10), dpi=80)
-    mtx = getSvaraDistInBPs(filename, bphraseExt = bphraseExt, transExt = transExt)
+    mtx, tx_mtx = getSvaraDistInBPs(filename, bphraseExt = bphraseExt, transExt = transExt)
     plt.imshow(mtx, interpolation = 'nearest', origin = 'lower', cmap = plt.get_cmap('OrRd'))
 
     fname, ext = os.path.splitext(filename)
     print "Plotting svara distribution (salience) for each bp..."
     #plt.show()
     saveFigure(fig, fname, featureName = '_svaraDist')
+    
+    fig = plt.figure(figsize=(15,10), dpi=80)
+    plt.imshow(tx_mtx, interpolation = 'nearest', origin = 'lower', cmap = plt.get_cmap('OrRd'))
+    #plt.show()
+    print "Plotting svara transition matrix for each bp..."
+    saveFigure(fig, fname, featureName = '_svaraTxMtx')
     
     
 def getSvarasInBreathPhrases(filename, bphraseExt = '.bphrases', transExt = '.transcription'):
