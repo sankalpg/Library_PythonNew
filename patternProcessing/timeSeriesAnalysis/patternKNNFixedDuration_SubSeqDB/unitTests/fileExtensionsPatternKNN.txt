@@ -1,11 +1,7 @@
 tsFileExt: .pitch
 tonicExt: .tonic
 blackTimeExt: .taniSegKNN
-logFileExt: .searchLogs
-paramsDumpExt: .searchParams
-outFileExt: .KNN
-mappFileExt: .searchMap
-searchListExt: .flist
-queryFileExt: .anot
+knnOutFileExt: .KNN
+srchListExt: .flist
 subSeqFileExt: .patternData
 subSeqInfoFileExt: .patternInfo

@@ -16,4 +16,5 @@ maxNMotifsPairs: 25
 distType: 1
 DTWType: 1
 pitchHop: 0.0222
+normType: 8
 
