@@ -19,8 +19,8 @@ import batchProcessing as BP
 myUser = 'sankalp'
 #myDatabase = 'motifHindustani_CONF1'
 
-serverPrefix = "/homedtic/sgulati/motifDiscovery/dataset/PatternProcessing_DB/unsupervisedDBs/carnaticDB/Carnatic40RagaICASSP2016/audio/"
-localPrefix = "/media/Data/Datasets/PatternProcessing_DB/unsupervisedDBs/hindustaniDB/Hindustani26Ragas/audio/"
+serverPrefix = "/homedtic/sgulati/motifDiscovery/dataset/PatternProcessing_DB/unsupervisedDBs/hindustaniDB/Hindustani30Ragas/audio/"
+localPrefix = "/media/Data/Datasets/PatternProcessing_DB/unsupervisedDBs/hindustaniDB/Hindustani30Ragas/audio/"
 
 
 def resetAllTables():
@@ -326,11 +326,11 @@ def createPatternMatchTable(root_dir, logFile, myDatabase=''):
     
     t1 = time.time()
     #important stuff
-    motifDiscExt = '.disPatt_2s'
+    motifDiscExt = '.disPatt_2s_config3'
     #motifSearchExt = ['.srhPatts1SqEuclidean', '.srhPatts1CityBlock', '.srhPatts1ShiftCityBlock', '.srhPatts1ShiftLinExp']
-    motifSearchExt = ['.srhPatt_2sSqEuclidean']
+    motifSearchExt = ['.srchPatt_2s_config3SqEuclidean']
     mainDistanceIndex = 0           # this is basically index of extions stored in motifSearchExt which is the main distance files
-    motifSearchMappExt = '.srhMap_2s'
+    motifSearchMappExt = '.srchMap_2s_config3'
     
     #lets get all the files in the root_dir
     fileNames = BP.GetFileNamesInDir(root_dir, motifDiscExt)
