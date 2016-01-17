@@ -627,7 +627,7 @@ def raga_recognition_V2(out_dir, fileListFile, thresholdBin, pattDistExt, networ
         count_vect = CountVectorizer(stop_words = stop_words)
         tfidf_transformer = TfidfTransformer(norm=norm_tfidf, smooth_idf=False)
         mlObj  = ml.experimenter()
-        mlObj.setExperimentParams(nExp = n_expts, typeEval = ("kFoldCrossVal",n_fold), nInstPerClass = -1, classifier = classifier, balanceClasses=1)
+        mlObj.setExperimentParams(nExp = n_expts, typeEval = ("kFoldCrossVal",n_fold), nInstPerClass = -1, classifier = classifier, balanceClasses=1)   #Note that only balanced classes option does stratified kfold exp
         #NOTE: balanceClasses will make sure each fold has equal number of samples from each class.
         
         docs_train = [] # this time we will use all the document in out dataset
@@ -642,7 +642,7 @@ def raga_recognition_V2(out_dir, fileListFile, thresholdBin, pattDistExt, networ
         features = tfidf_transformer.fit_transform(count_all) 
         if False:
             dump = {'features': features.toarray(), 'labels': np.array(label_list)}
-            pickle.dump(dump, open('features_dump_480.pkl','w'))
+            pickle.dump(dump, open('features_dump_300_Hindustani.pkl','w'))
             return True
         mlObj.setFeaturesAndClassLabels(features.toarray(), np.array(raga_list))
         mlObj.runExperiment()
