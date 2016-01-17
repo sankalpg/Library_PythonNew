@@ -195,7 +195,7 @@ int randomizeGraph(PUNGraph Graph, int NSwapsMultiple)
 int main(int argc, char* argv[])
 {
     FILE *fp1, *fp2;
-    char *listFile, *patternKNNExt,  tempFilename[400]= {'\0'}, *outputNetworkFile, patternKNNFile[400]= {'\0'}, outFileName[400]= {'\0'}, outInfoFile[400]= {'\0'};;
+    char *listFile, *patternKNNExt, *config_id tempFilename[400]= {'\0'}, *outputNetworkFile, patternKNNFile[400]= {'\0'}, outFileName[400]= {'\0'}, outInfoFile[400]= {'\0'};;
     int verbos;
     int ii=0, jj=0;
     long long int ind1, ind2;
@@ -206,7 +206,7 @@ int main(int argc, char* argv[])
     PUNGraph Graph = TUNGraph::New();
 
 
-    if(argc < 5 || argc > 6)
+    if(argc < 6 || argc > 7)
     {
         printf("\nInvalid number of arguments!!!\n");
         exit(1);
@@ -216,7 +216,8 @@ int main(int argc, char* argv[])
     listFile = argv[2];
     outputNetworkFile = argv[3];
     thresholdBin = atoi(argv[4]);
-    if( argc == 6 ){verbos = atoi(argv[5]);}
+    config_id = atoi(argv[5]);
+    if( argc == 7 ){verbos = atoi(argv[6]);}
 
     //Generating graph based on the distances between the patterns
     createPatternGraphPerCollection(listFile, patternKNNExt, Graph, 0, ThshldArray[thresholdBin-1]);
@@ -225,7 +226,7 @@ int main(int argc, char* argv[])
     clusterCoff = TSnap::GetClustCf(Graph);
     
     //dumping the computed clustering coefficient into an file
-    sprintf(outFileName, "%d_ClusteringCoff.txt", thresholdBin);
+    sprintf(outFileName, "%d_ClusteringCoff_%s.txt", thresholdBin, config_id);
     fp2 = fopen(outFileName, "w");
     fprintf(fp2, "%f\n", clusterCoff);
     fclose(fp2);
@@ -250,7 +251,7 @@ int main(int argc, char* argv[])
     clusterCoff = TSnap::GetClustCf(Graph);
 
     //Dumping the clustering coefficient of the graph in an file
-    sprintf(outFileName, "%d_ClusteringCoff_RANDOM.txt", thresholdBin);
+    sprintf(outFileName, "%d_ClusteringCoff_RANDOM_%s.txt", thresholdBin, config_id);
     fp2 = fopen(outFileName, "w");
     fprintf(fp2, "%f\n", clusterCoff);
     fclose(fp2);
