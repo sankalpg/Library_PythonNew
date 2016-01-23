@@ -293,58 +293,19 @@ class experimenter(classifiers):
         for exp_cnt in range(0,self.nExp):
             
             train_test_ind=[]
-            if self.typeEval[0] =='kFoldCrossVal':
-                
-                if self.balanceClasses:
-                    classMapp = []
-                    minInstPerClass = sys.float_info.max
-                    for i in range(0,len(self.cNames)):
-                        classMapp.append(np.where(self.classLabelsInt == i)[0])
-                        if(len(classMapp[i])<minInstPerClass):
-                            minInstPerClass = len(classMapp[i])
-                    if self.nInstPerClass==-1:
-                        self.nInstPerClass = minInstPerClass
-                    
-                    expIndices = np.array([], dtype = int)  # this array will contain indices of instances which are to be used in one experiment
-                    for j in range(0,len(self.cNames)):     #reshuffling the order in every experiment before selecting the samples for each experiment
-                        np.random.shuffle(classMapp[j])
-                        expIndices = np.append(expIndices, classMapp[j][:self.nInstPerClass])
-                    
-                    if self.typeEval[0] =="kFoldCrossVal":
-                        if (self.typeEval[1]==-1):
-                            n_folds = expIndices.shape[0]
-                        else:
-                            n_folds = self.typeEval[1]
-                            
-                        np.random.shuffle(expIndices)
-                        kfold = crossVal.StratifiedKFold(self.classLabelsInt[expIndices], n_folds=n_folds, indices=True)
-                        for train, test in kfold:
-                            train_test_ind.append((train,test))
-                    
-                else:
-                    expIndices = np.arange(self.featuresSelected.shape[0])
-                        
-                    if self.typeEval[0] =="kFoldCrossVal":
-                        if (self.typeEval[1]==-1):
-                            n_folds = expIndices.shape[0]
-                        else:
-                            n_folds = self.typeEval[1]
-                            
-                        np.random.shuffle(expIndices)
-                        kfold = crossVal.KFold(expIndices.shape[0], n_folds=n_folds, indices=True)
-                        for train, test in kfold:
-                            train_test_ind.append((train,test))
 
-            elif self.typeEval[0] =='leaveOneID':
+            # depending on the type of evaluation and its parameters (n_fold and balancing classes or not) determining training and testing indexes
+            if self.typeEval[0] =='leaveOneID': #NOTE: that this is leave one ID (id is given to a bunch of features, eg. all the ones from a single file, do not confuse it with classes)
                 
-                expIndices = np.arange(self.featuresSelected.shape[0])
+                expIndices = np.arange(self.featuresSelected.shape[0])  
                 #counting unique ids
                 idsArray = np.unique(self.filterArray)
                 nInstPerClass = []
                 for idfile in idsArray:
-                    testInd = np.where(self.filterArray==idfile)[0]
+                    testInd = np.where(self.filterArray==idfile)[0] #reservind all the features for this specific file id for testing and the rest for training
                     restInd = np.setdiff1d(expIndices, testInd)
                     
+                    # if the users have asked for balancing the dataset (equal number of instances per clases), this this evaluation mode, only the training set changes!
                     if self.balanceClasses:
                         classMapp = []
                         minInstPerClass = sys.float_info.max
@@ -363,9 +324,58 @@ class experimenter(classifiers):
                             np.random.shuffle(classMapp[j])
                             trainInd = np.append(trainInd, classMapp[j][:nInstPerClass[-1]])
                     else:
+                        # if no balancing is required, then entire training set is used for training (no instances are removed because of balancing out)
                         trainInd = restInd
-                
+                    
                     train_test_ind.append((trainInd,testInd))
+
+            elif  self.typeEval[0] == 'kFoldCrossVal' or self.typeEval[0] == 'kStratFoldCrossVal' or self.typeEval[0] == 'LeaveOneOut':
+                # In the context of all these mode of evaluations, balancing classes means selecting equal number of feature vectors from every class.
+                if self.balanceClasses:
+                    classMapp = []
+                    minInstPerClass = sys.float_info.max
+                    for i in range(0,len(self.cNames)):
+                        classMapp.append(np.where(self.classLabelsInt == i)[0])
+                        if(len(classMapp[i])<minInstPerClass):
+                            minInstPerClass = len(classMapp[i])
+                    if self.nInstPerClass==-1:
+                        self.nInstPerClass = minInstPerClass
+                    
+                    expIndices = np.array([], dtype = int)  # this array will contain indices of instances which are to be used in one experiment
+                    for j in range(0,len(self.cNames)):     #reshuffling the order in every experiment before selecting the samples for each experiment
+                        np.random.shuffle(classMapp[j])
+                        expIndices = np.append(expIndices, classMapp[j][:self.nInstPerClass])
+                else:
+                    #if there is no balancing asked by the user then just take all the features
+                    expIndices = np.arange(self.featuresSelected.shape[0])
+
+
+                if self.typeEval[0] =='kStratFoldCrossVal':
+                    if (self.typeEval[1]==-1):
+                        n_folds = expIndices.shape[0]
+                    else:
+                        n_folds = self.typeEval[1]
+
+                    np.random.shuffle(expIndices)
+                    kfold = crossVal.StratifiedKFold(self.classLabelsInt[expIndices], n_folds=n_folds, indices=True)
+                    for train, test in kfold:
+                        train_test_ind.append((train,test))
+                
+                elif self.typeEval[0] =='kFoldCrossVal':
+                    if (self.typeEval[1]==-1):
+                        n_folds = expIndices.shape[0]
+                    else:
+                        n_folds = self.typeEval[1]
+                        
+                    np.random.shuffle(expIndices)
+                    kfold = crossVal.KFold(expIndices.shape[0], n_folds=n_folds, indices=True)
+                    for train, test in kfold:
+                        train_test_ind.append((train,test))
+
+                elif self.typeEval[0] =='LeaveOneOut':
+                    kfold = crossVal.LeaveOneOut(expIndices.shape[0])
+                    for train, test in kfold:
+                        train_test_ind.append((train,test))           
             else:
                 print "Please provide a valid evaluation type"
 
