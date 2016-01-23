@@ -745,8 +745,19 @@ class melodySegmentation():
         for ii, flatSegs in enumerate(flatSegments):
             #print len(segPoints[:,0]), len(segPoints[:,1]), flatSegs[0], flatSegs[1]
             indStart = np.where(segPoints>=flatSegs[0])[0]
+            indStart2 = np.argmin(abs(segPoints-flatSegs[0]))
+            abs_diff = abs(segPoints[indStart2]-flatSegs[0])
+            # if the nearest grid point is very close select that, otherwise the next one to start the segment
+            if abs_diff <= 2 :
+                indStart = np.append(indStart, indStart2)
+
             indEnd = np.where(segPoints<=flatSegs[1])[0]
+            indEnd2 = np.argmin(abs(segPoints-flatSegs[1]))
+            abs_diff = abs(segPoints[indEnd2]-flatSegs[1])
+            if abs_diff <= 2:
+                indEnd = np.append(indEnd, indEnd2)
             indOverlap = np.intersect1d(indStart, indEnd)
+            indOverlap = np.sort(indOverlap)
             if len(indOverlap)>0:
                 finalFlatSegs.append([segPoints[indOverlap[0]], segPoints[indOverlap[-1]]])
             #if len(indStart)>0 and len(indEnd)>0:
