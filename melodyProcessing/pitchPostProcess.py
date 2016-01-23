@@ -202,15 +202,22 @@ def gaussianFilterPitchContour(pitch, tonic=-1, hopSize=-1, filtLen=0.1, sigma=0
 
   #because of the low pass filtering many points close to silence regions are pulled down. Lets restore these points by substituting them with the original pitch sequence
   silSegs = seg.groupIndices(indSil)
-  if silSegs[0,0]==0:#starting with zero
-    silSegs = np.delete(silSegs,0,axis=0)
-  if silSegs[-1,1]>=N-1:
-    silSegs = np.delete(silSegs,silSegs.shape[0]-1,axis=0)
+  # if silSegs[0,0]==0:#starting with zero
+  #   silSegs = np.delete(silSegs,0,axis=0)
+  # if silSegs[-1,1]>=N-1:
+  #   silSegs = np.delete(silSegs,silSegs.shape[0]-1,axis=0)
   for silSeg in silSegs:
-    indLeft = np.arange(silSeg[0]-(filtSize-1),silSeg[0])
-    indRight = np.arange(silSeg[1]+1, silSeg[1]+(filtSize))
-    pitchOut[indLeft] = pitchCents[indLeft]
-    pitchOut[indRight] = pitchCents[indRight]
+    if silSeg[0]==0:#starting with zero
+      indRight = np.arange(silSeg[1]+1, silSeg[1]+(filtSize))
+      pitchOut[indRight] = pitchCents[indRight]
+    elif silSeg[1]>=N-1:
+      indLeft = np.arange(silSeg[0]-(filtSize-1),silSeg[0])
+      pitchOut[indLeft] = pitchCents[indLeft]  
+    else:
+      indLeft = np.arange(silSeg[0]-(filtSize-1),silSeg[0])
+      indRight = np.arange(silSeg[1]+1, silSeg[1]+(filtSize))
+      pitchOut[indLeft] = pitchCents[indLeft]
+      pitchOut[indRight] = pitchCents[indRight]
   
   #if centConverted==1:
   #  indHighdiff = np.where(abs(pitchOut-pitchCents)>600)[0]
@@ -541,7 +548,7 @@ def postProcessPitchSequence(pitch, tonic=-1, hopSize=-1, filtDurMed=0.05, filtD
 
   return pitchIntrpAll
 
-def batchProcessPitchPostProcess(root_dir, searchExt = '.wav', pitchExt= '.tpe', tonicExt = '.tonic', outExt = '.tpeOctCorr', filtDurMed=0.05, filtDurGaus=0.05, winDurOctCorr=0.3, sigmaGauss=0.025, fillSilDur= 0.25, interpAllSil=False, upSampleFactor = 1):
+def batchProcessPitchPostProcess(root_dir, searchExt = '.wav', pitchExt= '.tpe', tonicExt = '.tonic', outExt = '.tpeOctCorr', filtDurMed=0.05, filtDurGaus=0.05, winDurOctCorr=0.3, sigmaGauss=0.025, fillSilDur= 0.25, interpAllSil=False, upSampleFactor = 1, over_write = 1):
   """
   Wrapper to batch process pitch post processing
   """
@@ -552,14 +559,14 @@ def batchProcessPitchPostProcess(root_dir, searchExt = '.wav', pitchExt= '.tpe',
     try:
         timePitch = np.loadtxt(fname+pitchExt)
     except:
-	continue
+        continue
     hopSize = timePitch[1,0]-timePitch[0,0]
     try:
-	tonic = float(np.loadtxt(fname + tonicExt))
+        tonic = float(np.loadtxt(fname + tonicExt))
     except:
-	continue
-    if os.path.isfile(fname+outExt):
-	continue
+        continue
+    if os.path.isfile(fname+outExt) and over_write == 0:
+        continue
     pitchOut = postProcessPitchSequence(timePitch[:,1], tonic= tonic, hopSize = hopSize, filtDurMed=filtDurMed, filtDurGaus=filtDurGaus, winDurOctCorr=winDurOctCorr, sigmaGauss=sigmaGauss, fillSilDur= fillSilDur, interpAllSil=interpAllSil, upSampleFactor = upSampleFactor)
     TStamps = float(hopSize)*float(upSampleFactor)*np.arange(pitchOut.size)
     timePitch = np.array([TStamps, pitchOut]).transpose()
