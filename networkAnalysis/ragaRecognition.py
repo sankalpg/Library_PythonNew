@@ -23,6 +23,9 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../machineLearning'))
 import mlWrapper as ml
 from sklearn import preprocessing
 from scipy.sparse import csc
+import codecs
+from mutagen.mp3 import MP3
+from mutagen import easyid3
 
 
 INF = np.finfo(np.float).max
@@ -42,11 +45,22 @@ INF = np.finfo(np.float).max
 #myUser = 'sankalp'
 #myDatabase = 'ISMIR2015_10RAGA_TONICNORM'
 
+def get_mbid_from_mp3(mp3_file):
+    """
+    fetch MBID form an mp3 file
+    """
+    try:
+        mbid = easyid3.ID3(mp3_file)['UFID:http://musicbrainz.org'].data
+    except:
+        print "problem reading mbid for file %s\n" % mp3_file
+        raise
+    return mbid
 
-def get_mbids_raagaIds_for_collection(database = '', user= ''):
+
+def get_mbids_raagaIds_for_collection(file_list, database = '', user= ''):
     
     cmd = "select raagaid, mbid from file"
-    
+    #first lets get all the raga mbid mapp in a single shot
     try:
         con = psy.connect(database=database, user=user) 
         cur = con.cursor()
@@ -64,9 +78,21 @@ def get_mbids_raagaIds_for_collection(database = '', user= ''):
     if con:
         con.close()
     
+    #now lets filter this list by the files mentioned in the file_list
+    lines = codecs.open(file_list, 'r', encoding = 'utf-8')
+    mbids = []
+    for line in lines:
+        if line.strip() == '':
+            continue
+        try:
+            mbids.append(get_mbid_from_mp3(line.strip()+'.mp3'))
+        except:
+            print "File %s coundn't fetch any mbid"%line.strip()
+    
     raga_mbid= []
     for r in results:
-        raga_mbid.append([r[0], r[1]])
+        if r[1] in mbids:
+            raga_mbid.append([r[0], r[1]])
     
     return raga_mbid
 
@@ -462,6 +488,7 @@ def raga_recognition_V2(out_dir, scratch_dir, fileListFile, thresholdBin, pattDi
     #scratch_dir = '/home/sankalp/Work/Work_PhD/library_pythonnew/networkAnalysis/scratch_raga_recognition'
     fileListFile_basename  = os.path.basename(fileListFile)
     root_filename = os.path.join(scratch_dir, 'network'+'_'+ str(fileListFile_basename.replace('.','_')) +'_'+ myDatabase+'_'+str(thresholdBin)+'_'+pattDistExt.replace('.',''))
+    #root_filename = os.path.join(scratch_dir, 'network'+'_'+ myDatabase+'_'+str(thresholdBin)+'_'+pattDistExt.replace('.',''))
     
     #constructing the network
     t1 = time.time()
@@ -494,7 +521,7 @@ def raga_recognition_V2(out_dir, scratch_dir, fileListFile, thresholdBin, pattDi
     print "time taken = %f"%(t2-t1)    
     
     ##########Loop for N_Fold cross validataion##############
-    raga_mbid = get_mbids_raagaIds_for_collection(myDatabase, myUser)
+    raga_mbid = get_mbids_raagaIds_for_collection(fileListFile, myDatabase, myUser)
     raga_list = [r[0] for r in raga_mbid]
     mbid_list = [r[1] for r in raga_mbid]
     raga_map, map_raga = generate_raga_mapping(raga_list)
@@ -517,7 +544,13 @@ def raga_recognition_V2(out_dir, scratch_dir, fileListFile, thresholdBin, pattDi
         #In this variant for each fold we generate a training tf-idf vector. Meaning, vocabulary for each fold is solely determined by the training examples#    
         
         #initializing crossfold object
-        cval = cross_val.StratifiedKFold(label_list, n_folds=n_fold, shuffle = True, random_state=np.random.randint(100))
+        if type_eval[0] == 'kStratFoldCrossVal':
+            cval = cross_val.StratifiedKFold(label_list, n_folds=type_eval[1], shuffle = True, random_state=np.random.randint(100))
+        elif  type_eval[0] == 'kFoldCrossVal':
+            cval = cross_val.KFold(len(label_list), n_folds=type_eval[1], shuffle = True, random_state=np.random.randint(100))
+        elif type_eval[0] == 'LeaveOneOut':
+            cval = cross_val.LeaveOneOut(len(label_list))
+
         mlObj_var1  = ml.experimenter()
         sca=preprocessing.StandardScaler()
         
@@ -526,7 +559,8 @@ def raga_recognition_V2(out_dir, scratch_dir, fileListFile, thresholdBin, pattDi
         predicted_raga = ['' for r in range(len(raga_mbid))]    #placeholder for storing predicted ragas
         
         #starting crossfold validation loop (NOTE: in this variant we only perform a single experiment)
-        for train_inds, test_inds in cval:
+        for mm, (train_inds, test_inds) in enumerate(cval):
+            print "Processing fold %d\n"%mm
             
             #initializers needed for analysis of words (community indexes), WE DO IT IN EVERY FOLD TO MAK SURE EVERYTHING FROM THE PREV FOLD IS REMOVED
             count_vect = CountVectorizer(stop_words = stop_words)
