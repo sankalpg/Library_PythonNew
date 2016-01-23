@@ -179,11 +179,13 @@ class PitchHistogram():
         if Oct_fold==1: # we need to cut the negative size of Sa (tonic) i.e. from <--1200 at the nearest valley to 1200. If we dont do it at valley then there can be a shart popping hump because of low pass filtering which will be detected as a valid swar. And if you apply a lot of mind you will find that this valley has to be detected from a smoothened version of histogram otherwise jittering can cause everything go wrong
             temp_smooth = self.SmoothPitchHistogram(Histogram=hist_Yval)  
             peak_ind , valley_ind = DF.PeakValleyPicking(temp_smooth)
-            valley_location = hist_Xval[max(valley_ind)]
-            ind2 = np.where((hist_Xval>valley_location)&(hist_Xval<=1200))
-            ind1 = np.where((hist_Xval>-(1200-valley_location))&(hist_Xval<=0))
-            hist_Yval[ind1]=hist_Yval[ind2]
-            hist_Yval[ind2]=0
+            if len(valley_ind) > 0:
+                # if we do not get any valley, we dont need to probably do this thing
+                valley_location = hist_Xval[max(valley_ind)]
+                ind2 = np.where((hist_Xval>valley_location)&(hist_Xval<=1200))
+                ind1 = np.where((hist_Xval>-(1200-valley_location))&(hist_Xval<=0))
+                hist_Yval[ind1]=hist_Yval[ind2]
+                hist_Yval[ind2]=0
             
         #updating class variables
         self.hist_Yval = hist_Yval
@@ -217,13 +219,15 @@ class PitchHistogram():
 
         ind_str = np.where(peak_valley==peak_ind[0])[0]
         if(ind_str==0):
-            peak_valley = np.append(0,peak_valley)
+            ind_min = np.argmin(histogram[0:peak_valley[ind_str]])
+            peak_valley = np.append(ind_min,peak_valley)
         else:
             ind_str = ind_str-1
 
         ind_end = np.where(peak_valley==peak_ind[-1])[0]
         if ind_end == len(peak_valley)-1:
-            peak_valley = np.append(peak_valley,0)
+            ind_min = peak_valley[ind_end] + np.argmin(histogram[peak_valley[ind_end]:])
+            peak_valley = np.append(peak_valley,ind_min)
             ind_end=ind_end+1
     
         else:
@@ -231,9 +235,29 @@ class PitchHistogram():
     
         peak_valley = peak_valley[ind_str:ind_end+1]
 
+        #sometimes when the histogram is very sparse, there is no minima between two maximas, because the histogram fades to 0 in both directions. Thus we need to introduce a minima according to diff criterion
+        # but lets first detect such a situation where adjacent indexes have maximas
+        n_inserted = 0
+        pv_final = []
+        for ii, val in enumerate(peak_valley):
+            if ii ==0:  # for the first val, this can't be tested
+                pv_final.append(val)
+                continue
+            if (peak_ind == peak_valley[ii-1]).any() and (peak_ind == peak_valley[ii]).any():
+                ind_min = peak_valley[ii-1] + np.argmin(histogram[peak_valley[ii-1]:peak_valley[ii]])
+                pv_final.append(ind_min)
+                pv_final.append(val)
+            else:
+                pv_final.append(val)
+
+        peak_valley = np.array(pv_final)
+
 
         #iterate over all peaks and based on threshold of minimum peak to valley height decide if its valid or not.
         peak_final=np.array([])
+        if len(peak_ind) ==1:   #only one peak exists
+             peak_final = np.append(peak_final,peak_ind[0])
+
         for i, peak in enumerate(peak_ind):
             diff = min(abs(histogram[peak_valley[2*i]]-histogram[peak_valley[(2*i)+1]]), abs(histogram[peak_valley[(2*i)+1]]-histogram[peak_valley[(2*i)+2]]))
     
