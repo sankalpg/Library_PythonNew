@@ -420,7 +420,7 @@ def get_per_recording_data(comm_data):
         
         
         
-def raga_recognition_V2(out_dir, fileListFile, thresholdBin, pattDistExt, network_wght_type = -1, force_build_network=0, feature_type = 'tf-idf', pre_processing = -1, norm_tfidf = None, smooth_idf = False, classifier = ('nbMulti', "default"), n_fold = 16, n_expts = 10, var1 = True, var2 = True, myDatabase = '', myUser = ''):
+def raga_recognition_V2(out_dir, fileListFile, thresholdBin, pattDistExt, network_wght_type = -1, force_build_network=0, feature_type = 'tf-idf', pre_processing = -1, norm_tfidf = None, smooth_idf = False, classifier = ('nbMulti', "default"), n_expts = 10, var1 = True, var2 = True, myDatabase = '', myUser = '', type_eval = ("kStratFoldCrossVal", 10), balance_classes =1):
     """
     Raga recognition system using document classification and topic modelling techniques.
     In this approach we treat phrases of a recording as words (basically cluster/community id). 
@@ -627,8 +627,8 @@ def raga_recognition_V2(out_dir, fileListFile, thresholdBin, pattDistExt, networ
         count_vect = CountVectorizer(stop_words = stop_words)
         tfidf_transformer = TfidfTransformer(norm=norm_tfidf, smooth_idf=False)
         mlObj  = ml.experimenter()
-        mlObj.setExperimentParams(nExp = n_expts, typeEval = ("kFoldCrossVal",n_fold), nInstPerClass = -1, classifier = classifier, balanceClasses=1)   #Note that only balanced classes option does stratified kfold exp
-        #NOTE: balanceClasses will make sure each fold has equal number of samples from each class.
+        mlObj.setExperimentParams(nExp = n_expts, typeEval = type_eval, nInstPerClass = -1, classifier = classifier, balanceClasses=balance_classes)   #Note that only balanced classes option does stratified kfold exp
+        #NOTE: balanceClasses will make sure each fold has equal number of samples from each class. and threre are equal number of feature instances per class
         
         docs_train = [] # this time we will use all the document in out dataset
         for ii in range(label_list.size):
