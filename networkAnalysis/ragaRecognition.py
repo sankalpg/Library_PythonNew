@@ -420,7 +420,7 @@ def get_per_recording_data(comm_data):
         
         
         
-def raga_recognition_V2(out_dir, fileListFile, thresholdBin, pattDistExt, network_wght_type = -1, force_build_network=0, feature_type = 'tf-idf', pre_processing = -1, norm_tfidf = None, smooth_idf = False, classifier = ('nbMulti', "default"), n_expts = 10, var1 = True, var2 = True, myDatabase = '', myUser = '', type_eval = ("kStratFoldCrossVal", 10), balance_classes =1):
+def raga_recognition_V2(out_dir, scratch_dir, fileListFile, thresholdBin, pattDistExt, network_wght_type = -1, force_build_network=0, feature_type = 'tf-idf', pre_processing = -1, norm_tfidf = None, smooth_idf = False, classifier = ('nbMulti', "default"), n_expts = 10, var1 = True, var2 = True, myDatabase = '', myUser = '', type_eval = ("kStratFoldCrossVal", 10), balance_classes =1):
     """
     Raga recognition system using document classification and topic modelling techniques.
     In this approach we treat phrases of a recording as words (basically cluster/community id). 
@@ -459,9 +459,9 @@ def raga_recognition_V2(out_dir, fileListFile, thresholdBin, pattDistExt, networ
     
     
     # path to store all the temporary files
-    scratch_dir = '/home/sankalp/Work/Work_PhD/library_pythonnew/networkAnalysis/scratch_raga_recognition'
-    
-    root_filename = os.path.join(scratch_dir, 'network'+'_'+ myDatabase+'_'+str(thresholdBin)+'_'+pattDistExt.replace('.',''))
+    #scratch_dir = '/home/sankalp/Work/Work_PhD/library_pythonnew/networkAnalysis/scratch_raga_recognition'
+    fileListFile_basename  = os.path.basename(fileListFile)
+    root_filename = os.path.join(scratch_dir, 'network'+'_'+ str(fileListFile_basename.replace('.','_')) +'_'+ myDatabase+'_'+str(thresholdBin)+'_'+pattDistExt.replace('.',''))
     
     #constructing the network
     t1 = time.time()
