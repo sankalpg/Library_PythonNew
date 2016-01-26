@@ -7,19 +7,124 @@ eps = np.finfo(np.float).eps
 import sys, os
 import matplotlib.pyplot as plt
 sys.path.append(os.path.join(os.path.dirname(__file__), '../batchProcessing'))
-
+from scipy.interpolate import interp1d
+import pickle
 import basicOperations as BO
 import batchProcessing as BP
 import pitchHistogram as PH
 import segmentation as seg
 import transcription as ts
+from mutagen import easyid3
+from mutagen.mp3 import MP3
+
+svar2binMap = {}
+bin2svarMap = {}
+for ii, val in enumerate(range(-12, 36)):
+    svar2binMap[int(val*100)] = ii
+    bin2svarMap[ii] = int(val*100)
+    
+def get_mbid_from_mp3(mp3_file):
+   """
+   fetch MBID form an mp3 file
+   """
+   try:
+       mbid = easyid3.ID3(mp3_file)['UFID:http://musicbrainz.org'].data
+   except:
+       print "problem reading mbid for file %s\n" % mp3_file
+       raise
+   return mbid
+ 
+def wrapperSalientContourFeatures(root_dir, audioExt = '.mp3'):
+  """
+  """
+  filenames = BP.GetFileNamesInDir(root_dir, '.mp3')
+  mbid_to_ragaId_map = get_raga_id('/home/kaustuv/Documents/ISMIR-2016/MelodyEvolution/Dataset/mbid_ragaid_Hindustani_300_selected.tsv')
+  raga_info = get_vadi_samvadi('/home/kaustuv/Documents/ISMIR-2016/MelodyEvolution/Dataset/vadiSamvadiMapping.tsv')
+  '''
+  for filename in filenames[:]:
+    print "Processing file %s" %filename
+    
+    fname, ext = os.path.splitext(filename)
+    
+    endTime = readValidVistarRegion(fname)
+    dist_mtx, track_max = getSvaraDistInBPsCum(filename, endTime, bphraseExt = '.bphrases', transExt = '.transcription', windowSize = 10, hopSize = 1)
+    track_max_pklfile = fname + '_svaraContour.pkl'
+    pickle.dump(track_max, open(track_max_pklfile,'w'))
+    
+    mbid = get_mbid_from_mp3(filename)    
+    raga_id = mbid_to_ragaId_map[mbid]
+    
+    feature_pklfile = fname + '_contourNormFeatures.pkl'
+    extractFeaturesNoteEvolutionContour(track_max_pklfile, feature_pklfile, raga_info[raga_id])
+  '''      
+  cnt = 0     
+  for filename in filenames[:]:
+    print "Processing file %s" %filename
+    
+    fname, ext = os.path.splitext(filename)
+    feature_pklfile = fname + '_contourNormFeatures.pkl'
+    
+    output = pickle.load(open(feature_pklfile, 'r'))
+    mbid = get_mbid_from_mp3(filename)    
+    raga_id = mbid_to_ragaId_map[mbid]
+    
+    feature_order = [output['F1'], output['F2'], output['F3'], output['F4'], output['F5'], output['F6'], output['F7'], output['F8'], output['F9'], output['F10'], output['F11'], output['F12'], output['F13'], output['F14'], output['F15'], output['F16'], output['F17'], output['F18'], output['F19'], output['F20'], raga_id]
+     
+    if cnt == 0:
+      feature_overall = np.array([feature_order])
+    else:
+      feature_overall = np.vstack((feature_overall, feature_order))
+    cnt += 1
+   
+  print feature_overall
+  feature_filename = os.path.join(root_dir, 'feature_for_weka.csv')
+  fid = open(feature_filename,'w')
+  for row in feature_overall:
+    row = [str(r) for r in row]
+    fid.write("%s,"*len(row)%tuple(row))
+    fid.write('\n')
+  fid.close()
+  
+        
+  
+def get_raga_id(mbid_raga_mapping):
+  """
+  """
+  lines = open(mbid_raga_mapping,'r').readlines()
+  
+  mbid_to_ragaId_map = {}
+  
+  for ii, line in enumerate(lines):
+    sline = line.split(',')
+    sline = [s.strip() for s in sline]
+    if not mbid_to_ragaId_map.has_key(sline[0]):
+      mbid_to_ragaId_map[sline[0]] = sline[1]
+  
+  return mbid_to_ragaId_map
 
 
+def get_vadi_samvadi(raga_vadi_samvadi_mapping):
+  """
+  """
+  lines = open(raga_vadi_samvadi_mapping,'r').readlines()
+  
+  raga_to_vadi_map = {}
+  
+  for ii, line in enumerate(lines):
+    sline = line.split(',')
+    sline = [s.strip() for s in sline]
+    if not raga_to_vadi_map.has_key(sline[0]):
+      raga_to_vadi_map[sline[0]] = {'vadi':sline[1], 'samvadi':sline[2]}
+  
+  return raga_to_vadi_map
+ 
 
 def batchProc(root_dir, audioExt = '.mp3', pitchExt = '.pitchSilIntrpPP', tonicExt = '.tonicFine'):
     
     filenames = BP.GetFileNamesInDir(root_dir, '.mp3')
     segObj = seg.melodySegmentation()
+    
+    #fig = plt.figure(figsize=(15,10), dpi=80)
     
     for filename in filenames[:]:
         print "Processing file %s" %filename
@@ -46,28 +151,35 @@ def batchProc(root_dir, audioExt = '.mp3', pitchExt = '.pitchSilIntrpPP', tonicE
         
         ## Read valid region for evolution
         #---------------------------------
-        endTime = readValidVistarRegion(fname)
+        #endTime = readValidVistarRegion(fname)
         
         ## Svara transcription
         #---------------------
-        transcription = transcribePitch(fname,pdata,ignoreNotes, endTime)
+        transcription = transcribePitch(fname,pdata,ignoreNotes)
         #print transcription
-        
-        #print "-------\nDone !!\n-------"
-        
-        
-        plotSvaraDistInBPs(filename, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1)
-        for windowSize, hopSize in [[5,1],[10,1]]:
-	    try:
-                plotSvaraDistInBPsCum(filename, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1, windowSize = windowSize, hopSize = hopSize)
-            except:
-	        print "Problem occured in file: %s" %filename
-	        pass
-        getBreathPhraseStatistics(filename, endTime, bphraseExt = '.bphrases', transExt = '.transcription')
         
         print "-------\nDone !!\n-------"
         
+        '''
+        plotSvaraDistInBPs(filename, endTime, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1)
+        for windowSize, hopSize in [[10,1]]:
+	    try:
+                plotSvaraDistInBPsCum(filename, endTime, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1, windowSize = windowSize, hopSize = hopSize)
+            except:
+	        print "*** Problem occured in file: %s" %filename
+	        pass
+        getBreathPhraseStatistics(filename, endTime, bphraseExt = '.bphrases', transExt = '.transcription')
         
+        try:
+	    plotSalientSvaraContour(filename, endTime, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1, windowSize = 10, hopSize = 1)
+	except:
+	    print "*** Problem occured in file: %s" %filename
+	    pass
+        
+        print "-------\nDone !!\n-------"
+        '''
+    #plt.show()
+	       
         
         
 def findBreathPhrases(segObj,fname,pcents,Hop):
@@ -111,9 +223,9 @@ def readValidVistarRegion(fname):
     return endTime
   
   
-def transcribePitch(fname,pdata,ignoreNotes,endTime):  
+def transcribePitch(fname,pdata,ignoreNotes):  
   
-    tsObj = ts.SvarTranscription(pdata, endTime)
+    tsObj = ts.SvarTranscription(pdata)
     transcription = np.array(tsObj.perform_transcription(ignoreNotes, thres=60, width=35, verbose=False)) 
     #print transcription
     transcriptionFilename = (''.join([fname,'.transcription']))
@@ -123,11 +235,11 @@ def transcribePitch(fname,pdata,ignoreNotes,endTime):
 
 
 
-def getSvaraDistInBPs(filename, bphraseExt = '.bphrases', transExt = '.transcription'):
+def getSvaraDistInBPs(filename, endTime, bphraseExt = '.bphrases', transExt = '.transcription'):
     """
     This function computes svara distribution for all the breath phrases
     """
-    svarsBP = getSvarasInBreathPhrases(filename, bphraseExt = bphraseExt, transExt = transExt)
+    svarsBP = getSvarasInBreathPhrases(filename, endTime, bphraseExt = bphraseExt, transExt = transExt)
     
     svar2binMap = {}
     for ii, val in enumerate(range(-12, 36)):
@@ -160,19 +272,16 @@ def getSvaraDistInBPs(filename, bphraseExt = '.bphrases', transExt = '.transcrip
 
 
 
-def getSvaraDistInBPsCum(filename, bphraseExt = '.bphrases', transExt = '.transcription', windowSize = 5, hopSize = 1):
+def getSvaraDistInBPsCum(filename, endTime, bphraseExt = '.bphrases', transExt = '.transcription', windowSize = 5, hopSize = 1):
     """
     This function computes svara distribution for all the breath phrases
     """
-    svarsBP = getSvarasInBreathPhrases(filename, bphraseExt = bphraseExt, transExt = transExt)
-    
-    svar2binMap = {}
-    for ii, val in enumerate(range(-12, 36)):
-        svar2binMap[int(val*100)] = ii
+    svarsBP = getSvarasInBreathPhrases(filename, endTime, bphraseExt = bphraseExt, transExt = transExt)
     
     nBps = len(svarsBP)
     nFrames = int(math.floor((nBps- windowSize)/hopSize) + 1)
     dist_mtx_cum = np.zeros((len(svar2binMap.keys()), nFrames))
+    track_max = np.zeros(nFrames)
     
     #print nFrames, nFrames*hopSize
     
@@ -183,36 +292,39 @@ def getSvaraDistInBPsCum(filename, bphraseExt = '.bphrases', transExt = '.transc
         
         if np.max(dist_mtx_cum[:,ii]) != 0:
             dist_mtx_cum[:,ii] = dist_mtx_cum[:,ii]/np.max(dist_mtx_cum[:,ii])
+            track_max[ii] = np.argmax(dist_mtx_cum[:,ii])
+          
+    track_max = sig.medfilt(track_max,5)
+    track_max = np.trim_zeros(track_max, trim='b')  
             
-    return dist_mtx_cum
+    return dist_mtx_cum, track_max
 
 
-def plotSvaraDistInBPsCum(filename, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1, windowSize = 5, hopSize = 1):
+def plotSvaraDistInBPsCum(filename, endTime, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1, windowSize = 5, hopSize = 1):
     """
     This function plots blah blah
     """
     
     fig = plt.figure(figsize=(15,10), dpi=80)
-    mtx = getSvaraDistInBPsCum(filename, bphraseExt = bphraseExt, transExt = transExt, windowSize = windowSize, hopSize = hopSize)
+    mtx, track_max = getSvaraDistInBPsCum(filename, endTime, bphraseExt = bphraseExt, transExt = transExt, windowSize = windowSize, hopSize = hopSize)
     plt.imshow(mtx, interpolation = 'nearest', origin = 'lower', cmap = plt.get_cmap('OrRd'))
+    plt.plot(track_max, 'c', linewidth = 3.0)
 
     
     fname, ext = os.path.splitext(filename)
-    #svaraDistCumFilename = (''.join([fname,'_svaraDistCum_', str(windowSize), '_', str(hopSize), '.pdf']))
-    #plt.savefig(svaraDistCumFilename, bbox_inches='tight')
     print "Plotting svara distribution (salience) for %d bp's and %d step(s)..."%(windowSize, hopSize)
     #plt.show()
     saveFigure(fig, fname, featureName = (''.join(['_svaraDistCum_', str(windowSize), '_', str(hopSize)])))
     
             
     
-def plotSvaraDistInBPs(filename, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1):
+def plotSvaraDistInBPs(filename, endTime, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1):
     """
     This function plots blah blah
     """
     
     fig = plt.figure(figsize=(15,10), dpi=80)
-    mtx, tx_mtx = getSvaraDistInBPs(filename, bphraseExt = bphraseExt, transExt = transExt)
+    mtx, tx_mtx = getSvaraDistInBPs(filename, endTime, bphraseExt = bphraseExt, transExt = transExt)
     plt.imshow(mtx, interpolation = 'nearest', origin = 'lower', cmap = plt.get_cmap('OrRd'))
 
     fname, ext = os.path.splitext(filename)
@@ -227,7 +339,33 @@ def plotSvaraDistInBPs(filename, bphraseExt = '.bphrases', transExt = '.transcri
     saveFigure(fig, fname, featureName = '_svaraTxMtx')
     
     
-def getSvarasInBreathPhrases(filename, bphraseExt = '.bphrases', transExt = '.transcription'):
+def normalizeMinMaxUnity(array):
+  min_val = np.min(array)
+  y_range = np.ptp(array, axis=0)
+  return (array - min_val)/y_range, min_val, y_range 
+
+
+
+def plotSalientSvaraContour(filename, endTime, bphraseExt = '.bphrases', transExt = '.transcription', plotName = -1, windowSize = 10, hopSize = 1):
+  """
+  This function plots the median filtered contour of the most salient note per bp within a [0,1] square matrix
+  """
+  
+  #fig = plt.figure(figsize=(15,10), dpi=80)
+  mtx, track_max = getSvaraDistInBPsCum(filename, endTime, bphraseExt = bphraseExt, transExt = transExt, windowSize = windowSize, hopSize = hopSize)
+  
+  track_max = (track_max - np.min(track_max)) / np.ptp(track_max, axis=0)
+  hor_axis = np.linspace(0.0, 1.0, num = len(track_max), retstep = True)
+  plt.plot(hor_axis[0], track_max, linewidth = 2.0)
+  
+  fname, ext = os.path.splitext(filename)
+  print "Plotting svara contour"
+  #plt.show()
+  #saveFigure(fig, fname, featureName = '_salientSvaraContour')
+    
+    
+    
+def getSvarasInBreathPhrases(filename, endTime, bphraseExt = '.bphrases', transExt = '.transcription'):
     """
     This function parses all the svaras within breath phrases
     """
@@ -237,6 +375,8 @@ def getSvarasInBreathPhrases(filename, bphraseExt = '.bphrases', transExt = '.tr
     
     bphrases = np.loadtxt(bpFile)
     svaras = np.loadtxt(transFile)
+    
+    svaras = svaras[:(np.where(svaras[:,0] >= endTime)[0][0]),:]
     output = []
     
     bp_duration = []
@@ -263,7 +403,7 @@ def plotSvarRatioDistribution(filename, bphraseExt = '.bphrases', transExt = '.t
     """
     
     #obtaining svaras in bps 
-    bps = getSvarasInBreathPhrases(filename, bphraseExt = bphraseExt, transExt = transExt)
+    bps = getSvarasInBreathPhrases(filename, endTime, bphraseExt = bphraseExt, transExt = transExt)
     
     durations = []
     for bp in bps:
@@ -301,7 +441,7 @@ def plotSvarRatioDistribution(filename, bphraseExt = '.bphrases', transExt = '.t
     hist = np.histogram(ratio, bins = bins)
     #plt.bar(hist[0], hist[1][:-1])
     plt.plot(hist[1][:-1], hist[0])
-    plt.show()
+    #plt.show()
     
     
     
@@ -468,4 +608,175 @@ def stackBarChart(dur_mtx_tr):
     for ii in range(data.shape[0]-1,-1,-1):
         pl = plt.bar(range(data.shape[1]), data[ii, :], width, color=c[ii], bottom=np.sum(data[ii+1:,:],axis=0))
     #plt.show()
-    
+
+def groupIndices(indexes):
+    """
+    This function groups indexes. This is often needed to produce segments given indices.
+    """
+    segments = []
+    segStart = indexes[0]
+    N = len(indexes)
+    for ii in range(len(indexes)):
+        if ii == N-1:
+            segments.append([segStart, indexes[ii]])
+            return np.array(segments)
+        if indexes[ii]+1 != indexes[ii+1]:
+            segments.append([segStart, indexes[ii]])
+            segStart = indexes[ii+1]
+
+    return np.array(segments)    
+
+def extractFeaturesNoteEvolutionContour(contour_file, output_file, raga_info = {}, num_samples_x_axis = 100, use_Ynorm = 1):
+  """
+  Slope-
+    F1: start time till start of highest note
+    F2: end of first note till start of highest note
+    F3: end of highest note to end of file
+  Duration-
+    F4: Duration of the longest note
+    F5: Duration of the second longest note
+    F6: Shortest duration of the note
+    F7: duration of Sa
+    F8: duration of Sa'
+    F9: proportion of vadi to total duration
+    F10: proportion of samvadi to total duration
+    F11: centroid of vadi bps
+    F12: centroid of samvadi bps
+  Jump-
+    F13: #change / #same (from tx-mtx) 
+    F14: highest jump
+    F15: average jump length
+  Levels-
+    F16: #levels explored
+    F17: starting note
+    F18: ending note
+  Misc-
+    F19: proportion of longest note to total duration
+    F20: name of the longest note
+    ####F--: if there are arbitrary jumps before settling the next nyas
+
+  """
+  num_samples_x_axis = float(num_samples_x_axis)
+  contour = pickle.load(open(contour_file, 'r'))
+  feature = {}
+  
+  #before feature extraction normalizing the max contour (unity range, min val =0 and equal number of samples)
+  contour_norm = contour
+  min_cnt = 0
+  y_range = 1
+  if use_Ynorm == 1:
+    contour_unity, min_cnt, y_range = normalizeMinMaxUnity(contour)
+    n_sam_orig = len(contour)
+    f = interp1d(np.linspace(0,1,n_sam_orig), contour_unity, kind= 'nearest')
+    contour_norm = f(np.linspace(0,1,num_samples_x_axis))
+    contour_norm = contour_norm.round(decimals=2)
+  
+  #slope related features
+  max_val = np.max(contour_norm)
+  ind_max_start = np.min(np.where(contour_norm == max_val)[0])
+  ind_max_end = np.max(np.where(contour_norm == max_val)[0])
+  ind_first_note = np.where(contour_norm == contour_norm[0])[0]
+  ind_end_first_note = groupIndices(ind_first_note)[0][1]
+  feature['F1'] = (1-contour_norm[0])/ind_max_start
+  feature['F2'] = (1-contour_norm[0])/(ind_max_start-ind_end_first_note)
+  if ind_max_end == num_samples_x_axis -1:
+    feature['F3'] = 0
+  else:
+    feature['F3'] = (contour_norm[-1] - max_val)/(num_samples_x_axis-1-ind_max_end)
+  
+  
+  #Duration related features
+  u_vals = np.unique(contour_norm)
+  salient_bps = []
+  for ii, v in enumerate(u_vals):
+    inds = np.where(contour_norm == v)[0]
+    salient_bps.append([v, len(inds)])
+    segs = groupIndices(inds)
+    if ii == 0:
+      segments = segs
+    else:
+      segments = np.vstack((segments, segs))
+  salient_bps = np.array(salient_bps)
+  durations = segments[:,1]- segments[:,0]
+  ind_single_point = np.where(durations ==0)[0]
+  durations = np.delete(durations, ind_single_point)
+  ind_sort = np.argsort(durations)
+  feature['F4'] = durations[ind_sort[-1]]
+  feature['F5'] = durations[ind_sort[-2]]
+  feature['F6'] = durations[ind_sort[0]]
+  
+  ind_sort = np.argsort(salient_bps[:,1])
+  feature['F19'] = salient_bps[ind_sort[-1],1]/num_samples_x_axis
+  feature['F20'] = bin2svarMap[round((salient_bps[ind_sort[-1],0]*y_range) + min_cnt)]%1200
+  
+  sa_norm = (svar2binMap[0]-min_cnt)/y_range
+  sa_norm = round(sa_norm, 2)
+  
+  sa_high_norm = (svar2binMap[1200]-min_cnt)/y_range
+  sa_high_norm = round(sa_high_norm, 2)
+  
+  ind_sa = np.where(contour_norm == sa_norm)[0]
+  ind_sa_high = np.where(contour_norm == sa_high_norm)[0]
+  
+  feature['F7'] = len(ind_sa)/num_samples_x_axis
+  feature['F8'] = len(ind_sa_high)/num_samples_x_axis
+  
+  
+  for ii, val in enumerate([-1200.0, 0.0, 1200.0]):
+    vadi_norm = (float(svar2binMap[val+float(raga_info['vadi'])])-min_cnt)/y_range
+    vadi_norm = round(vadi_norm, 2)
+    if ii == 0:
+      ind_vadi = np.where(contour_norm == vadi_norm)[0]
+    else:
+      ind_vadi = np.append(ind_vadi, np.where(contour_norm == vadi_norm)[0])
+  
+  feature['F9'] = len(ind_vadi)/num_samples_x_axis
+  feature['F11'] = np.sum(ind_vadi)/len(ind_vadi)
+  
+  for ii, val in enumerate([-1200.0, 0.0, 1200.0]):
+    sam_vadi_norm = (float(svar2binMap[val+float(raga_info['samvadi'])])-min_cnt)/y_range
+    sam_vadi_norm = round(sam_vadi_norm ,2)
+    if ii == 0:
+      ind_sam_vadi = np.where(contour_norm == sam_vadi_norm)[0]  
+    else:
+      ind_sam_vadi = np.append(ind_sam_vadi, np.where(contour_norm == sam_vadi_norm)[0])
+  
+  feature['F10'] = len(ind_sam_vadi)/num_samples_x_axis
+  feature['F12'] = np.sum(ind_sam_vadi)/len(ind_sam_vadi)
+  
+  
+  #Jump related features
+  diff = abs(contour_norm[1:] - contour_norm[:-1])
+  inds = np.where(diff >0)[0]
+  feature['F13'] = len(inds)/(num_samples_x_axis - len(inds))
+  
+  feature['F14'] = np.max(diff)
+  feature['F15'] = np.mean(diff[inds])
+  
+  
+  #Levels
+  feature['F16'] = len(u_vals)
+  feature['F17'] = bin2svarMap[contour[0]]
+  feature['F18'] = bin2svarMap[contour[-1]]
+  
+  
+  pickle.dump(feature, open(output_file, 'w'))
+  
+  
+  
+  
+  
+  
+  
+  
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  

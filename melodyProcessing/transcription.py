@@ -11,12 +11,12 @@ CODES = string.ascii_letters[:len(NOTES)]
 
 class SvarTranscription:
     
-    def __init__(self, pdata, endTime):
+    def __init__(self, pdata):
         vals = []
         self.pdata = pdata
         self.start = int(0)
-        #self.end = int(len(self.pdata[1])*self.pdata[2])
-        self.end = endTime
+        self.end = int(len(self.pdata[1])*self.pdata[2])
+        #self.end = endTime
         
         
     def perform_transcription(self, ignoreNotes, thres=8, width=35, verbose=False):
