@@ -326,11 +326,11 @@ def createPatternMatchTable(root_dir, logFile, myDatabase=''):
     
     t1 = time.time()
     #important stuff
-    motifDiscExt = '.disPatt_2s_config3'
+    motifDiscExt = '.disPatt_2s_config2'
     #motifSearchExt = ['.srhPatts1SqEuclidean', '.srhPatts1CityBlock', '.srhPatts1ShiftCityBlock', '.srhPatts1ShiftLinExp']
-    motifSearchExt = ['.srchPatt_2s_config3SqEuclidean']
+    motifSearchExt = ['.srchPatt_2s_config2SqEuclidean']
     mainDistanceIndex = 0           # this is basically index of extions stored in motifSearchExt which is the main distance files
-    motifSearchMappExt = '.srchMap_2s_config3'
+    motifSearchMappExt = '.srchMap_2s_config2'
     
     #lets get all the files in the root_dir
     fileNames = BP.GetFileNamesInDir(root_dir, motifDiscExt)
