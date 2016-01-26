@@ -3,6 +3,7 @@ import os, sys
 from scipy.signal import triang, filtfilt, gaussian
 import matplotlib.pyplot as plt
 import pickle
+import scipy.ndimage as ndimage
 sys.path.append(os.path.join(os.path.dirname(__file__), '../batchProcessing'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '../networkAnalysis'))
 
@@ -99,38 +100,67 @@ def BatchProcessGetPhaseSpaceEmbPitchSignal(root_dir, pitch_ext, out_ext, tonic_
   
 
 def phase_space_dist(mtx1, mtx2):
-  return np.sqrt(np.sum(np.power(np.power(mtx1,0.1)-np.power(mtx2,0.1),2)))
+  return np.sqrt(np.sum(np.power(mtx1-mtx2, 2)))
 
   
-def ragaRecognition(file_list, database = '', user= '', phase_ext = '.phasespace'):
+def ragaRecognitionPhaseSpaceKNN(file_list, database = '', user= '', phase_ext = '.phasespace', smooth_gauss_sigma = -1, compression = -1, normalize = -1, dist_metric = 'Euclidean', KNN=1):
+  """
+  This function performs raga recognition using phase space embeddings and KNN classifier.
 
+  There are options for different types of distane measures and pre-processing parameters of the embeddings.
+  """
+
+  #available distance measure
+  dist_metrics = {'Euclidean': phase_space_dist}
+
+  if not dist_metric in dist_metrics.keys():
+    print "Please choose a valid distance metric that is supported by this function"
+    return False
+
+  #fetching mbid and raga list for collection of files in file_list (ragas are fetched from the database)
   raga_mbid = rr.get_mbids_raagaIds_for_collection(file_list, database = database, user= user)
-  mbid2raga = {}
+  mbid2raga = {}  #creading an mbid to raga id mapping
   for r in raga_mbid:
     mbid2raga[r[1]] = r[0]
 
-
+  #reading files listed in file_list
   lines = open(file_list, 'r').readlines()
 
-  mtx = []
-  ind2mbid = {}
+  phase_space_embeds = []  #matrix to store 
+  ind2mbid = {} #index (in file_list) to mbid mapping
   for ii, line in enumerate(lines):
     phase_file = line.strip() + phase_ext
-    mtx.append(np.loadtxt(phase_file))
+    mtx = np.loadtxt(phase_file)
+
+    #pre-processing phase space embedding based reprsentation
+    
+    #smoothening operation?
+    if smooth_gauss_sigma >0:
+      mtx = ndimage.gaussian_filter(mtx, smooth_gauss_sigma)
+    
+    #dymanic compression
+    if compression > 0:
+      mtx = np.power(mtx, compression)
+    
+    #Normalization (max val = 1)
+    if normalize > 0:
+      mtx = mtx/np.max(mtx)
+
+    #appending mtx in the order of filelists
+    phase_space_embeds.append(mtx)
     mbid = rr.get_mbid_from_mp3(line.strip()+'.mp3')
     ind2mbid[ii] = mbid
 
-
-  dist = 100000000000*np.ones((len(mtx),len(mtx)))
-  for ii in range(len(mtx)):
-    for jj in range(len(mtx)):
+  dist = np.finfo(np.float).max*np.ones((levalFeaturesen(phase_space_embeds),len(phase_space_embeds)))
+  for ii in range(len(phase_space_embeds)):
+    for jj in range(len(phase_space_embeds)):
       if ii == jj:
         continue
-      dist[ii,jj] = phase_space_dist(mtx[ii], mtx[jj])
+      dist[ii,jj] = dist_metrics[dist_metric](phase_space_embeds[ii], phase_space_embeds[jj])
 
   nearest_dists = []
   cnt =0
-  for ii in range(len(mtx)):
+  for ii in range(len(phase_space_embeds)):
     nearest_dists.append(np.argsort(dist[ii,:])[0])
     if mbid2raga[ind2mbid[ii]] == mbid2raga[ind2mbid[nearest_dists[-1]]]:
       cnt+=1
