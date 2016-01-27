@@ -13,6 +13,8 @@ import json
 eps = np.finfo(np.float).resolution
 from sklearn.metrics import confusion_matrix
 import inspect
+sys.path.append(os.path.join(os.path.dirname(__file__), '../machineLearning'))
+import mlWrapper as ml
 
 def getDelayCoordinates(inp, m, t):
   """
@@ -200,8 +202,6 @@ def ragaRecognitionPhaseSpaceKNN_V1(out_dir, file_list, database = '', user= '',
       dec_array.append(0)
   print cnt
 
-  json.dump({'knn': nearest_dists, 'pred_labels': predictions, 'dec_array':dec_array}, open('nearest_neighbors.txt', 'w'))
-
   #also dumping the input params to this function
   params_input = {}
   for k in inspect.getargspec(ragaRecognitionPhaseSpaceKNN_V1).args:
@@ -221,7 +221,7 @@ def ragaRecognitionPhaseSpaceKNN_V1(out_dir, file_list, database = '', user= '',
   return np.mean(dec_array)
 
 
-def ragaRecognitionPhaseSpaceKNN_V2(out_dir, file_list, database = '', user= '', phase_ext = '.phasespace', smooth_gauss_sigma = -1, compression = -1, normalize = -1, classifier = ('nb-multi', 'default'), type_eval = ('LeaveOneOut', -1)):
+def ragaRecognitionPhaseSpaceKNN_V2(out_dir, file_list, database = '', user= '', phase_ext = '.phasespace', smooth_gauss_sigma = -1, compression = -1, normalize = -1, classifier = ('nb-multi', 'default'), type_eval = ('LeaveOneOut', -1), n_expt = 1, balance_classes =1):
   """
   This function performs raga recognition using phase space embeddings
 
@@ -229,12 +229,7 @@ def ragaRecognitionPhaseSpaceKNN_V2(out_dir, file_list, database = '', user= '',
   if not os.path.isdir(out_dir):
       os.makedirs(out_dir)
 
-  #available distance measure
-  dist_metrics = {'Euclidean': phase_space_dist, 'KLD': KLD}
-
-  if not dist_metric in dist_metrics.keys():
-    print "Please choose a valid distance metric that is supported by this function"
-    return False
+  #Check for valid classifiers
 
   #fetching mbid and raga list for collection of files in file_list (ragas are fetched from the database)
   raga_mbid = rr.get_mbids_raagaIds_for_collection(file_list, database = database, user= user)
@@ -272,43 +267,21 @@ def ragaRecognitionPhaseSpaceKNN_V2(out_dir, file_list, database = '', user= '',
         return False
 
     #appending mtx in the order of filelists
-    phase_space_embeds.append(mtx)
+    phase_space_embeds.append(np.ndarray.flatten(mtx))
     mbid = rr.get_mbid_from_mp3(line.strip()+'.mp3')
     ind2mbid[ii] = mbid
     labels.append(mbid2raga[mbid])
 
-  dist = np.finfo(np.float).max*np.ones((len(phase_space_embeds),len(phase_space_embeds)))
-  for ii in range(len(phase_space_embeds)):
-    for jj in range(ii+1 , len(phase_space_embeds)):
-      if ii == jj:
-        continue
-      dist[ii,jj] = dist_metrics[dist_metric](phase_space_embeds[ii], phase_space_embeds[jj])
-      dist[jj,ii] = dist[ii,jj]
-
-  nearest_dists = []
-  cnt =0
-  predictions = []
-  dec_array = []
-  for ii in range(len(phase_space_embeds)):
-    inds_nn = np.argsort(dist[ii,:])[:KNN]
-    nearest_dists.append([ii, inds_nn.tolist()])
-    ragas = []
-    for ind in inds_nn:
-      ragas.append(mbid2raga[ind2mbid[ind]])
-
-    predictions.append(collections.Counter(ragas).most_common()[0][0])
-    if mbid2raga[ind2mbid[ii]] == predictions[-1]:
-      dec_array.append(1)
-      cnt+=1
-    else:
-      dec_array.append(0)
-  print cnt
-
-  json.dump({'knn': nearest_dists, 'pred_labels': predictions, 'dec_array':dec_array}, open('nearest_neighbors.txt', 'w'))
+  phase_space_embeds = np.array(phase_space_embeds)
+  
+  mlObj  = ml.experimenter()
+  mlObj.setExperimentParams(nExp = n_expt, typeEval = type_eval, nInstPerClass = -1, classifier = classifier, balanceClasses=balance_classes)
+  mlObj.setFeaturesAndClassLabels(phase_space_embeds, np.array(labels))
+  mlObj.runExperiment()
 
   #also dumping the input params to this function
   params_input = {}
-  for k in inspect.getargspec(ragaRecognitionPhaseSpaceKNN_V1).args:
+  for k in inspect.getargspec(ragaRecognitionPhaseSpaceKNN_V2).args:
       params_input[k] = locals()[k]
   fid = open(os.path.join(out_dir,'experiment_params.json'),'w')
   json.dump(params_input, fid)
@@ -317,9 +290,8 @@ def ragaRecognitionPhaseSpaceKNN_V2(out_dir, file_list, database = '', user= '',
   ##saving experimental results
   fid = open(os.path.join(out_dir,'experiment_results.pkl'),'w')
   results = {}
-  cm = confusion_matrix(labels, predictions, labels = np.unique(labels))
-  results.update({'var1': {'cm': cm, 'gt_label': labels, 'pred_label':predictions, 'mbid2raga': mbid2raga, 'ind2mbid': ind2mbid, 'accuracy': np.mean(dec_array), 'pf_accuracy':dec_array}})
+  results.update({'var1': {'cm': mlObj.cMTXExp, 'gt_label': labels, 'pred_label':mlObj.decArray, 'mbid2raga': mbid2raga, 'ind2mbid': ind2mbid, 'accuracy': mlObj.overallAccuracy, 'pf_accuracy':mlObj.accuracy}})
   pickle.dump(results, fid)
   fid.close()
 
-  return np.mean(dec_array)
+  return mlObj.overallAccuracy
