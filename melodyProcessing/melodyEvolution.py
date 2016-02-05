@@ -16,12 +16,19 @@ import segmentation as seg
 import transcription as ts
 from mutagen import easyid3
 from mutagen.mp3 import MP3
+import copy
 
 svar2binMap = {}
 bin2svarMap = {}
 for ii, val in enumerate(range(-12, 36)):
     svar2binMap[int(val*100)] = ii
     bin2svarMap[ii] = int(val*100)
+
+svar2binMap_of = {}
+bin2svarMap_of = {}    
+for ii, val in enumerate(range(0, 12)):
+    svar2binMap_of[int(val*100)] = ii
+    bin2svarMap_of[ii] = int(val*100)
     
 def get_mbid_from_mp3(mp3_file):
    """
@@ -374,8 +381,9 @@ def getSvarasInBreathPhrases(filename, endTime, bphraseExt = '.bphrases', transE
     transFile = fname + transExt
     
     bphrases = np.loadtxt(bpFile)
-    svaras = np.loadtxt(transFile)
+    bphrases = bphrases[:(np.where(bphrases[:,0] >= endTime)[0][0]),:]
     
+    svaras = np.loadtxt(transFile)
     svaras = svaras[:(np.where(svaras[:,0] >= endTime)[0][0]),:]
     output = []
     
@@ -457,6 +465,7 @@ def getBreathPhraseStatistics(filename, endTime, bphraseExt = '.bphrases', trans
     bphrases = bphrases[:(np.where(bphrases[:,0] >= endTime)[0][0]),:]
 
     svaras = np.loadtxt(transFile)
+    svaras = svaras[:(np.where(svaras[:,0] >= endTime)[0][0]),:]
     svarsBP = []
     bpSvaraDurDist = []
     bpSvaraDurDist_sorted = []
@@ -677,12 +686,12 @@ def extractFeaturesNoteEvolutionContour(contour_file, output_file, raga_info = {
   ind_max_end = np.max(np.where(contour_norm == max_val)[0])
   ind_first_note = np.where(contour_norm == contour_norm[0])[0]
   ind_end_first_note = groupIndices(ind_first_note)[0][1]
-  feature['F1'] = (1-contour_norm[0])/ind_max_start
-  feature['F2'] = (1-contour_norm[0])/(ind_max_start-ind_end_first_note)
+  feature['F1'] = 100.0*(1-contour_norm[0])/ind_max_start
+  feature['F2'] = 100.0*(1-contour_norm[0])/(ind_max_start-ind_end_first_note)
   if ind_max_end == num_samples_x_axis -1:
     feature['F3'] = 0
   else:
-    feature['F3'] = (contour_norm[-1] - max_val)/(num_samples_x_axis-1-ind_max_end)
+    feature['F3'] = 100.0*(contour_norm[-1] - max_val)/(num_samples_x_axis-1-ind_max_end)
   
   
   #Duration related features
@@ -763,20 +772,198 @@ def extractFeaturesNoteEvolutionContour(contour_file, output_file, raga_info = {
   pickle.dump(feature, open(output_file, 'w'))
   
   
+def dumpLongestSvaraInfo(filename, endTime, bphraseExt = '.bphrases', transExt = '.transcription'):
+  """
+  """
+  out = getSvarasInBreathPhrases(filename, endTime, bphraseExt = '.bphrases', transExt = '.transcription')
+  print len(out)
+  
+  st = []
+  for ii, val in enumerate(out):
+    durs = []
+    for jj in range(len(out[ii])):
+      durs.append(out[ii][jj]['duration'])
+    if len(durs) != 0:
+      ind = np.argmax(durs)
+      pos = len(durs)
+      length = np.max(durs)
+      start = out[ii][ind]['start']
+      end = out[ii][ind]['end']
+      
+      st.append(start)
+  
+  st = np.array(st)
+  diff = np.diff(st)
+  
+  resolution = 50.0
+  gcds_fuzzy = np.zeros((1000.0/resolution)*np.max(diff)+10)
+  for d in diff:
+    
+    sub_inds = np.round((1000.0/resolution)*d*np.array([1, 1/2.0, 1/3.0, 1/4.0, 1/5.0, 1/6.0, 1/7.0, 1/8.0])).astype(np.int)
+    print d, sub_inds
+    gcds_fuzzy[sub_inds] += 1
+    gcds_fuzzy[sub_inds+1] += 0.2
+    gcds_fuzzy[sub_inds-1] += 0.2
+    
+    gcds_fuzzy[sub_inds+2] += 0.05
+    gcds_fuzzy[sub_inds-2] += 0.05
+  
+  print gcds_fuzzy
+  plt.plot((resolution/1000.0)*np.arange(len(gcds_fuzzy)), gcds_fuzzy)
+  plt.show()
   
   
+ 
+def getDurDistPerNotePerFile(filename, endTime, bphraseExt = '.bphrases', transExt = '.transcription'):
+  """
+  """
+  #out = getSvarasInBreathPhrases(filename, endTime, bphraseExt = '.bphrases', transExt = '.transcription')
   
+  fname, ext = os.path.splitext(filename)
+  #bpFile = fname + bphraseExt
+  transFile = fname + transExt
   
+  #bphrases = np.loadtxt(bpFile)
+  #bphrases = bphrases[:(np.where(bphrases[:,0] >= endTime)[0][0]),:]
   
+  svaras = np.loadtxt(transFile)
+  svaras = svaras[:(np.where(svaras[:,0] >= endTime)[0][0]),:]
+  
+  validSvaras = np.unique(svaras[:,2])
+  svaraHist = np.zeros(((len(svar2binMap.keys())),50))
+  
+  for ii in svar2binMap.keys():
+    temp = []
+    for svar in svaras:
+      if svar[2] == ii:
+        #svaraHist[svar2binMap[ii], cnt] = (svar[1] - svar[0])
+        temp.append((svar[1] - svar[0]))
+       
+    svaraHist[svar2binMap[ii]] = np.histogram(temp, bins = (np.arange(51))*0.2)[0]
+    #print svaraHist
+  #plt.hold(True)
+  plt.imshow(svaraHist, interpolation = 'nearest', origin = 'lower', cmap = plt.get_cmap('OrRd'))
+  plt.show()
   
 
+def getNoteDurDistPerRaga(root_dir, audioExt = '.mp3', pitchExt = '.pitchSilIntrpPP', tonicExt = '.tonicFine'):
+  """
+  """
+  filenames = BP.GetFileNamesInDir(root_dir, '.mp3')
+  
+  for filename in filenames[:]:
+    print "Processing file %s" %filename
+  
+    fname, ext = os.path.splitext(filename)
+    endTime = readValidVistarRegion(fname)
+    print endTime
+    
+    getDurDistPerNotePerFile(filename, endTime, bphraseExt = '.bphrases', transExt = '.transcription')  
+  plt.show()
+  
+  
+def getSvarFreqHistPerFile(filename, endTime, transExt = '.transcription', Oct_fold = 1):
+  
+  fname, ext = os.path.splitext(filename)
+  
+  trans = np.loadtxt(fname + transExt)
+  trans = trans[np.where(trans[:,0]<= endTime)[0]]
+  
+  if Oct_fold == 0:
+    hist = np.zeros(len(svar2binMap.keys()))
+  elif Oct_fold == 1:
+    hist = np.zeros(len(svar2binMap_of.keys()))
+  
+  for tt in trans:    
+    if Oct_fold == 0:
+      hist[svar2binMap[tt[2]]]+=1
+    elif Oct_fold == 1:
+      hist[svar2binMap_of[tt[2]%1200]]+=1
+  
+  return hist
   
   
   
+def getLongestNoteDurDist(filename, endTime,  bphraseExt = '.bphrases', transExt = '.transcription', group1_svars = [], group2_svars = []):
+    """
+    This function computes distribution of long note durations within a breath phrase based on two groups inputted
+    
+    NOTE: swars should be input in octave folded way in cents
+    """
+    
+    fname, ext = os.path.splitext(filename)
   
+    out = getSvarasInBreathPhrases(filename, endTime, bphraseExt = bphraseExt, transExt = transExt)
+    
+    long_svars = {}
+    for kk in svar2binMap_of.keys():
+      long_svars[kk] = []    
+    
+    for bp in out:
+      durs = []
+      for svar in bp:
+	durs.append(svar['duration'])
+      if len(durs) >0:
+	ind = np.argmax(durs)
+	long_svars[bp[ind]['svar']%1200].append(bp[ind]['duration'])
+    
+    durs_grp1 = []
+    durs_grp2 = []
+    
+    for g1 in group1_svars:
+      durs_grp1.extend(long_svars[g1])
+    
+    for g2 in group2_svars:
+      durs_grp2.extend(long_svars[g2])
+    
+    durs_grp1 = np.array(durs_grp1)
+    durs_grp2 = np.array(durs_grp2)
+    
+    cm1 = np.sum(durs_grp1*np.arange(1,len(durs_grp1)+1))/np.sum(durs_grp1)
+    cm2 = np.sum(durs_grp2*np.arange(1,len(durs_grp2)+1))/np.sum(durs_grp2)
+    
+    
+    return durs_grp1, durs_grp2, cm1, cm2
   
+def plotLongestNoteDurDist(filename, endTime,  bphraseExt = '.bphrases', transExt = '.transcription', group1_svars = [], group2_svars = []):
   
+  g1, g2 = getLongestNoteDurDist(filename, endTime,  bphraseExt = bphraseExt, transExt = transExt, group1_svars = group1_svars, group2_svars = group2_svars)
   
+  bins = np.arange(50)*.1
+  hist1 = np.histogram(g1, bins = bins )
+  hist2 = np.histogram(g2, bins = bins )
   
+  plt.hold(True)
+  plt.plot(hist1[0], 'r')
+  plt.plot(hist2[0], 'b')
   
+  #plt.show()
+    
+    
+def getDurStdSvarDurationPerLongestSvarOfBP(filename, endTime,  bphraseExt = '.bphrases', transExt = '.transcription'):
+  
+    svar_dict = {}
+    for kk in svar2binMap_of.keys():
+      svar_dict[kk] = [] 
+    
+    long_svar_dict = {}
+    for kk in svar2binMap_of.keys():
+      long_svar_dict[kk] = copy.deepcopy(svar_dict)
+    
+    out = getSvarasInBreathPhrases(filename, endTime, bphraseExt = bphraseExt, transExt = transExt)
+    
+    for bp in out:
+      durs = []
+      svar_class = []
+      for svar in bp:
+	durs.append(svar['duration'])
+	svar_class.append(svar['svar'])
+      if len(durs) >0:
+	ind = np.argmax(durs)
+	longest_note = bp[ind]['svar']%1200
+	for ii, sc in enumerate(svar_class):
+	  long_svar_dict[longest_note][sc%1200].append(durs[ii])
+    return long_svar_dict
+	  
+      
   
