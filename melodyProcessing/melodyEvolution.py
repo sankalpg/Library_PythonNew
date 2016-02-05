@@ -830,7 +830,7 @@ def getDurDistPerNotePerFile(filename, endTime, bphraseExt = '.bphrases', transE
   svaras = svaras[:(np.where(svaras[:,0] >= endTime)[0][0]),:]
   
   validSvaras = np.unique(svaras[:,2])
-  svaraHist = np.zeros(((len(svar2binMap.keys())),50))
+  svaraHist = np.zeros(((len(svar2binMap.keys())),100))
   
   for ii in svar2binMap.keys():
     temp = []
@@ -839,8 +839,11 @@ def getDurDistPerNotePerFile(filename, endTime, bphraseExt = '.bphrases', transE
         #svaraHist[svar2binMap[ii], cnt] = (svar[1] - svar[0])
         temp.append((svar[1] - svar[0]))
        
-    svaraHist[svar2binMap[ii]] = np.histogram(temp, bins = (np.arange(51))*0.2)[0]
-    #print svaraHist
+    svaraHist[svar2binMap[ii]] = np.histogram(temp, bins = (np.arange(101))*0.2)[0]
+    if np.sum(svaraHist[svar2binMap[ii]]) != 0:
+      svaraHist[svar2binMap[ii]] = svaraHist[svar2binMap[ii]] / np.sum(svaraHist[svar2binMap[ii]])
+      
+  print svaraHist
   #plt.hold(True)
   plt.imshow(svaraHist, interpolation = 'nearest', origin = 'lower', cmap = plt.get_cmap('OrRd'))
   plt.show()
@@ -919,15 +922,17 @@ def getLongestNoteDurDist(filename, endTime,  bphraseExt = '.bphrases', transExt
     durs_grp1 = np.array(durs_grp1)
     durs_grp2 = np.array(durs_grp2)
     
-    cm1 = np.sum(durs_grp1*np.arange(1,len(durs_grp1)+1))/np.sum(durs_grp1)
-    cm2 = np.sum(durs_grp2*np.arange(1,len(durs_grp2)+1))/np.sum(durs_grp2)
+    cm1 = np.sum(durs_grp1*np.arange(1,len(durs_grp1)+1))/np.sum(durs_grp1) 	#centre of mass of vadi/samvadi
+    cm2 = np.sum(durs_grp2*np.arange(1,len(durs_grp2)+1))/np.sum(durs_grp2) 	#centre of mass of other notes
     
     
     return durs_grp1, durs_grp2, cm1, cm2
   
+  
+  
 def plotLongestNoteDurDist(filename, endTime,  bphraseExt = '.bphrases', transExt = '.transcription', group1_svars = [], group2_svars = []):
   
-  g1, g2 = getLongestNoteDurDist(filename, endTime,  bphraseExt = bphraseExt, transExt = transExt, group1_svars = group1_svars, group2_svars = group2_svars)
+  g1, g2, cm1, cm2 = getLongestNoteDurDist(filename, endTime,  bphraseExt = bphraseExt, transExt = transExt, group1_svars = group1_svars, group2_svars = group2_svars)
   
   bins = np.arange(50)*.1
   hist1 = np.histogram(g1, bins = bins )
@@ -937,7 +942,7 @@ def plotLongestNoteDurDist(filename, endTime,  bphraseExt = '.bphrases', transEx
   plt.plot(hist1[0], 'r')
   plt.plot(hist2[0], 'b')
   
-  #plt.show()
+  plt.show()
     
     
 def getDurStdSvarDurationPerLongestSvarOfBP(filename, endTime,  bphraseExt = '.bphrases', transExt = '.transcription'):
@@ -966,4 +971,24 @@ def getDurStdSvarDurationPerLongestSvarOfBP(filename, endTime,  bphraseExt = '.b
     return long_svar_dict
 	  
       
+def plotAvgDurPerNoteWhenSalient(filename, endTime,  bphraseExt = '.bphrases', transExt = '.transcription'):
+  """
+  Plot the average duration of other notes for each note in a bp while it's salient
+  """
   
+  out = getDurStdSvarDurationPerLongestSvarOfBP(filename, endTime,  bphraseExt = bphraseExt, transExt = transExt)
+  
+  mtx_mean = np.zeros((len(np.arange(12)),len(np.arange(12))))
+  mtx_std = np.zeros((len(np.arange(12)),len(np.arange(12))))
+  
+  for ii in np.arange(12)*100:
+    for jj in np.arange(12)*100:
+      if ii != jj:
+	mtx_mean[ii/100][jj/100] = np.mean(out[ii][jj])
+	mtx_std[ii/100][jj/100] = np.std(out[ii][jj])
+  
+  plt.subplot(1,2,1)
+  plt.imshow(mtx_mean, interpolation = 'nearest', origin = 'lower', cmap = plt.get_cmap('OrRd'))
+  plt.subplot(1,2,2)
+  plt.imshow(mtx_std, interpolation = 'nearest', origin = 'lower', cmap = plt.get_cmap('OrRd'))
+  plt.show()
