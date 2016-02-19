@@ -117,8 +117,13 @@ def KLD(mtx1, mtx2):
 
   return np.mean(out)
 
+def Bhattacharya(mtx1, mtx2):
+  mtx1 = mtx1/np.sum(mtx1)
+  mtx2 = mtx2/np.sum(mtx2)
+  return -np.log(np.sum(np.sqrt(mtx1*mtx2)))
+
   
-def ragaRecognitionPhaseSpaceKNN_V1(out_dir, file_list, database = '', user= '', phase_ext = '.phasespace', smooth_gauss_sigma = -1, compression = -1, normalize = -1, dist_metric = 'Euclidean', KNN=1):
+def ragaRecognitionPhaseSpaceKNN_V1(out_dir, root_dir, file_list, phase_ext = '.phasespace', smooth_gauss_sigma = -1, compression = -1, normalize = -1, dist_metric = 'Euclidean', KNN=1):
   """
   This function performs raga recognition using phase space embeddings and KNN classifier.
 
@@ -128,18 +133,19 @@ def ragaRecognitionPhaseSpaceKNN_V1(out_dir, file_list, database = '', user= '',
       os.makedirs(out_dir)
 
   #available distance measure
-  dist_metrics = {'Euclidean': phase_space_dist, 'KLD': KLD}
+  dist_metrics = {'Euclidean': phase_space_dist, 'KLD': KLD, 'Bhattacharya': Bhattacharya}
 
   if not dist_metric in dist_metrics.keys():
     print "Please choose a valid distance metric that is supported by this function"
     return False
 
-  #fetching mbid and raga list for collection of files in file_list (ragas are fetched from the database)
-  raga_mbid = rr.get_mbids_raagaIds_for_collection(file_list, database = database, user= user)
-  mbid2raga = {}  #creading an mbid to raga id mapping
-  for r in raga_mbid:
-    mbid2raga[r[1]] = r[0]
-
+  # #fetching mbid and raga list for collection of files in file_list (ragas are fetched from the database)
+  # raga_mbid = rr.get_mbids_raagaIds_for_collection(file_list, database = database, user= user)
+  # mbid2raga = {}  #creading an mbid to raga id mapping
+  # for r in raga_mbid:
+  #   mbid2raga[r[1]] = r[0]
+  raga_mbid = []
+  mbid2raga = {}
   #reading files listed in file_list
   lines = open(file_list, 'r').readlines()
 
@@ -147,7 +153,17 @@ def ragaRecognitionPhaseSpaceKNN_V1(out_dir, file_list, database = '', user= '',
   ind2mbid = {} #index (in file_list) to mbid mapping
   labels = []
   for ii, line in enumerate(lines):
-    phase_file = line.strip() + phase_ext
+    sline = line.split('\t')
+    base_name = sline[0].strip()
+    mbid = sline[1].strip()
+    raga_id = sline[2].strip()
+    
+    raga_mbid.append((raga_id, mbid))
+    mbid2raga[mbid] = raga_id
+    ind2mbid[ii] = mbid
+    labels.append(mbid2raga[mbid])
+
+    phase_file = os.path.join(root_dir, base_name) + phase_ext
     mtx = np.loadtxt(phase_file)
 
     #pre-processing phase space embedding based reprsentation
@@ -170,10 +186,7 @@ def ragaRecognitionPhaseSpaceKNN_V1(out_dir, file_list, database = '', user= '',
         return False
 
     #appending mtx in the order of filelists
-    phase_space_embeds.append(mtx)
-    mbid = rr.get_mbid_from_mp3(line.strip()+'.mp3')
-    ind2mbid[ii] = mbid
-    labels.append(mbid2raga[mbid])
+    phase_space_embeds.append(mtx)    
 
   dist = np.finfo(np.float).max*np.ones((len(phase_space_embeds),len(phase_space_embeds)))
   for ii in range(len(phase_space_embeds)):

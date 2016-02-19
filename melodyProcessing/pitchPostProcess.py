@@ -570,6 +570,6 @@ def batchProcessPitchPostProcess(root_dir, searchExt = '.wav', pitchExt= '.tpe',
     pitchOut = postProcessPitchSequence(timePitch[:,1], tonic= tonic, hopSize = hopSize, filtDurMed=filtDurMed, filtDurGaus=filtDurGaus, winDurOctCorr=winDurOctCorr, sigmaGauss=sigmaGauss, fillSilDur= fillSilDur, interpAllSil=interpAllSil, upSampleFactor = upSampleFactor)
     TStamps = float(hopSize)*float(upSampleFactor)*np.arange(pitchOut.size)
     timePitch = np.array([TStamps, pitchOut]).transpose()
-    np.savetxt(fname + outExt, timePitch, delimiter = "\t")
+    np.savetxt(fname + outExt, timePitch, delimiter = "\t", fmt='%.7f')
 
 

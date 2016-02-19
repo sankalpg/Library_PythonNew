@@ -89,11 +89,15 @@ def get_mbids_raagaIds_for_collection(file_list, database = '', user= ''):
         except:
             print "File %s coundn't fetch any mbid"%line.strip()
     
-    raga_mbid= []
+    mbid2raga = {}
     for r in results:
-        if r[1] in mbids:
-            raga_mbid.append([r[0], r[1]])
-    
+        mbid2raga[r[1]] = r[0]
+
+    raga_mbid= []
+    for mbid in mbids:
+        if mbid2raga.has_key(mbid):
+            raga_mbid.append([mbid2raga[mbid], mbid])
+
     return raga_mbid
 
 def generate_raga_mapping(raga_ids):

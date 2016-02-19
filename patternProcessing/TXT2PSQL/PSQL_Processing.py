@@ -19,8 +19,11 @@ import batchProcessing as BP
 myUser = 'sankalp'
 #myDatabase = 'motifHindustani_CONF1'
 
-serverPrefix = "/homedtic/sgulati/motifDiscovery/dataset/PatternProcessing_DB/unsupervisedDBs/hindustaniDB/Hindustani30Ragas/audio/"
-localPrefix = "/media/Data/Datasets/PatternProcessing_DB/unsupervisedDBs/hindustaniDB/Hindustani30Ragas/audio/"
+# serverPrefix = "/homedtic/sgulati/motifDiscovery/dataset/PatternProcessing_DB/unsupervisedDBs/hindustaniDB/Hindustani30Ragas/audio/"
+# localPrefix = "/media/Data/Datasets/PatternProcessing_DB/unsupervisedDBs/hindustaniDB/Hindustani30Ragas/audio/"
+
+serverPrefix = "/homedtic/sgulati/motifDiscovery/dataset/PatternProcessing_DB/unsupervisedDBs/carnaticDB/Carnatic40RagaICASSP2016/audio/"
+localPrefix = "/media/Data/Datasets/PatternProcessing_DB/unsupervisedDBs/carnaticDB/Carnatic40RagaICASSP2016/audio/"
 
 
 def resetAllTables():
@@ -183,7 +186,7 @@ def fillFileTableWithRagaIds(myDatabase, collection = 'carnatic'):
         con.close()
         
         
-def fillFileTableWithRagaIds_withoutAPI(myDatabase, mbid_ragaid_file, collection = 'carnatic'):
+def fillFileTableWithRagaIds_withoutAPI(myDatabase, mbid_ragaid_file):
     
     mbid_raga = {}
     lines  = open(mbid_ragaid_file,'r').readlines()
@@ -193,10 +196,6 @@ def fillFileTableWithRagaIds_withoutAPI(myDatabase, mbid_ragaid_file, collection
         ragaid = sline[1].strip()
         mbid_raga[mbid] = ragaid
     dn.set_token("60312f59428916bb854adaa208f55eb35c3f2f07")
-    if collection == 'hindustani':
-        tradition = hn
-    elif collection == 'carnatic':
-        tradition = ca
         
     getMBIDs = "select mbid from file"
     cmd1 = "update file set raagaId ='%s' where mbid='%s'"
@@ -322,15 +321,15 @@ def addHasSeedValeInFileTable(myDatabase = ''):
         con.close()
         
 
-def createPatternMatchTable(root_dir, logFile, myDatabase=''):
+def createPatternMatchTable(root_dir, logFile, motifDiscExt, motifSearchExt, motifSearchMappExt, myDatabase=''):
     
     t1 = time.time()
     #important stuff
-    motifDiscExt = '.disPatt_2s_config2'
+    #motifDiscExt = '.disPatt_2s_config2'
     #motifSearchExt = ['.srhPatts1SqEuclidean', '.srhPatts1CityBlock', '.srhPatts1ShiftCityBlock', '.srhPatts1ShiftLinExp']
-    motifSearchExt = ['.srchPatt_2s_config2SqEuclidean']
+    #motifSearchExt = ['.srchPatt_2s_config2SqEuclidean']
     mainDistanceIndex = 0           # this is basically index of extions stored in motifSearchExt which is the main distance files
-    motifSearchMappExt = '.srchMap_2s_config2'
+    #motifSearchMappExt = '.srchMap_2s_config2'
     
     #lets get all the files in the root_dir
     fileNames = BP.GetFileNamesInDir(root_dir, motifDiscExt)
