@@ -324,6 +324,9 @@ def addHasSeedValeInFileTable(myDatabase = ''):
 def createPatternMatchTable(root_dir, logFile, motifDiscExt, motifSearchExt, motifSearchMappExt, myDatabase=''):
     
     t1 = time.time()
+    if not isinstance(motifSearchExt, list):
+        print "motifSearchExt: Expected a list"
+        return
     #important stuff
     #motifDiscExt = '.disPatt_2s_config2'
     #motifSearchExt = ['.srhPatts1SqEuclidean', '.srhPatts1CityBlock', '.srhPatts1ShiftCityBlock', '.srhPatts1ShiftLinExp']

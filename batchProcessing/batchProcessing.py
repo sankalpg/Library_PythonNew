@@ -56,6 +56,13 @@ def fineTuneTonicValue(tonicInFile, tonicOutFile, pitchFile):
     newTonic = tonic*np.power(2,offset/1200)
     print "Old Tonic %f, New tonic %f\n"%(tonic, np.array([newTonic]))
     np.savetxt(tonicOutFile, np.array([newTonic]))
+  else:
+    print "The tonic is off by %f cents"%swars[ind]
+    print "This appears like tonic estimation has gone wrong. In this case I won't do any fineTuning, doesn't make sense. I would just save the estimated tonic as fine tonic"
+    offset = swars[ind]
+    newTonic = tonic
+    print "Old Tonic %f, New tonic %f\n"%(tonic, np.array([newTonic]))
+    np.savetxt(tonicOutFile, np.array([newTonic]))
   
 def batchProcessTonicFineTune(root_dir, tonicExt = '.tonic', tonicExtOut = '.tonicFine', pitchExt = '.pitch'):
     
@@ -177,15 +184,19 @@ def PostProcessPitch(pitch):
     return pitch_out
     
     
-def BatchProcess_TonicIdentification(RootDir, tonicExt = '.tonic', FileExt2Proc = ".wav"):
+def BatchProcess_TonicIdentification(RootDir, tonicExt = '.tonic', FileExt2Proc = ".wav", overwrite = 0):
     
     audiofilenames = GetFileNamesInDir(RootDir, FileExt2Proc)
     
     for audiofilename in audiofilenames:
-        
+        print "processing %s"%audiofilename 
         path, fileN = os.path.split(audiofilename)
-        
-        tonic_file = open(path + '/'+ fileN.split('.')[0] + tonicExt, 'w')
+        fname, ext = os.path.splitext(audiofilename)
+        tonic_filename = fname + tonicExt
+        if overwrite ==0 and os.path.isfile(tonic_filename):
+            continue
+            
+        tonic_file = open(tonic_filename, 'w')
         
         audio = ES.MonoLoader(filename = audiofilename)()
             
@@ -257,9 +268,10 @@ def BatchProcess_Tonic_CCode(RootDir, FileExt2Proc = ".mp3", ExeFile= -1, outFil
             cmd =  ExeFile +" -m T -t V -i " + '"'+wavfilename +'"' + " -o "+ '"'+tonicfilename+'"'
             print cmd
             os.system(cmd)
+	    os.remove(wavfilename)
         else:
             print "Please specify the binary file for execution"
-
+	
 
         
 def GetFileNamesInDir(dir_name, filter=".wav"):
@@ -586,7 +598,7 @@ def computeLoudness(audioFile, outputExt='.loudness', f0=-1, HopSize = 0.01, Fra
   #checking the cases, possible types of input parameter f0 
   if type(f0)==int:
     #if its an integer (which essentially means the user has not provided any input and its -1), run the predominant melody estimation and obtain pitch estimate
-    pitch = ES.PredominantMelody(hopSize = np.round(HopSize*fs).astype(np.int), frameSize = frameNSamples, binResolution = BinResolution, guessUnvoiced=GuessUnvoiced, voicingTolerance= VoicingTolerance, maxFrequency = MaxFrequency, minFrequency = 60)(audio)[0]
+    pitch = ES.PredominantPitchMelodia(hopSize = np.round(HopSize*fs).astype(np.int), frameSize = frameNSamples, binResolution = BinResolution, guessUnvoiced=GuessUnvoiced, voicingTolerance= VoicingTolerance, maxFrequency = MaxFrequency, minFrequency = 60)(audio)[0]
   if type(f0) == str:
     #if its a string that means a user has provided input file name of the pitch file stored in the format <time stamps><pitch value>
     pitch = np.loadtxt(f0)[:,1]

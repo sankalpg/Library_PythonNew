@@ -564,7 +564,7 @@ def batchProcessPitchPostProcess(root_dir, searchExt = '.wav', pitchExt= '.tpe',
     try:
         tonic = float(np.loadtxt(fname + tonicExt))
     except:
-        continue
+        tonic = 207.65
     if os.path.isfile(fname+outExt) and over_write == 0:
         continue
     pitchOut = postProcessPitchSequence(timePitch[:,1], tonic= tonic, hopSize = hopSize, filtDurMed=filtDurMed, filtDurGaus=filtDurGaus, winDurOctCorr=winDurOctCorr, sigmaGauss=sigmaGauss, fillSilDur= fillSilDur, interpAllSil=interpAllSil, upSampleFactor = upSampleFactor)

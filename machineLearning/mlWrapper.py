@@ -357,7 +357,7 @@ class experimenter(classifiers):
                         n_folds = self.typeEval[1]
 
                     np.random.shuffle(expIndices)
-                    kfold = crossVal.StratifiedKFold(self.classLabelsInt[expIndices], n_folds=n_folds, indices=True)
+                    kfold = crossVal.StratifiedKFold(self.classLabelsInt[expIndices], n_folds=n_folds)
                     for train, test in kfold:
                         train_test_ind.append((train,test))
                 
@@ -368,7 +368,7 @@ class experimenter(classifiers):
                         n_folds = self.typeEval[1]
                         
                     np.random.shuffle(expIndices)
-                    kfold = crossVal.KFold(expIndices.shape[0], n_folds=n_folds, indices=True)
+                    kfold = crossVal.KFold(expIndices.shape[0], n_folds=n_folds)
                     for train, test in kfold:
                         train_test_ind.append((train,test))
 

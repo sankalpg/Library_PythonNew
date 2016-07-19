@@ -110,7 +110,7 @@ class PitchHistogram():
             plt.plot(self.hist_Xval, self.hist_Yval)
             plt.show()
         
-    def ComputePitchHistogram(self, pitch=-1, timeStamps=-1, tonic=-1, tRange=-1, Oct_fold =0):
+    def ComputePitchHistogram(self, pitch=-1, timeStamps=-1, tonic=-1, tRange=-1, Oct_fold =0, smth_variance=15):
         """This function computes pitch histogram 
         Input parameters:
         pitch = pitch sequence 
@@ -177,7 +177,7 @@ class PitchHistogram():
 
         ### if Octave folding is performed, to avoid splitting of tonic note into two parts (think, why will it happen!!) we just copy paste small end part of histogram to negative values (very intuitive)
         if Oct_fold==1: # we need to cut the negative size of Sa (tonic) i.e. from <--1200 at the nearest valley to 1200. If we dont do it at valley then there can be a shart popping hump because of low pass filtering which will be detected as a valid swar. And if you apply a lot of mind you will find that this valley has to be detected from a smoothened version of histogram otherwise jittering can cause everything go wrong
-            temp_smooth = self.SmoothPitchHistogram(Histogram=hist_Yval)  
+            temp_smooth = self.SmoothPitchHistogram(Histogram=hist_Yval, Variance = smth_variance)  
             peak_ind , valley_ind = DF.PeakValleyPicking(temp_smooth)
             if len(valley_ind) > 0:
                 # if we do not get any valley, we dont need to probably do this thing
@@ -191,16 +191,16 @@ class PitchHistogram():
         self.hist_Yval = hist_Yval
         self.hist_Xval = hist_Xval        
                 
-        self.SmoothPitchHistogram()
+        self.SmoothPitchHistogram(Variance = smth_variance)
         
     
-    def ValidSwarLocEstimation(self, histogram=-1, peak_valley_thsld = 0.01, Oct_fold=1):
+    def ValidSwarLocEstimation(self, histogram=-1, peak_valley_thsld = 0.01, Oct_fold=1, smth_variance = 15):
 
         ### if histogram is provided process that otherwise from the self instance
         no_hist_provided=0
         if (histogram==-1):
             no_hist_provided=1
-            self.ComputePitchHistogram(Oct_fold=Oct_fold)
+            self.ComputePitchHistogram(Oct_fold=Oct_fold, smth_variance = smth_variance)
             if (len(self.hist_Yval)>0):
                 histogram = self.hist_Yval
             else:            

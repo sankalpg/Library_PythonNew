@@ -92,7 +92,7 @@ def getPhaseSpaceEmbPitchSignal(pitch_file, delay_tap, tonic, min_pitch = 60, re
   np.savetxt(fname + out_ext, mtx)
 
 
-def BatchProcessGetPhaseSpaceEmbPitchSignal(root_dir, pitch_ext, out_ext, tonic_ext, delay_tap, oct_fold):
+def BatchProcessGetPhaseSpaceEmbPitchSignal(root_dir, pitch_ext, out_ext, tonic_ext, delay_tap, oct_fold, overwrite = 1):
 
 
   filenames = BP.GetFileNamesInDir(root_dir, '.mp3')
@@ -100,6 +100,9 @@ def BatchProcessGetPhaseSpaceEmbPitchSignal(root_dir, pitch_ext, out_ext, tonic_
   for filename in filenames:
     fname, ext = os.path.splitext(filename)
     tonic = np.loadtxt(fname + tonic_ext)
+    print "Processing %s"%fname
+    if os.path.isfile(fname + out_ext) and overwrite ==0:
+      continue
     getPhaseSpaceEmbPitchSignal(fname + pitch_ext, delay_tap, tonic, min_pitch = 60, resolution =10, range_cents = (0, 1200), out_ext = out_ext, oct_fold = oct_fold)
   
 
@@ -110,6 +113,11 @@ def KLD(mtx1, mtx2):
   mtx1 = mtx1 + eps
   mtx2 = mtx2 + eps
   out = mtx1*np.log(mtx1/mtx2)
+
+def KLD_symm(mtx1, mtx2):
+  mtx1 = mtx1 + eps
+  mtx2 = mtx2 + eps
+  out = mtx1*np.log(mtx1/mtx2) + mtx2*np.log(mtx2/mtx1)  
   # out = np.zeros(mtx1.shape)
   # for ii in range(mtx1.shape[0]):
   #   for jj in range(mtx1.shape[1]):
@@ -133,7 +141,7 @@ def ragaRecognitionPhaseSpaceKNN_V1(out_dir, root_dir, file_list, phase_ext = '.
       os.makedirs(out_dir)
 
   #available distance measure
-  dist_metrics = {'Euclidean': phase_space_dist, 'KLD': KLD, 'Bhattacharya': Bhattacharya}
+  dist_metrics = {'Euclidean': phase_space_dist, 'KLD': KLD, 'Bhattacharya': Bhattacharya, 'KLD_symm': KLD_symm}
 
   if not dist_metric in dist_metrics.keys():
     print "Please choose a valid distance metric that is supported by this function"
