@@ -385,24 +385,24 @@ while ((i-params.delStep >= 0 && j-params.moveStep >= 0) || (i-params.moveStep >
         } else {
             moveDel = cost[(i-params.moveStep)*m+(j-params.delStep)];
         }
+
         if (i-params.diagStep < 0) {
             diag = FLT_MAX;
         } else {
             diag = cost[(i-params.diagStep)*m+(j-params.diagStep)];
         }
+
         min_cost = min3(delMove, moveDel, diag);
         
-        if (diag == min_cost)
-        {
-            i -= params.diagStep;  
+        if (diag == min_cost) {
+            i -= params.diagStep;
+            j -= params.diagStep;  
         }
-        else if (moveDel == min_cost)
-        {
+        else if (moveDel == min_cost) {
             i -= params.moveStep;
             j -= params.delStep;
         }
-        else
-        {
+        else if (delMove == min_cost) {
             i -= params.delStep;
             j -= params.moveStep;
         }
