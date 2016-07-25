@@ -203,17 +203,37 @@ double dtw_GLS(double *x, double*y, int x_len, int y_len, double*cost, dtwParams
 
             //Initializing the row and columns of cost matrix
             cost[0]= (*myDistMeasures[params.distType])(x[0],y[0]);
-            if (params.initFirstCol==1)
-            {
+            if (params.isSubsequence==1){
+                
+                for (i=1;i<min(bandwidth+1, x_len);i++)
+                    {
+                        if (params.initFirstCol==1)
+                        {
+                            cost[i*y_len]=(*myDistMeasures[params.distType])(x[i],y[0]) + cost[((i-1)*y_len)];
+                        }
+                        else{
+                            cost[i*y_len]=(*myDistMeasures[params.distType])(x[i],y[0]);    
+                        }
+                    
+                    }
+                for (j=1;j< min(bandwidth+1, y_len);j++)
+                    {
+                        cost[j]=(*myDistMeasures[params.distType])(x[0],y[j]);  
+                    }
+
+            }
+            else{
                 for (i=1;i<min(bandwidth+1, x_len);i++)
                 {
                     cost[i*y_len]=(*myDistMeasures[params.distType])(x[i],y[0]) + cost[((i-1)*y_len)];
                 }
+                for (j=1;j< min(bandwidth+1, y_len);j++)
+                {
+                    cost[j]=(*myDistMeasures[params.distType])(x[0],y[j]) + cost[j-1];
+                }
+
             }
-            for (j=1;j< min(bandwidth+1, y_len);j++)
-            {
-                cost[j]=(*myDistMeasures[params.distType])(x[0],y[j]);
-            }
+
             
             /*Initializing other rows and colms till we can support out local constraints to be applied*/
             for (i=1;i<=min(bandwidth+1, x_len-1);i++)
@@ -309,9 +329,111 @@ double dtwNd_std(double *x, double*y, MatrixSize*size_x, MatrixSize*size_y, int 
         return cost[(NRows*NCols)-1];
 }
 
+int pathLocal(double *cost, int n, int m, int startx, int starty, DTW_path *p, dtwParams_t params) {
+//params.delStep, params.moveStep and params.diagStep
+int i, j, k, z1, z2, a;
+int *px;
+int *py;
+double min_cost;
+
+// params which store the 
+float diag, moveDel, delMove;
+
+if ((startx >= n) || (starty >= m)) {
+    return 0;
+}
+
+if (startx < 0) {
+    startx = n - 1;
+}
+
+if (starty < 0) {
+    starty = m - 1;
+}
+    
+i = startx;
+j = starty;
+k = 1;
+
+// allocate path for the worst case
+px = (int *) malloc ((startx+1) * (starty+1) * sizeof(int));
+py = (int *) malloc ((startx+1) * (starty+1) * sizeof(int));
+
+px[0] = i;
+py[0] = j;
+
+while ((i-params.delStep >= 0 && j-params.moveStep >= 0) || (i-params.moveStep >= 0 && j-params.delStep >= 0) || i-params.diagStep >= 0) {
+
+    if (i == 0) {
+        j--;
+    }
+    else if (j == 0) {
+        i--;
+    }
+    
+
+    else {
+        
+        if (i-params.delStep < 0 || j-params.moveStep < 0) {
+            delMove = FLT_MAX;
+        } else {
+            delMove = cost[(i-params.delStep)*m+(j-params.moveStep)];
+        }
+
+        if (i-params.moveStep < 0 || j-params.delStep < 0) {
+            moveDel = FLT_MAX;
+        } else {
+            moveDel = cost[(i-params.moveStep)*m+(j-params.delStep)];
+        }
+        if (i-params.diagStep < 0) {
+            diag = FLT_MAX;
+        } else {
+            diag = cost[(i-params.diagStep)*m+(j-params.diagStep)];
+        }
+        min_cost = min3(delMove, moveDel, diag);
+        
+        if (diag == min_cost)
+        {
+            i -= params.diagStep;  
+        }
+        else if (moveDel == min_cost)
+        {
+            i -= params.moveStep;
+            j -= params.delStep;
+        }
+        else
+        {
+            i -= params.delStep;
+            j -= params.moveStep;
+        }
+    }
+    
+    px[k] = i;
+    py[k] = j;
+    k++;      
+}
+
+p->px = (int *) malloc (k * sizeof(int));
+p->py = (int *) malloc (k * sizeof(int));
+
+for (z1=0, z2=k-1; z1<k; z1++, z2--){
+    
+    p->px[z1] = px[z2];
+    p->py[z1] = py[z2];
+
+}
+
+p->plen = k;
+
+free(px);
+free(py);
+
+return 1;
+}
+
 // Compute the warp path starting at cost[startx, starty]
 // If startx = -1 -> startx = n-1; if starty = -1 -> starty = m-1
-int pathLocal(double *cost, int n, int m, int startx, int starty, DTW_path *p, dtwParams_t params)
+int pathLocalOld(double *cost, int n, int m, int startx, int starty, DTW_path *p, dtwParams_t params)
 {
 //params.delStep, params.moveStep and params.diagStep
 int i, j, k, z1, z2, a;

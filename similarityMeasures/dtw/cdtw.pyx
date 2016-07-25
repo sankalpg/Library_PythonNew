@@ -295,7 +295,7 @@ def dtw1dLocalBand(x, y, configuration):
         else:
             return udist, path_t.plen, (px_cord, py_cord), cost_arr 
             
-def dtw1d_GLS(x, y, distType=0, hasGlobalConst=1, globalType=0, bandwidth = 0.2, initCostMtx=1, reuseCostMtx=0, delStep=1, moveStep=1, diagStep=1, initFirstCol=1, isSubsequence=0):
+def dtw1d_GLS(x, y, distType=0, hasGlobalConst=1, globalType=0, bandwidth = 0.2, initCostMtx=1, reuseCostMtx=0, delStep=1, moveStep=1, diagStep=1, initFirstCol=0, isSubsequence=0):
     """Modified version of standard DTW as described in [Muller07] and [Keogh01],
     Modified code provided in mlpy.dtw
     This version is a subsequence version of the code with local constraints and global band constraint:
@@ -336,7 +336,7 @@ def dtw1d_GLS(x, y, distType=0, hasGlobalConst=1, globalType=0, bandwidth = 0.2,
     myDtwParama.distType = distType;
     myDtwParama.hasGlobalConst = hasGlobalConst;
     myDtwParama.globalType = globalType;
-    myDtwParama.bandwidth = np.round(np.max((x_arr.shape[0],y_arr.shape[0]))*bandwidth).astype(np.int);
+    myDtwParama.bandwidth = np.round(np.min((x_arr.shape[0],y_arr.shape[0]))*bandwidth).astype(np.int);
     myDtwParama.initCostMtx = initCostMtx;
     myDtwParama.reuseCostMtx = reuseCostMtx;
     myDtwParama.delStep = delStep;
