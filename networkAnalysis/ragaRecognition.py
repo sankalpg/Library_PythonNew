@@ -542,7 +542,7 @@ def raga_recognition_V2(out_dir, scratch_dir, fileListFile, thresholdBin, pattDi
         stop_words.extend(comm_char.get_comm_1MBID(comm_data))
     
     stop_words = [com_id_2_uuid[s] for s in stop_words]
-
+    accuracy_var1=-1
     if var1:
         ########################### Performing cross fold train testing Variant 1 ###################################
         #In this variant for each fold we generate a training tf-idf vector. Meaning, vocabulary for each fold is solely determined by the training examples#    
@@ -608,7 +608,7 @@ def raga_recognition_V2(out_dir, scratch_dir, fileListFile, thresholdBin, pattDi
             clf = mlObj_var1.skl_classifiers[classifier[0]]['handle'](**classifier_params)
 
             if mlObj_var1.skl_classifiers[classifier[0]]['norm_feat_req']:
-                features_train = sca.fit_transform(features_train)
+                features_train = sca.fit_transform(features_train.astype(np.float))
                 
             clf.fit(features_train, label_list[train_inds])
             
@@ -639,7 +639,7 @@ def raga_recognition_V2(out_dir, scratch_dir, fileListFile, thresholdBin, pattDi
 
             #performing prediction of labels using the trained model
             if mlObj_var1.skl_classifiers[classifier[0]]['norm_feat_req']:
-                features_test = sca.transform(features_test)            
+                features_test = sca.transform(features_test.astype(np.float))            
             
             predicted = clf.predict(features_test)
             
@@ -654,9 +654,11 @@ def raga_recognition_V2(out_dir, scratch_dir, fileListFile, thresholdBin, pattDi
         print "You got %d number of ragas right for a total of %d number of recordings (Variant1)"%(cnt, len(predicted_raga))
         
         cMTC_var1 =  confusion_matrix(label_list, label_list_pred)
+
+        accuracy_var1 = float(cnt)/float(len(predicted_raga))
     
         ########################## End of variant 1 of cross fold testing ##################################
-    
+    accuracy_var2 = -1
     if var2:
         ########################### Performing cross fold train testing Variant 2 ###################################
         #In this variant tf-idf vectors are computed for the entire dataset. The only affect this will have is in the computatino of idf term. 
@@ -684,6 +686,8 @@ def raga_recognition_V2(out_dir, scratch_dir, fileListFile, thresholdBin, pattDi
             return True
         mlObj.setFeaturesAndClassLabels(features.toarray(), np.array(raga_list))
         mlObj.runExperiment()
+
+        accuracy_var2 = mlObj.overallAccuracy
         
         print "You got %d number of ragas right for a total of %d number of recordings (Variant2)"%(np.round(mlObj.overallAccuracy*len(label_list)), len(label_list))
         
@@ -706,7 +710,7 @@ def raga_recognition_V2(out_dir, scratch_dir, fileListFile, thresholdBin, pattDi
     fid = open(os.path.join(out_dir,'experiment_params.json'),'w')
     json.dump(params_input, fid)
 
-    return mlObj.overallAccuracy
+    return np.max([accuracy_var1, accuracy_var2])
     
         
 def raga_recognition_V3():
