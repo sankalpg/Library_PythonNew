@@ -137,7 +137,7 @@ def ragaRecognitionPhaseSpaceKNN_V1(out_dir, root_dir, file_list, phase_ext = '.
 
   There are options for different types of distane measures and pre-processing parameters of the embeddings.
   """
-  if not os.path.isdir(out_dir):
+  if not os.path.isdir(out_dir) and not os.path.isfile(out_dir):
       os.makedirs(out_dir)
 
   #available distance measure
@@ -223,16 +223,24 @@ def ragaRecognitionPhaseSpaceKNN_V1(out_dir, root_dir, file_list, phase_ext = '.
       dec_array.append(0)
   print cnt
 
-  #also dumping the input params to this function
-  params_input = {}
-  for k in inspect.getargspec(ragaRecognitionPhaseSpaceKNN_V1).args:
-      params_input[k] = locals()[k]
-  fid = open(os.path.join(out_dir,'experiment_params.json'),'w')
-  json.dump(params_input, fid)
-  fid.close()
+
 
   ##saving experimental results
-  fid = open(os.path.join(out_dir,'experiment_results.pkl'),'w')
+  if not os.path.isfile(out_dir):
+    fid = open(os.path.join(out_dir,'experiment_results.pkl'),'w')
+    
+    #also dumping the input params to this function
+    params_input = {}
+    for k in inspect.getargspec(ragaRecognitionPhaseSpaceKNN_V1).args:
+        params_input[k] = locals()[k]
+    fid = open(os.path.join(out_dir,'experiment_params.json'),'w')
+    json.dump(params_input, fid)
+    fid.close()
+  else:
+    fn, ext = os.path.splitext(out_dir)
+    fid = open(fn+'.results','w')
+
+
   results = {}
   cm = confusion_matrix(labels, predictions, labels = np.unique(labels))
   results.update({'var1': {'cm': cm, 'gt_label': labels, 'pred_label':predictions, 'mbid2raga': mbid2raga, 'ind2mbid': ind2mbid, 'accuracy': np.mean(dec_array), 'pf_accuracy':dec_array}})
