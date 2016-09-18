@@ -1,0 +1,46 @@
+------------ concert ------------
+total_unique	235
+unique_elems	235
+total_recs	2380
+total_rels	2380
+
+------------ form ------------
+total_unique	21
+unique_elems	21
+total_recs	2377
+total_rels	2377
+
+------------ work ------------
+total_unique	965
+unique_elems	965
+total_recs	1582
+total_rels	1601
+
+------------ album_artists ------------
+total_unique	87
+unique_elems	87
+total_recs	2369
+total_rels	2392
+
+------------ taala ------------
+total_unique	15
+unique_elems	15
+total_recs	1768
+total_rels	1769
+
+------------ length ------------
+total_length	500.581664
+total_recs	0.000661
+
+------------ artists ------------
+total_unique	259
+unique_elems	259
+total_recs	2325
+total_rels	7400
+
+------------ raaga ------------
+total_unique	227
+unique_elems	227
+total_recs	1943
+total_rels	1944
+

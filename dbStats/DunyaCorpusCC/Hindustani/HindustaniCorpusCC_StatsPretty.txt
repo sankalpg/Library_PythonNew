@@ -1,0 +1,52 @@
+------------ artists ------------
+total_unique	36
+unique_elems	36
+total_recs	106
+total_rels	254
+
+------------ album_artists ------------
+total_unique	11
+unique_elems	11
+total_recs	108
+total_rels	108
+
+------------ forms ------------
+total_unique	5
+unique_elems	5
+total_recs	74
+total_rels	80
+
+------------ length ------------
+total_length	43.591606
+total_recs	0.000030
+
+------------ raags ------------
+total_unique	61
+unique_elems	61
+total_recs	93
+total_rels	93
+
+------------ release ------------
+total_unique	36
+unique_elems	36
+total_recs	108
+total_rels	108
+
+------------ works ------------
+total_unique	113
+unique_elems	113
+total_recs	61
+total_rels	126
+
+------------ taals ------------
+total_unique	9
+unique_elems	9
+total_recs	68
+total_rels	141
+
+------------ layas ------------
+total_unique	2
+unique_elems	2
+total_recs	60
+total_rels	78
+
