@@ -131,7 +131,7 @@ def BatchProcess_PitchExtraction(RootDir, FileExt2Proc = ".mp3", HopSize = 128, 
             
             audio = ES.MonoLoader(filename = audiofilename)()
                 
-            pitch = ES.PredominantMelody(hopSize = HopSize, frameSize = FrameSize, binResolution = BinResolution, guessUnvoiced=GuessUnvoiced, voicingTolerance= VoicingTolerance, maxFrequency = MaxFrequency, minFrequency = 60)(audio)
+            pitch = ES.PredominantPitchMelodia(hopSize = HopSize, frameSize = FrameSize, binResolution = BinResolution, guessUnvoiced=GuessUnvoiced, voicingTolerance= VoicingTolerance, maxFrequency = MaxFrequency, minFrequency = 60)(audio)
             
             if output == "Pitch":
                 pitch = pitch[0]

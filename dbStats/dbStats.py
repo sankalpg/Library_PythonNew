@@ -9,6 +9,7 @@ from compmusic.dunya import hindustani as hi
 from compmusic.dunya import carnatic as ca
 from compmusic.dunya import docserver as ds
 from compmusic import musicbrainz
+import codecs
 
 sys.path.append('/home/sankalp/Work/CompanyWork/camut/saragautils')
 import metadata as meta
@@ -390,3 +391,64 @@ def getSaragaAnnotationStats():
 	tradition = 'hindustani'
 	exts = ['.sama', '.sections_p', '.mphrases', '.pitch', '.tonic', '.mpitch', '.bpm'] 
 	dumpSaragaAnotStats(base_dir, input_file, output_file, tradition, token='60312f59428916bb854adaa208f55eb35c3f2f07', exts = exts)
+
+
+def getRagaWiseStats(raga_mbid_file, output_dir, music_tradition):
+
+	#Hindustani: dbs.getRagaWiseStats('RagaRecognitionDS/hindustani/PerRagaStats/Hindustani30Raga300_FILE_MBID_RAGA.txt', 'RagaRecognitionDS/hindustani/PerRagaStats/', 'hindustani')
+	#Carnatic: dbs.getRagaWiseStats('RagaRecognitionDS/carnatic/PerRagaStats/Carnatic40Raga480_FILE_MBID_RAGA.txt', 'RagaRecognitionDS/carnatic/PerRagaStats/', 'carnatic')
+
+	lines = open(raga_mbid_file, 'r').readlines()
+	mbid_ragaid = []
+
+	dn.set_token("60312f59428916bb854adaa208f55eb35c3f2f07")
+
+	for line in lines:
+		lsplit = line.split('\t')
+		mbid_ragaid.append([lsplit[1].strip(), lsplit[2].strip()])
+
+	mbid_ragaid = np.array(mbid_ragaid)
+	mbids = mbid_ragaid[:,0]
+	ragaids = mbid_ragaid[:,1]
+
+	uragaids = np.unique(ragaids)
+
+	for ragaid in uragaids:
+		ind_raga = np.where(ragaids == ragaid)[0]
+		mbid_selected = mbids[ind_raga]
+		output_file = os.path.join(output_dir, ragaid + '.json')
+		getDatasetStats(mbid_selected, output_file , music_tradition = music_tradition)
+
+
+def generatePerRagaPrettyReport(root_dir, raga_mbid_file, raga_map, output_file):
+
+	#Hindustani: dbs.generatePerRagaPrettyReport('RagaRecognitionDS/hindustani/PerRagaStats/', 'RagaRecognitionDS/hindustani/PerRagaStats/Hindustani30Raga300_FILE_MBID_RAGA.txt', 'raga_name_mapping.json', 'RagaRecognitionDS/hindustani/PerRagaStats/Hindustani30Raga300_PerRagaStats.txt')
+	#Carnatic: dbs.generatePerRagaPrettyReport('RagaRecognitionDS/carnatic/PerRagaStats/', 'RagaRecognitionDS/carnatic/PerRagaStats/Carnatic40Raga480_FILE_MBID_RAGA.txt', 'raga_name_mapping.json', 'RagaRecognitionDS/carnatic/PerRagaStats/Carnatic40Raga480_PerRagaStats.txt')
+
+	lines = open(raga_mbid_file, 'r').readlines()
+	mbid_ragaid = []
+
+	mapping = json.load(open(raga_map, 'r'))
+
+	for line in lines:
+		lsplit = line.split('\t')
+		mbid_ragaid.append([lsplit[1].strip(), lsplit[2].strip()])
+
+	mbid_ragaid = np.array(mbid_ragaid)
+	mbids = mbid_ragaid[:,0]
+	ragaids = mbid_ragaid[:,1]
+
+	uragaids = np.unique(ragaids)
+
+	fid = codecs.open(output_file, 'w', encoding = 'utf8')
+	for ragaid in uragaids:
+		ind_raga = np.where(ragaids == ragaid)[0]
+		mbid_selected = mbids[ind_raga]
+		stat_file = os.path.join(root_dir, ragaid + '.json')
+		stats = json.load(open(stat_file,'r'))
+		try:
+			fid.write("%s\t%s\t%0.2f\t%d\t%d\n"%(mapping[ragaid], ragaid, stats['length']['total_length']/(1000.0*3600.0),  stats['album_artists']['total_unique'], stats['release']['total_unique']))
+		except:
+			fid.write("%s\t%s\t%0.2f\t%d\t%d\n"%(mapping[ragaid], ragaid, stats['length']['total_length']/(1000.0*3600.0),  stats['album_artists']['total_unique'], stats['concert']['total_unique']))
+
+	fid.close()
