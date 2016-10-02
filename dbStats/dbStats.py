@@ -66,7 +66,10 @@ def getDatasetStats(mbids, output_file, music_tradition = ''):
 			rec_info = tradition.get_recording(mbid)
 		except:
 			failure+=1
+			print "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
 			print "Failed to fetch info for file %s"%mbid
+			print "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+			continue
 		for e in entities:
 			if rec_info.has_key(e):
 				#special case for parsing artist field
@@ -452,3 +455,42 @@ def generatePerRagaPrettyReport(root_dir, raga_mbid_file, raga_map, output_file)
 			fid.write("%s\t%s\t%0.2f\t%d\t%d\n"%(mapping[ragaid], ragaid, stats['length']['total_length']/(1000.0*3600.0),  stats['album_artists']['total_unique'], stats['concert']['total_unique']))
 
 	fid.close()
+
+
+def getStatsForTonicDataset():
+
+	dn.set_token("60312f59428916bb854adaa208f55eb35c3f2f07")
+	
+	mbids_file = '/home/sankalp/Work/Work_PhD/library_pythonnew/dbStats/TonicDS/Tonic_vocal_recs_MBID.json'	
+	output_file = '/home/sankalp/Work/Work_PhD/library_pythonnew/dbStats/TonicDS/Tonic_vocal_recs_STATS_Carnatic.json'	
+	output_file_pretty = '/home/sankalp/Work/Work_PhD/library_pythonnew/dbStats/TonicDS/Tonic_vocal_recs_Pretty_Carnatic.txt'
+	music_tradition = 'carnatic'
+	mbids = json.load(open(mbids_file, 'r'))
+	getDatasetStats(mbids, output_file, music_tradition)
+	generatePretyReport(output_file, output_file_pretty)
+
+	mbids_file = '/home/sankalp/Work/Work_PhD/library_pythonnew/dbStats/TonicDS/Tonic_vocal_recs_MBID.json'	
+	output_file = '/home/sankalp/Work/Work_PhD/library_pythonnew/dbStats/TonicDS/Tonic_vocal_recs_STATS_Hindustani.json'	
+	output_file_pretty = '/home/sankalp/Work/Work_PhD/library_pythonnew/dbStats/TonicDS/Tonic_vocal_recs_Pretty_Hindustani.txt'
+	music_tradition = 'hindustani'
+	mbids = json.load(open(mbids_file, 'r'))
+	getDatasetStats(mbids, output_file, music_tradition)
+	generatePretyReport(output_file, output_file_pretty)
+
+
+
+	mbids_file = '/home/sankalp/Work/Work_PhD/library_pythonnew/dbStats/TonicDS/Tonic_inst_recs_MBID.json'	
+	output_file = '/home/sankalp/Work/Work_PhD/library_pythonnew/dbStats/TonicDS/Tonic_inst_recs_STATS_Carnatic.json'
+	output_file_pretty = '/home/sankalp/Work/Work_PhD/library_pythonnew/dbStats/TonicDS/Tonic_inst_recs_Pretty_Carnatic.txt'	
+	music_tradition = 'carnatic'
+	mbids = json.load(open(mbids_file, 'r'))
+	getDatasetStats(mbids, output_file, music_tradition)
+	generatePretyReport(output_file, output_file_pretty)
+
+	mbids_file = '/home/sankalp/Work/Work_PhD/library_pythonnew/dbStats/TonicDS/Tonic_inst_recs_MBID.json'	
+	output_file = '/home/sankalp/Work/Work_PhD/library_pythonnew/dbStats/TonicDS/Tonic_inst_recs_STATS_Hindustani.json'	
+	output_file_pretty = '/home/sankalp/Work/Work_PhD/library_pythonnew/dbStats/TonicDS/Tonic_inst_recs_Pretty_Hindustani.txt'	
+	music_tradition = 'hindustani'
+	mbids = json.load(open(mbids_file, 'r'))
+	getDatasetStats(mbids, output_file, music_tradition)
+	generatePretyReport(output_file, output_file_pretty)
