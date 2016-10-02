@@ -69,7 +69,6 @@ def getDatasetStats(mbids, output_file, music_tradition = ''):
 			print "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
 			print "Failed to fetch info for file %s"%mbid
 			print "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
-			continue
 		for e in entities:
 			if rec_info.has_key(e):
 				#special case for parsing artist field
@@ -459,6 +458,10 @@ def generatePerRagaPrettyReport(root_dir, raga_mbid_file, raga_map, output_file)
 
 def getStatsForTonicDataset():
 
+	"""
+	NOTE: there are two issues with this dataset, first files are mixed of hindustani and carnatic, second several files in this dataset are not included in any of the compmusic collection. So Dunya doesn't give anything for such fiels
+	"""
+
 	dn.set_token("60312f59428916bb854adaa208f55eb35c3f2f07")
 	
 	mbids_file = '/home/sankalp/Work/Work_PhD/library_pythonnew/dbStats/TonicDS/Tonic_vocal_recs_MBID.json'	
@@ -494,3 +497,39 @@ def getStatsForTonicDataset():
 	mbids = json.load(open(mbids_file, 'r'))
 	getDatasetStats(mbids, output_file, music_tradition)
 	generatePretyReport(output_file, output_file_pretty)
+
+
+def getLengthsOfTonicDataset():
+	"""
+	Because there are several files in tonic dataset which are not added in any compmusic dataset, I have to write this function to fetch length directly from the musicbtrainz, bypassing Dunya
+	"""
+	mbids_file = '/home/sankalp/Work/Work_PhD/library_pythonnew/dbStats/TonicDS/Tonic_vocal_recs_MBID.json'	
+	length_file = '/home/sankalp/Work/Work_PhD/library_pythonnew/dbStats/TonicDS/Tonic_vocal_recs_PER_FILE_LENGTH.json'
+	len_info = {}
+	total_len = 0
+	mbids = json.load(open(mbids_file, 'r'))
+	for mbid in mbids:
+		info = musicbrainz.mb.get_recording_by_id(mbid)
+		len_info[mbid] = info['recording']['length']
+		total_len+= float(info['recording']['length'])
+
+	json.dump(len_info, open(length_file, 'w'))
+	print "Total length is %f"%(float(total_len/(1000.0*3600.0)))
+
+
+	mbids_file = '/home/sankalp/Work/Work_PhD/library_pythonnew/dbStats/TonicDS/Tonic_inst_recs_MBID.json'	
+	length_file = '/home/sankalp/Work/Work_PhD/library_pythonnew/dbStats/TonicDS/Tonic_inst_recs_PER_FILE_LENGTH.json'
+	len_info = {}
+	total_len = 0
+	mbids = json.load(open(mbids_file, 'r'))
+	for mbid in mbids:
+		info = musicbrainz.mb.get_recording_by_id(mbid)
+		len_info[mbid] = info['recording']['length']
+		total_len+= float(info['recording']['length'])
+
+	json.dump(len_info, open(length_file, 'w'))
+	print "Total length is %f"%(float(total_len/(1000.0*3600.0)))	
+
+
+
+
