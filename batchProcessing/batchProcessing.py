@@ -612,7 +612,7 @@ def computeLoudness(audioFile, outputExt='.loudness', f0=-1, HopSize = 0.01, Fra
   SPECTRUM=ES.Spectrum()
   EQUALLOUD = ES.EqualLoudness()
   SPECPEAKS = ES.SpectralPeaks(sampleRate = fs, maxFrequency = 8000)
-  HARMDET = ES.HarmonicDetection(nH=30, freqDevThsld=10, sampleRate = fs)#TODO: use the function that Dmitry implemented and not this one!!!
+  HARMDET = ES.HarmonicPeaks(maxHarmonics=30)
   
   audio_in = EQUALLOUD(audio)
   
@@ -623,7 +623,13 @@ def computeLoudness(audioFile, outputExt='.loudness', f0=-1, HopSize = 0.01, Fra
         break
     spec = SPECTRUM(WIN(frame))
     peaks = SPECPEAKS(spec)
-    wghtsLocal = HARMDET(peaks[0], peaks[1], pitch[cnt])
+    #sometimes the first frequency peak corresponds to 0Hz (DC offset), adding correction for that.
+    p_freq = peaks[0]
+    p_mags = peaks[1]
+    if len(p_freq) >0 and p_freq[0]==0:
+        p_freq = p_freq[1:]
+        p_mags = p_mags[1:]
+    wghtsLocal = HARMDET(p_freq, p_mags, pitch[cnt])[1]
     harmWghts.append(wghtsLocal)
     cnt+=1
 
