@@ -240,7 +240,7 @@ double dtw_GLS(double *x, double*y, int x_len, int y_len, double*cost, dtwParams
             {
                 for (j=1;j<=max_del;j++)
                 {
-                    cost[(i*y_len)+ j] = (*myDistMeasures[params.distType])(x[i],y[j]) + min3(((i-1)*y_len)+ j, cost[((i-1)*y_len)+(j-1)], cost[((i)*y_len)+(j-1)]);
+                    cost[(i*y_len)+ j] = (*myDistMeasures[params.distType])(x[i],y[j]) + min3(cost[((i-1)*y_len)+ j], cost[((i-1)*y_len)+(j-1)], cost[((i)*y_len)+(j-1)]);
                 }
             }
             for (j=1;j<= min(bandwidth+1,y_len-1);j++)
